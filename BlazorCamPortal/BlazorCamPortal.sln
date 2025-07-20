@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal", "BlazorCamPortal\BlazorCamPortal.csproj", "{90B5DBE9-D5F9-453D-913A-CF969FC33624}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal.Contracts", "Contracts\BlazorCamPortal.Contracts.csproj", "{3FC438BF-B41D-462B-A9E8-C2884C431EB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal.Infrastructure", "Infrastructure\BlazorCamPortal.Infrastructure.csproj", "{8D425466-239E-43AE-8E2B-86DB472D994F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal.Services", "Services\BlazorCamPortal.Services.csproj", "{F1419F5D-FF4B-4FC4-833B-32468B0BD569}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90B5DBE9-D5F9-453D-913A-CF969FC33624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90B5DBE9-D5F9-453D-913A-CF969FC33624}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90B5DBE9-D5F9-453D-913A-CF969FC33624}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90B5DBE9-D5F9-453D-913A-CF969FC33624}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FC438BF-B41D-462B-A9E8-C2884C431EB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FC438BF-B41D-462B-A9E8-C2884C431EB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FC438BF-B41D-462B-A9E8-C2884C431EB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FC438BF-B41D-462B-A9E8-C2884C431EB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D425466-239E-43AE-8E2B-86DB472D994F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D425466-239E-43AE-8E2B-86DB472D994F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D425466-239E-43AE-8E2B-86DB472D994F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D425466-239E-43AE-8E2B-86DB472D994F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1419F5D-FF4B-4FC4-833B-32468B0BD569}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1419F5D-FF4B-4FC4-833B-32468B0BD569}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1419F5D-FF4B-4FC4-833B-32468B0BD569}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1419F5D-FF4B-4FC4-833B-32468B0BD569}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F65BD76D-CB96-4952-9D46-B625C656E42F}
+	EndGlobalSection
+EndGlobal

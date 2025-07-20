@@ -1,5 +1,6 @@
 
 #include <Arduino.h>
+#include "mbedtls/md.h"
 #include <WiFi.h>
 #include <esp_camera.h>
 #include "camera_pins.h"
