@@ -1,0 +1,58 @@
+﻿@page "/camerasConfig"
+@rendermode InteractiveServer
+
+@inject ICameraService _cameraService
+@inject IDevicePairHttpService _devicePairHttpService
+
+<button type="button" class="btn btn-primary" @onclick="ScanAndAddNewCameras">Scan And Add New Cameras</button>
+
+<h1>Cameras Configuration</h1>
+
+@if (isScanning)
+{
+	<h1>Scan in progress...</h1>
+}
+else if (foundDeviceIds != null)
+{
+	<p>Found @(foundDeviceIds.Count) new devices!</p>
+}
+
+<h2>Available Cameras</h2>
+
+@foreach (var camera in cameraDisplayModels)
+{
+	<p>@($"{camera.Ipv4Address} - {camera.Name??"NotSet"} - {camera.MacAddress} - {camera.CreatedAt} - {camera.PairStatus}")</p>
+}
+
+@code {
+	bool isScanning;
+	List<CameraDisplayModel> cameraDisplayModels = new();
+	List<Guid>? foundDeviceIds;
+
+	protected override async Task OnInitializedAsync()
+	{
+		cameraDisplayModels=await _cameraService.GetAllCamerasAsync();
+	}
+
+	private async Task ScanAndAddNewCameras()
+	{
+		if (isScanning)
+			return;
+
+		isScanning = true;
+
+		StateHasChanged();
+
+		await Task.Yield();
+
+		try
+		{
+			foundDeviceIds = await _devicePairHttpService.SendChallengeToAllDevicesAsync();
+			cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
+		}
+		finally
+		{
+			isScanning = false;
+		}
+	}
+}

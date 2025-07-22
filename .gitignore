@@ -103,3 +103,13 @@ obj/**/staticwebassets.runtime.json
 /BlazorCamPortal/.vs/BlazorCamPortal/DesignTimeBuild
 /BlazorCamPortal/.vs/BlazorCamPortal/FileContentIndex
 /BlazorCamPortal/.vs/BlazorCamPortal/v17
+/BlazorCamPortal/BlazorCamPortal/ca.crt
+/BlazorCamPortal/BlazorCamPortal/ca.key
+/BlazorCamPortal/BlazorCamPortal/ca.srl
+/BlazorCamPortal/BlazorCamPortal/client.crt
+/BlazorCamPortal/BlazorCamPortal/client.csr
+/BlazorCamPortal/BlazorCamPortal/client.key
+/BlazorCamPortal/BlazorCamPortal/server.crt
+/BlazorCamPortal/BlazorCamPortal/server.csr
+/BlazorCamPortal/BlazorCamPortal/server.key
+/BlazorCamPortal/BlazorCamPortal/server.pfx

@@ -1,20 +1,20 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using BlazorCamPortal.Contracts.Services;
+using BlazorCamPortal.Contracts.Abstractions.Services;
 using Microsoft.Extensions.Configuration;
 
-namespace BlazorCamPortal.Services
+namespace BlazorCamPortal.Core.Services
 {
-    public class DeviceAuthenticator : IDeviceAuthenticator
+    public class DeviceAuthenticatorService : IDeviceAuthenticatorService
     {
         private readonly IConfiguration _configuration;
         private readonly string _sharedSecretKey;
 
-        public DeviceAuthenticator(IConfiguration configuration)
+        public DeviceAuthenticatorService(IConfiguration configuration)
         {
             _configuration = configuration;
 
-            _sharedSecretKey = _configuration["DeviceAuthenticator:SharedSecretKey"] ?? throw new InvalidOperationException("Shared secret key is not configured.");
+            _sharedSecretKey = _configuration.GetSection("DeviceAuthenticator")["SharedSecretCamKey"] ?? throw new InvalidOperationException("Shared secret key is not configured.");
         }
 
         public string GenerateChallenge()
@@ -35,11 +35,21 @@ namespace BlazorCamPortal.Services
             return CryptographicOperations.FixedTimeEquals(expectedBytes, responseBytes);
         }
 
-        private string ComputeHmac(string challenge)
+        public string ComputeHmac(string challenge)
         {
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_sharedSecretKey));
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(challenge));
             return Convert.ToHexString(hash);
+        }
+
+        public string GenerateSessionToken(int keySizeInBits = 256)
+        {
+            var rng = RandomNumberGenerator.Create();
+
+            var key = new byte[keySizeInBits / 8];
+            rng.GetBytes(key);
+
+            return Convert.ToBase64String(key);
         }
     }
 }
