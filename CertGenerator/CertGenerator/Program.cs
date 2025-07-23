@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-const string blazorAppRelativePath = @"..\..\..\..\..\BlazorCamPortal\BlazorCamPortal\bin\Debug\net9.0\";
+const string blazorAppCertificatePath = @"..\..\..\..\..\BlazorCamPortal\BlazorCamPortal\server.pfx";
 const string blazorAppSettingsRelativePath = @"..\..\..\..\..\BlazorCamPortal\BlazorCamPortal\appsettings.json";
 const string esp32SecretsRelativePath = @"..\..\..\..\..\ESP_32_Cam_Firmware\include\secrets.h";
 
@@ -53,7 +53,7 @@ RunOpenSsl($"pkcs12 -export -out {pfxFile} -inkey {serverKey} -in {serverCert} -
 
 Console.WriteLine($"PFX file generated: {pfxFile} with password: {password}");
 
-CopyPfxToBlazorApp(pfxFile, blazorAppRelativePath);
+CopyPfxToBlazorApp(pfxFile, blazorAppCertificatePath);
 
 UpdateAppSettingsWithPassword(blazorAppSettingsRelativePath, password);
 
