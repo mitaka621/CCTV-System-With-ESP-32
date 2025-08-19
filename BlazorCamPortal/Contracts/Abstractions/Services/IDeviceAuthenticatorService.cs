@@ -9,5 +9,7 @@
         string ComputeHmac(string challenge);
 
         string GenerateSessionToken(int keySizeInBits = 256);
+
+        byte[] DecryptAesGcm(byte[] ciphertext, byte[] key, byte[] iv, byte[] tag);
     }
 }

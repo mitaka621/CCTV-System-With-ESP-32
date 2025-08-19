@@ -5,6 +5,7 @@
         ServerChallengeSolved,
         ServerChallengeFailed,
         Paired,
-        Rejected,
+        Forgotten,
+        SessionTokenExpired,
     }
 }

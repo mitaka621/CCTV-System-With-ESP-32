@@ -51,5 +51,16 @@ namespace BlazorCamPortal.Core.Services
 
             return Convert.ToBase64String(key);
         }
+
+        public byte[] DecryptAesGcm(byte[] ciphertext, byte[] key, byte[] iv, byte[] tag)
+        {
+            byte[] plaintext = new byte[ciphertext.Length];
+
+            using (var aes = new AesGcm(key, tag.Length))
+            {
+                aes.Decrypt(iv, ciphertext, tag, plaintext);
+            }
+            return plaintext;
+        }
     }
 }

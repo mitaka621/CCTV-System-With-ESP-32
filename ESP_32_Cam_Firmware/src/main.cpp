@@ -11,6 +11,14 @@
 #include "secrets.h"
 #include <ArduinoJson.h>
 #include <nvs_flash.h>
+#include "mbedtls/gcm.h"
+#include "base64.h"
+#include "esp_system.h"
+#include "mbedtls/base64.h"
+
+#define RESET_BUTTON_PIN 14
+
+#define FAILED_FRAMES_TO_SEND_LIMIT 1000
 
 #define CAMERA_MODEL_AI_THINKER
 
@@ -26,12 +34,18 @@
 bool initCamera();
 bool connectWiFi();
 bool sendFrameToServer(camera_fb_t *fb, WiFiClient &client);
-void retrieveSessionToken();
+bool getSessionTokenFromServer(String baseServerUrl, String macAddress);
 
 Preferences prefs;
 WiFiClient client;
 WiFiClientSecure httpsClient;
 WebServer server(77);
+
+bool doesHaveToReloadSessionToken = true;
+bool isPaired = false;
+
+uint8_t aesKey[32];
+size_t aesKeyLen = 0;
 
 void parseHostAndPath(String &host, String &path, String baseServerUrl, String url)
 {
@@ -196,6 +210,17 @@ String getMacAddressString()
   return String(macStr);
 }
 
+void setServerLocalIpAddress(const String &address)
+{
+  prefs.putString("serverAddress", address);
+}
+
+String getServerLocalIpAddress()
+{
+  String address = prefs.getString("serverAddress", "");
+  return address;
+}
+
 void setBaseServerUrl(const String &url)
 {
   prefs.putString("baseServerUrl", url);
@@ -220,13 +245,6 @@ String getSessionToken()
 
 void handleChallenge()
 {
-  if (getSessionToken() != "")
-  {
-    DEBUG_PRINT("Already Paired with server, skipping challenge.");
-    server.send(400, "text/plain", "Already Paired with server");
-    return;
-  }
-
   DEBUG_PRINT("New challenge request accepted");
 
   if (!server.hasArg("challenge"))
@@ -239,7 +257,11 @@ void handleChallenge()
 
   DEBUG_PRINT(challenge);
 
-  String baseServerUrl = String("https://") + server.client().remoteIP().toString() + ":" + String(ServerHttpsPort);
+  String serverAddress = server.client().remoteIP().toString();
+
+  String baseServerUrl = String("https://") + serverAddress + ":" + String(ServerHttpsPort);
+
+  setServerLocalIpAddress(serverAddress);
   setBaseServerUrl(baseServerUrl);
 
   String hmac = computeHmacSha256(challenge);
@@ -252,10 +274,10 @@ void handleChallenge()
   serializeJson(doc, response);
   server.send(200, "application/json", response);
 
-  retrieveSessionToken();
+  isPaired = getSessionTokenFromServer(baseServerUrl, macAddress);
 }
 
-bool validateServer()
+bool isServerValid()
 {
   String baseServerUrl = getBaseServerUrl();
   if (baseServerUrl == "")
@@ -280,6 +302,7 @@ bool validateServer()
   if (!httpsClient.connect(host.c_str(), ServerHttpsPort))
   {
     DEBUG_PRINT("HTTPS connection to host " + host + " failed");
+    ESP.restart();
     return false;
   }
 
@@ -310,28 +333,24 @@ bool validateServer()
   return result;
 }
 
-void retrieveSessionToken()
+bool getSessionTokenFromServer(String baseServerUrl, String macAddress)
 {
-  if (getSessionToken() != "" || !validateServer())
+  if (!isServerValid())
   {
-    return;
+    return false;
   }
 
   DEBUG_PRINT("Server validated successfully.");
 
-  String baseServerUrl = getBaseServerUrl();
   if (baseServerUrl == "")
   {
     DEBUG_PRINT("No baseServerUrl found in preferences. Cannot retrieve session token.");
-    return;
+    return false;
   }
-  String macAddress = getMacAddressString();
 
-  // Build URL
   String url = baseServerUrl + "/api/deviceauthenticator/serverSession?mac=" + macAddress;
   DEBUG_PRINT("Requesting session token: " + url);
 
-  // Parse host and path
   String host = "";
   String path = "";
 
@@ -341,7 +360,7 @@ void retrieveSessionToken()
   if (!httpsClient.connect(host.c_str(), ServerHttpsPort))
   {
     DEBUG_PRINT("HTTPS connection to host " + host + " failed");
-    return;
+    return false;
   }
 
   DEBUG_PRINT("Path: " + path);
@@ -358,12 +377,14 @@ void retrieveSessionToken()
   if (sessionToken == "")
   {
     DEBUG_PRINT("No sessionToken in response");
-    return;
+    return false;
   }
   DEBUG_PRINT("Session token received: " + sessionToken);
 
   setSessionToken(sessionToken);
   DEBUG_PRINT("Session token saved to storage.");
+
+  return true;
 }
 
 bool connectWiFi()
@@ -418,24 +439,172 @@ bool initCamera()
   return true;
 }
 
+bool encryptAESGCM(uint8_t *input, size_t inputLen,
+                   uint8_t *output, uint8_t *iv, uint8_t *tag,
+                   const uint8_t *key)
+{
+  mbedtls_gcm_context gcm;
+  mbedtls_gcm_init(&gcm);
+  mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, 256);
+
+  int ret = mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT,
+                                      inputLen,
+                                      iv, 12,  // IV
+                                      NULL, 0, // no additional data (AAD)
+                                      input, output,
+                                      16, tag); // 16-byte tag
+  mbedtls_gcm_free(&gcm);
+  return (ret == 0);
+}
+
+bool getAesKeyFromPrefs(uint8_t *keyBuf, size_t keyBufSize, size_t &keyLen)
+{
+  String tokenBase64 = getSessionToken();
+
+  if (tokenBase64.length() == 0)
+    return false;
+
+  size_t olen = 0;
+  int ret = mbedtls_base64_decode(
+      keyBuf, keyBufSize, &olen,
+      (const unsigned char *)tokenBase64.c_str(),
+      tokenBase64.length());
+
+  if (ret != 0)
+  {
+    DEBUG_PRINT("Base64 decode failed");
+    return false;
+  }
+
+  keyLen = olen;
+  return true;
+}
+
 bool sendFrameToServer(camera_fb_t *fb, WiFiClient &client)
 {
-  uint32_t len = fb->len;
-  uint8_t sizeBuf[4] =
-      {
-          (uint8_t)(len >> 24),
-          (uint8_t)(len >> 16),
-          (uint8_t)(len >> 8),
-          (uint8_t)(len)};
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+
+  uint8_t iv[12];
+  esp_fill_random(iv, sizeof(iv));
+
+  uint8_t tag[16];
+
+  uint8_t *encBuf = (uint8_t *)malloc(fb->len);
+  if (!encBuf)
+    return false;
+
+  if (doesHaveToReloadSessionToken)
+  {
+    if (!getAesKeyFromPrefs(aesKey, sizeof(aesKey), aesKeyLen))
+    {
+      free(encBuf);
+      return false;
+    }
+
+    doesHaveToReloadSessionToken = false;
+  }
+
+  if (!encryptAESGCM(fb->buf, fb->len, encBuf, iv, tag, aesKey))
+  {
+    free(encBuf);
+    return false;
+  }
+
+  // Total length = MAC(6) + IV(12) + TAG(16) + Ciphertext
+  uint32_t totalLen = 6 + sizeof(iv) + sizeof(tag) + fb->len;
+  uint8_t sizeBuf[4] = {
+      (uint8_t)(totalLen >> 24),
+      (uint8_t)(totalLen >> 16),
+      (uint8_t)(totalLen >> 8),
+      (uint8_t)(totalLen)};
+
   if (client.write(sizeBuf, 4) != 4)
     return false;
-  if (client.write(fb->buf, fb->len) != fb->len)
+
+  if (client.write(mac, sizeof(mac)) != sizeof(mac))
     return false;
+
+  if (client.write(iv, sizeof(iv)) != sizeof(iv))
+    return false;
+
+  if (client.write(tag, sizeof(tag)) != sizeof(tag))
+    return false;
+
+  if (client.write(encBuf, fb->len) != fb->len)
+    return false;
+
+  free(encBuf);
   return true;
+}
+
+// removes all server related data from persistent storage
+void forgetServer()
+{
+  // Clear all server related data from persistent storage
+  prefs.clear();
+
+  doesHaveToReloadSessionToken = true;
+}
+
+unsigned long resetButtonPressStart = 0;
+bool resetButtonWasPressed = false;
+
+void handleResetButtonPress()
+{
+  int buttonState = digitalRead(RESET_BUTTON_PIN);
+
+  if (buttonState == LOW && !resetButtonWasPressed)
+  {
+    resetButtonWasPressed = true;
+    resetButtonPressStart = millis();
+  }
+  else if (buttonState == HIGH && resetButtonWasPressed)
+  {
+    resetButtonWasPressed = false;
+  }
+  else if (buttonState == LOW && resetButtonWasPressed)
+  {
+    if (millis() - resetButtonPressStart >= 5000)
+    {
+      DEBUG_PRINT("Camera reset initiated");
+      resetButtonWasPressed = false;
+
+      forgetServer();
+      ESP.restart();
+    }
+  }
+}
+
+int failedWiFiReconnectCounter = 0;
+
+void wifiConnectivityCheck()
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    DEBUG_PRINT("WiFi disconnected. Attempting to reconnect...");
+    while (!connectWiFi())
+    {
+      failedWiFiReconnectCounter++;
+      DEBUG_PRINT("WiFi reconnection failed. Will retry...");
+      if (failedWiFiReconnectCounter >= 10)
+      {
+        DEBUG_PRINT("WiFi reconnection failed too many times. Restarting ESP...");
+        delay(1000);
+        ESP.restart();
+        return;
+      }
+      delay(2000);
+    }
+    DEBUG_PRINT("WiFi reconnected.");
+    failedWiFiReconnectCounter = 0;
+  }
 }
 
 void setup()
 {
+  pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
+
   Serial.begin(115200);
   delay(1000);
   DEBUG_PRINT("Booting...");
@@ -461,41 +630,115 @@ void setup()
 
   httpsClient.setCACert(ROOT_CA_CERT);
 
-  retrieveSessionToken();
+  // we check local storage to see if we were connected to the server previously
+  isPaired = getSessionToken().length() > 0;
+
+  if (!isPaired)
+  {
+    DEBUG_PRINT("Not paired with server. Awaiting server to initiate handshake...");
+  }
+
+  while (!isPaired)
+  {
+    // if we were not connected, then we wait for the server's callback function which will set isPaired to true if the server sends challenge request and session token
+    server.handleClient();
+
+    delay(100);
+  }
+
+  server.stop();
 
   DEBUG_PRINT("Setup complete.");
 }
 
+int failedFramesToSendCounter = 0;
+
+// if we are in the main loop it means we are successfully paired to the server and have all its info including ip, port etc.
 void loop()
 {
-  server.handleClient();
-  // if (!client.connected())
-  // {
-  //   DEBUG_PRINT("Connecting to TCP server...");
-  //   if (!client.connect(TCP_SERVER_IP, TCP_SERVER_PORT))
-  //   {
-  //     DEBUG_PRINT("TCP connection failed.");
-  //     delay(2000);
-  //     return;
-  //   }
-  //   DEBUG_PRINT("TCP connected.");
-  // }
-  // camera_fb_t *fb = esp_camera_fb_get();
-  // if (!fb)
-  // {
-  //   DEBUG_PRINT("Camera capture failed");
-  //   delay(100);
-  //   return;
-  // }
-  // if (!sendFrameToServer(fb, client))
-  // {
-  //   DEBUG_PRINT("Failed to send frame");
-  //   client.stop();
-  // }
-  // else
-  // {
-  //   DEBUG_PRINT("Frame sent");
-  // }
-  // esp_camera_fb_return(fb);
+  wifiConnectivityCheck();
+
+  handleResetButtonPress();
+
+  // if somehow the connection to the server is lost we need to try to get a new session token
+  if (!isPaired)
+  {
+    String baseServerUrl = getBaseServerUrl();
+    String macAddress = getMacAddressString();
+
+    if (baseServerUrl == "" || macAddress == "")
+    {
+      DEBUG_PRINT("No baseServerUrl or macAddress found in preferences. Cannot retrieve session token.");
+
+      forgetServer();
+
+      ESP.restart();
+
+      return;
+    }
+
+    while (!isPaired)
+    {
+      isPaired = getSessionTokenFromServer(baseServerUrl, macAddress);
+      delay(1000);
+    }
+
+    doesHaveToReloadSessionToken = true;
+
+    DEBUG_PRINT("New Session token retrieved successfully.");
+  }
+
+  // if we fail to obtain session token from the server multiple times then we reset the persistant storage and restart the device
+  //(the same will happen if the reset button is pressed this is just a failsafe)
+  if (failedFramesToSendCounter >= FAILED_FRAMES_TO_SEND_LIMIT)
+  {
+    DEBUG_PRINT("Failed frames to send limit reached. Restarting...");
+    forgetServer();
+    ESP.restart();
+    return;
+  }
+
+  if (!client.connected())
+  {
+    String serverAddressStr = getServerLocalIpAddress();
+    if (serverAddressStr == "")
+    {
+      delay(100);
+      return;
+    }
+
+    DEBUG_PRINT("Connecting to TCP server...");
+    if (!client.connect(serverAddressStr.c_str(), ServerTcpPort))
+    {
+      DEBUG_PRINT("TCP connection failed.");
+      delay(2000);
+      isPaired = false;
+      return;
+    }
+    DEBUG_PRINT("TCP connected.");
+  }
+
+  camera_fb_t *fb = esp_camera_fb_get();
+
+  if (!fb)
+  {
+    DEBUG_PRINT("Camera capture failed");
+    delay(100);
+    return;
+  }
+  if (!sendFrameToServer(fb, client))
+  {
+    DEBUG_PRINT("Failed to send frame");
+    client.stop();
+
+    failedFramesToSendCounter++;
+  }
+  else
+  {
+    DEBUG_PRINT("Frame sent");
+
+    failedFramesToSendCounter = 0;
+  }
+  esp_camera_fb_return(fb);
   delay(100);
 }

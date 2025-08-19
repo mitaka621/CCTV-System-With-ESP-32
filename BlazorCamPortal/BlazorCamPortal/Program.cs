@@ -34,6 +34,7 @@ builder.WebHost.ConfigureKestrel(options =>
     {
         listenOptions.UseHttps("server.pfx", certificatePassword);
     });
+    options.ListenAnyIP(5120);
 });
 
 builder.Services.AddServices();

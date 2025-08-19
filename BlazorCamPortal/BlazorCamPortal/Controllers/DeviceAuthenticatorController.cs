@@ -29,7 +29,7 @@ namespace BlazorCamPortal.Controllers
 
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();
 
-            if (ipAddress == null || !await _cameraService.DoesCameraExistWithStatusAsync(ipAddress, mac, PairStatus.ServerChallengeSolved))
+            if (ipAddress == null || !await _cameraService.DoesCameraExistWithStatusAsync(ipAddress, mac, PairStatus.ServerChallengeSolved, PairStatus.SessionTokenExpired))
             {
                 return BadRequest();
             }
@@ -47,7 +47,7 @@ namespace BlazorCamPortal.Controllers
 
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();
 
-            if (ipAddress == null || !await _cameraService.DoesCameraExistWithStatusAsync(ipAddress, mac, PairStatus.ServerChallengeSolved))
+            if (ipAddress == null || !await _cameraService.DoesCameraExistWithStatusAsync(ipAddress, mac, PairStatus.ServerChallengeSolved, PairStatus.SessionTokenExpired))
             {
                 return BadRequest();
             }

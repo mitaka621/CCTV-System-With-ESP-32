@@ -4,6 +4,7 @@ using BlazorCamPortal.Contracts.Abstractions.Services;
 using BlazorCamPortal.Contracts.Dtos;
 using BlazorCamPortal.Contracts.Enums;
 using BlazorCamPortal.Contracts.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace BlazorCamPortal.Core.Services
 {
@@ -13,16 +14,31 @@ namespace BlazorCamPortal.Core.Services
         private readonly IMapper _mapper;
         private readonly IDeviceAuthenticatorService _deviceAuthenticatorService;
 
-        public CameraService(ICameraRepository cameraRepository, IMapper mapper, IDeviceAuthenticatorService deviceAuthenticatorService)
+        private readonly int _sessionTokenDurationInMinutes;
+
+        public CameraService(
+            ICameraRepository cameraRepository,
+            IMapper mapper,
+            IDeviceAuthenticatorService deviceAuthenticatorService,
+            IConfiguration configuration)
         {
             _cameraRepository = cameraRepository;
             _mapper = mapper;
             _deviceAuthenticatorService = deviceAuthenticatorService;
+
+            _sessionTokenDurationInMinutes = int.Parse(configuration
+                .GetSection("ESPCamera")["SessionTokenDurationInMinutes"]
+                    ?? throw new ArgumentNullException("SessionTokenDurationInMinutes not set in config"));
         }
 
         public async Task<Guid> CreateCameraAsync(CreateCameraModel model, PairStatus cameraStatus)
         {
             var dto = _mapper.Map<CreateCameraDto>(model);
+
+            if (string.IsNullOrEmpty(dto.Ipv4Address) || string.IsNullOrEmpty(dto.MacAddress))
+            {
+                throw new ArgumentException("Invalid ip or mac address");
+            }
 
             dto.CreatedAt = DateTime.Now;
             dto.PairStatus = cameraStatus;
@@ -61,16 +77,28 @@ namespace BlazorCamPortal.Core.Services
             return existingCameraByMac.Id;
         }
 
-        public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus status)
+        public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus[] statuses)
         {
-            return await _cameraRepository.DoesCameraExistWithStatusAsync(ipv4, mac, status);
+            return await _cameraRepository.DoesCameraExistWithStatusAsync(ipv4, mac, statuses);
+        }
+
+        public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, PairStatus[] statuses)
+        {
+            return await _cameraRepository.DoesCameraExistWithStatusAsync(ipv4, statuses);
         }
 
         public async Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac)
         {
             var newSessionToken = _deviceAuthenticatorService.GenerateSessionToken();
 
-            var result = await _cameraRepository.SetSessionTokenAsync(ipv4, mac, newSessionToken);
+            var result = await _cameraRepository.SetSessionTokenAsync(new SetSessionTokenDto()
+            {
+                Ipv4 = ipv4,
+                Mac = mac,
+                SessionToken = newSessionToken,
+                ExpirationDate = DateTime.Now.AddMinutes(_sessionTokenDurationInMinutes),
+                AllowedStatuses = [PairStatus.ServerChallengeSolved, PairStatus.SessionTokenExpired]
+            });
 
             if (result)
             {
@@ -78,6 +106,20 @@ namespace BlazorCamPortal.Core.Services
             }
 
             return null;
+        }
+
+        public async Task<(byte[]? token, bool isExpired)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac)
+        {
+            var dto = await _cameraRepository.GetSessionTokenAsync(ipv4, mac);
+
+            bool isSessionTokenExpired = dto != null && dto.SessionTokenExpirationDate < DateTime.Now;
+
+            if (dto == null || dto.SessionToken == null || dto.SessionTokenExpirationDate == null)
+            {
+                return (null, false);
+            }
+
+            return (Convert.FromBase64String(dto.SessionToken), isSessionTokenExpired);
         }
 
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync()
@@ -90,6 +132,30 @@ namespace BlazorCamPortal.Core.Services
         public async Task<bool> UpdateCameraStatusAsync(string mac, PairStatus newStatus)
         {
             return await _cameraRepository.SetCameraStatusAsync(mac, newStatus);
+        }
+
+        public async Task<List<string>> GetAllActiveCameraIpsAsync()
+        {
+            var cameras = await _cameraRepository.GetAllPairedCamerasAsync();
+
+            return cameras;
+        }
+
+        public async Task ChangeCameraStatusAsync(Guid cameraId, PairStatus newStatus)
+        {
+            var result = await _cameraRepository.SetCameraStatusAsync(cameraId, newStatus);
+
+            if (!result)
+            {
+                throw new InvalidOperationException($"Failed to change status for camera with ID {cameraId}");
+            }
+        }
+
+        public async Task<Guid> GetCameraIdAsync(string ipv4, string mac)
+        {
+            var result = await _cameraRepository.GetCameraIdAsync(ipv4, mac);
+
+            return result;
         }
     }
 }

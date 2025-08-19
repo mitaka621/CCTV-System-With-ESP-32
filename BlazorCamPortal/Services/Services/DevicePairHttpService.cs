@@ -28,7 +28,7 @@ namespace BlazorCamPortal.Core.Services
             IScanCoordinatorService scanCoordinatorService)
         {
             _httpClient = httpClient;
-            _httpClient.Timeout = TimeSpan.FromSeconds(2);
+            _httpClient.Timeout = TimeSpan.FromSeconds(10);
 
             _espChallengeUrl = configuration.GetSection("ESPCamera")["ChallengeUrl"] ?? throw new InvalidOperationException("ESP ChallengeUrl is not configured");
 
@@ -50,11 +50,18 @@ namespace BlazorCamPortal.Core.Services
 
                 var tasks = new List<Task<CameraResponseModel?>>();
 
+                var ipsToSkip = await _cameraService.GetAllActiveCameraIpsAsync();
+
                 for (int i = 1; i <= usableHosts; i++)
                 {
                     var gatewayChunks = networkInfo.Gateway.ToString().Split('.');
 
                     string ip = $"{gatewayChunks[0]}.{gatewayChunks[1]}.{gatewayChunks[2]}.{i}";
+
+                    if (ipsToSkip.Contains(ip))
+                    {
+                        continue;
+                    }
 
                     tasks.Add(SendChallengeAsync(ip, _deviceAuthenticatorService.GenerateChallenge()));
                 }

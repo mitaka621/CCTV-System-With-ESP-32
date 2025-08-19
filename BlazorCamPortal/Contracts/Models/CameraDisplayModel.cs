@@ -4,6 +4,8 @@ namespace BlazorCamPortal.Contracts.Models
 {
     public class CameraDisplayModel
     {
+        public Guid Id { get; set; }
+
         public string? Name { get; set; }
 
         public required string Ipv4Address { get; set; }

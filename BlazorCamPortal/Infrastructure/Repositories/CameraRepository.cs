@@ -132,10 +132,18 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return result;
         }
 
-        public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus status)
+        public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus[] statuses)
         {
             var result = await _dbContext.Cameras
-                .AnyAsync(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && x.PairStatus == status);
+                .AnyAsync(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && statuses.Contains(x.PairStatus));
+
+            return result;
+        }
+
+        public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, PairStatus[] statuses)
+        {
+            var result = await _dbContext.Cameras
+                .AnyAsync(x => x.Ipv4Address == ipv4 && statuses.Contains(x.PairStatus));
 
             return result;
         }
@@ -150,13 +158,52 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return result;
         }
 
-        public async Task<bool> SetSessionTokenAsync(string ipv4, string mac, string sessionToken)
+        public async Task<bool> SetSessionTokenAsync(SetSessionTokenDto dto)
         {
             var result = await _dbContext.Cameras
-                .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && x.PairStatus == PairStatus.ServerChallengeSolved)
-                .ExecuteUpdateAsync(x => x.SetProperty(c => c.SessionToken, sessionToken).SetProperty(c => c.UpdatedAt, DateTime.Now));
+                .Where(x => x.Ipv4Address == dto.Ipv4 && x.MacAddress == dto.Mac && dto.AllowedStatuses.Contains(x.PairStatus))
+                .ExecuteUpdateAsync(x => x.SetProperty(c => c.SessionToken, dto.SessionToken)
+                    .SetProperty(x => x.UpdatedAt, DateTime.Now)
+                    .SetProperty(x => x.SessionTokenExpirationDate, dto.ExpirationDate));
 
             return result != 0;
+        }
+
+        public async Task<SessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac)
+        {
+            var result = await _dbContext.Cameras
+                .AsNoTracking()
+                .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && x.PairStatus == PairStatus.Paired)
+                .Select(x => new SessionTokenDto()
+                {
+                    SessionToken = x.SessionToken,
+                    SessionTokenExpirationDate = x.SessionTokenExpirationDate
+                })
+                .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+        public async Task<List<string>> GetAllPairedCamerasAsync()
+        {
+            var result = await _dbContext.Cameras
+                .AsNoTracking()
+                .Where(x => x.PairStatus == PairStatus.Paired)
+                .Select(x => x.Ipv4Address)
+                .ToListAsync();
+
+            return result;
+        }
+
+        public async Task<Guid> GetCameraIdAsync(string ipv4, string mac)
+        {
+            var result = await _dbContext.Cameras
+                .AsNoTracking()
+                .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac)
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            return result;
         }
     }
 }

@@ -15,7 +15,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> SetCameraStatusAsync(Guid cameraId, PairStatus newStatus);
 
-        Task<bool> SetCameraStatusAsync(string camerIpv4, PairStatus newStatus);
+        Task<bool> SetCameraStatusAsync(string cameraIpv4, PairStatus newStatus);
 
         Task<CameraDto?> GetCameraByIdAsync(Guid cameraId);
 
@@ -29,10 +29,18 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> UpdateCameraIpAsync(Guid cameraId, string newIpv4);
 
-        Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus status);
+        Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus[] statuses);
+
+        Task<bool> DoesCameraExistWithStatusAsync(string ipv4, PairStatus[] statuses);
 
         Task<List<CameraDto>> GetAllCamerasAsync();
 
-        Task<bool> SetSessionTokenAsync(string ipv4, string mac, string sessionToken);
+        Task<bool> SetSessionTokenAsync(SetSessionTokenDto dto);
+
+        Task<SessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac);
+
+        Task<List<string>> GetAllPairedCamerasAsync();
+
+        Task<Guid> GetCameraIdAsync(string ipv4, string mac);
     }
 }

@@ -1,7 +1,71 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+
+@inject ICameraService _cameraService
+@inject ICameraFramesManagerService _cameraFramesManagerService
+@inject IJSRuntime JS
 
 <PageTitle>Dashboard</PageTitle>
 
 <h1>Dashboard</h1>
+<hr />
 
-Welcome to your new app.
+@foreach (var camera in cameraModels)
+{
+	<p>@camera.Key</p>
+
+	<canvas id="@camera.Key" width="1280" height="720" style="border:1px solid #ccc;"></canvas>	
+}
+
+@code {
+    private Dictionary<Guid, string> cameraModels = new();
+    private bool jsReady;
+    private Func<Guid, byte[], Task>? _frameHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _frameHandler = OnFrameAdded;
+        _cameraFramesManagerService.FrameAdded += _frameHandler;
+
+        var cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
+        cameraModels = cameraDisplayModels.ToDictionary(
+            camera => camera.Id,
+            camera => string.Empty
+        );
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            jsReady = true;
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFrameAdded(Guid cameraId, byte[] frame)
+    {
+        if (!jsReady)
+            return;
+
+        try
+        {
+            using var stream = new MemoryStream(frame);
+            using var streamRef = new DotNetStreamReference(stream);
+
+            await JS.InvokeVoidAsync("drawFrame", cameraId.ToString(), streamRef);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_frameHandler != null)
+            _cameraFramesManagerService.FrameAdded -= _frameHandler;
+    }
+}

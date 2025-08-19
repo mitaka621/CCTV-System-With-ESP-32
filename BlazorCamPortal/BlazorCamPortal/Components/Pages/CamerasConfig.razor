@@ -1,4 +1,5 @@
 ﻿@page "/camerasConfig"
+@using BlazorCamPortal.Contracts.Enums
 @rendermode InteractiveServer
 
 @inject ICameraService _cameraService
@@ -22,6 +23,10 @@ else if (foundDeviceIds != null)
 @foreach (var camera in cameraDisplayModels)
 {
 	<p>@($"{camera.Ipv4Address} - {camera.Name??"NotSet"} - {camera.MacAddress} - {camera.CreatedAt} - {camera.PairStatus}")</p>
+	@if (camera.PairStatus!=PairStatus.Forgotten)
+	{
+		<button type="button" class="btn btn-primary" @onclick="() => ForgetCamera(camera)">Forget</button>
+	}
 }
 
 @code {
@@ -54,5 +59,13 @@ else if (foundDeviceIds != null)
 		{
 			isScanning = false;
 		}
+	}
+
+	private async Task ForgetCamera(CameraDisplayModel camera)
+	{
+		await _cameraService.ChangeCameraStatusAsync(camera.Id, PairStatus.Forgotten);
+
+		camera.PairStatus = PairStatus.Forgotten;
+		StateHasChanged();
 	}
 }

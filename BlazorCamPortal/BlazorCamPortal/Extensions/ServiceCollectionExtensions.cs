@@ -1,5 +1,6 @@
 ﻿using BlazorCamPortal.Contracts.Abstractions.Repositories;
 using BlazorCamPortal.Contracts.Abstractions.Services;
+using BlazorCamPortal.Core.BackgroundServices;
 using BlazorCamPortal.Core.Services;
 using BlazorCamPortal.Infrastructure.Repositories;
 
@@ -15,6 +16,9 @@ namespace BlazorCamPortal.Extensions
             services.AddScoped<HttpClient>();
 
             services.AddSingleton<IScanCoordinatorService, ScanCoordinatorService>();
+            services.AddSingleton<ICameraFramesManagerService, CameraFramesManagerService>();
+
+            services.AddHostedService<FramesReceiverTcpService>();
 
             return services;
         }

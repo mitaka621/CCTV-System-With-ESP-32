@@ -7,12 +7,22 @@ namespace BlazorCamPortal.Contracts.Abstractions.Services
     {
         Task<Guid> CreateCameraAsync(CreateCameraModel model, PairStatus cameraStatus);
 
-        Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus status);
+        Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, params PairStatus[] statuses);
+
+        Task<bool> DoesCameraExistWithStatusAsync(string ipv4, params PairStatus[] statuses);
 
         Task<bool> UpdateCameraStatusAsync(string mac, PairStatus newStatus);
 
         Task<List<CameraDisplayModel>> GetAllCamerasAsync();
 
         Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac);
+
+        Task<(byte[]? token, bool isExpired)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac);
+
+        Task<List<string>> GetAllActiveCameraIpsAsync();
+
+        Task ChangeCameraStatusAsync(Guid cameraId, PairStatus newStatus);
+
+        Task<Guid> GetCameraIdAsync(string ipv4, string mac);
     }
 }

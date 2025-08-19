@@ -31,5 +31,7 @@ namespace BlazorCamPortal.Infrastructure.Data.Entities
 
         [MaxLength(2000)]
         public string? SessionToken { get; set; }
+
+        public DateTime? SessionTokenExpirationDate { get; set; }
     }
 }
