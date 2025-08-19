@@ -18,7 +18,8 @@
 
 #define RESET_BUTTON_PIN 14
 
-#define FAILED_FRAMES_TO_SEND_LIMIT 1000
+#define FAILED_FRAMES_TO_SEND_RESTART_LIMIT 1000
+#define FAILED_FRAMES_TO_SEND_MARK_AS_NOT_PAIRED_LIMIT 4
 
 #define CAMERA_MODEL_AI_THINKER
 
@@ -684,18 +685,24 @@ void loop()
     }
 
     doesHaveToReloadSessionToken = true;
+    failedFramesToSendCounter = 0;
 
     DEBUG_PRINT("New Session token retrieved successfully.");
   }
 
   // if we fail to obtain session token from the server multiple times then we reset the persistant storage and restart the device
   //(the same will happen if the reset button is pressed this is just a failsafe)
-  if (failedFramesToSendCounter >= FAILED_FRAMES_TO_SEND_LIMIT)
+  if (failedFramesToSendCounter >= FAILED_FRAMES_TO_SEND_RESTART_LIMIT)
   {
     DEBUG_PRINT("Failed frames to send limit reached. Restarting...");
     forgetServer();
     ESP.restart();
     return;
+  }
+
+  if (failedFramesToSendCounter >= FAILED_FRAMES_TO_SEND_MARK_AS_NOT_PAIRED_LIMIT)
+  {
+    isPaired = false;
   }
 
   if (!client.connected())
@@ -712,7 +719,6 @@ void loop()
     {
       DEBUG_PRINT("TCP connection failed.");
       delay(2000);
-      isPaired = false;
       return;
     }
     DEBUG_PRINT("TCP connected.");
