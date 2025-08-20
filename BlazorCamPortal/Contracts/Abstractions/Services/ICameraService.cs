@@ -15,6 +15,8 @@ namespace BlazorCamPortal.Contracts.Abstractions.Services
 
         Task<List<CameraDisplayModel>> GetAllCamerasAsync();
 
+        Task<List<CameraDisplayModel>> GetAllCamerasAsync(params PairStatus[] statuses);
+
         Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac);
 
         Task<(byte[]? token, bool isExpired)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac);

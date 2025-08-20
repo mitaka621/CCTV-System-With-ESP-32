@@ -8,6 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="ffmpeg\linux-x64\ffmpeg" />
+    <None Remove="ffmpeg\win-x64\ffmpeg.exe" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="ffmpeg\linux-x64\ffmpeg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ffmpeg\win-x64\ffmpeg.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="14.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.7">
@@ -27,6 +41,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Services\BlazorCamPortal.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\resources\images\connection_lost.jpg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
     <ItemGroup>

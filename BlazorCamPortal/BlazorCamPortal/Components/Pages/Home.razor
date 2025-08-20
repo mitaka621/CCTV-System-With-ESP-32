@@ -4,50 +4,46 @@
 @inject ICameraService _cameraService
 @inject ICameraFramesManagerService _cameraFramesManagerService
 @inject IJSRuntime JS
+@inject IConfiguration _configuration
 
 <PageTitle>Dashboard</PageTitle>
 
 <h1>Dashboard</h1>
 <hr />
 
-@foreach (var camera in cameraModels)
+@foreach (var camera in cameras)
 {
-	<p>@camera.Key</p>
-
-	<canvas id="@camera.Key" width="1280" height="720" style="border:1px solid #ccc;"></canvas>	
+    <div @key=camera.Id>
+	    <p>@camera.Id</p>
+	    <canvas id="@camera.Id" width="1280" height="720" style="border:1px solid #ccc;"></canvas>	
+    </div>
 }
 
 @code {
-    private Dictionary<Guid, string> cameraModels = new();
-    private bool jsReady;
-    private Func<Guid, byte[], Task>? _frameHandler;
+    private List<CameraDisplayModel> cameras = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        _frameHandler = OnFrameAdded;
-        _cameraFramesManagerService.FrameAdded += _frameHandler;
-
-        var cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
-        cameraModels = cameraDisplayModels.ToDictionary(
-            camera => camera.Id,
-            camera => string.Empty
-        );
+    protected override async Task OnParametersSetAsync()
+    {  
+        cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired);
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        {
-            jsReady = true;
+        {   
+            //the cameras field is 40% of the time empty here despite it being populated before this method in OnParametersSetAsync
+            //this is why they are extracted for the second time
+            foreach (var camera in await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired))
+            {
+                await OnFrameAdded(camera.Id, FrameUtilities.GetDefaultFrame(_configuration));
+            }
+
+            _cameraFramesManagerService.FrameAdded += OnFrameAdded;
         }
-        return Task.CompletedTask;
     }
 
     private async Task OnFrameAdded(Guid cameraId, byte[] frame)
     {
-        if (!jsReady)
-            return;
-
         try
         {
             using var stream = new MemoryStream(frame);
@@ -65,7 +61,6 @@
 
     public void Dispose()
     {
-        if (_frameHandler != null)
-            _cameraFramesManagerService.FrameAdded -= _frameHandler;
+        _cameraFramesManagerService.FrameAdded -= OnFrameAdded;
     }
 }

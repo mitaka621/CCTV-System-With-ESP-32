@@ -158,6 +158,17 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return result;
         }
 
+        public async Task<List<CameraDto>> GetAllCamerasAsync(PairStatus[] statuses)
+        {
+            var result = await _dbContext.Cameras
+                .AsNoTracking()
+                .Where(x => statuses.Contains(x.PairStatus))
+                .Select(camera => _mapper.Map<CameraDto>(camera))
+                .ToListAsync();
+
+            return result;
+        }
+
         public async Task<bool> SetSessionTokenAsync(SetSessionTokenDto dto)
         {
             var result = await _dbContext.Cameras

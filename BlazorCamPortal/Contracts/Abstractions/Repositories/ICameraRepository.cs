@@ -35,6 +35,8 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
 
         Task<List<CameraDto>> GetAllCamerasAsync();
 
+        Task<List<CameraDto>> GetAllCamerasAsync(PairStatus[] statuses);
+
         Task<bool> SetSessionTokenAsync(SetSessionTokenDto dto);
 
         Task<SessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac);

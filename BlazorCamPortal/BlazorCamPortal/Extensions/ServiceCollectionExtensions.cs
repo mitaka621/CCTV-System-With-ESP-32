@@ -19,6 +19,7 @@ namespace BlazorCamPortal.Extensions
             services.AddSingleton<ICameraFramesManagerService, CameraFramesManagerService>();
 
             services.AddHostedService<FramesReceiverTcpService>();
+            services.AddHostedService<VideoEncoderService>();
 
             return services;
         }

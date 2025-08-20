@@ -13,6 +13,7 @@ namespace BlazorCamPortal.Core.Services
         private readonly ICameraRepository _cameraRepository;
         private readonly IMapper _mapper;
         private readonly IDeviceAuthenticatorService _deviceAuthenticatorService;
+        private readonly ICameraFramesManagerService _cameraFramesManagerService;
 
         private readonly int _sessionTokenDurationInMinutes;
 
@@ -20,11 +21,13 @@ namespace BlazorCamPortal.Core.Services
             ICameraRepository cameraRepository,
             IMapper mapper,
             IDeviceAuthenticatorService deviceAuthenticatorService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ICameraFramesManagerService cameraFramesManagerService)
         {
             _cameraRepository = cameraRepository;
             _mapper = mapper;
             _deviceAuthenticatorService = deviceAuthenticatorService;
+            _cameraFramesManagerService = cameraFramesManagerService;
 
             _sessionTokenDurationInMinutes = int.Parse(configuration
                 .GetSection("ESPCamera")["SessionTokenDurationInMinutes"]
@@ -129,6 +132,13 @@ namespace BlazorCamPortal.Core.Services
             return _mapper.Map<List<CameraDisplayModel>>(result);
         }
 
+        public async Task<List<CameraDisplayModel>> GetAllCamerasAsync(params PairStatus[] statuses)
+        {
+            var result = await _cameraRepository.GetAllCamerasAsync(statuses);
+
+            return _mapper.Map<List<CameraDisplayModel>>(result);
+        }
+
         public async Task<bool> UpdateCameraStatusAsync(string mac, PairStatus newStatus)
         {
             return await _cameraRepository.SetCameraStatusAsync(mac, newStatus);
@@ -148,6 +158,10 @@ namespace BlazorCamPortal.Core.Services
             if (!result)
             {
                 throw new InvalidOperationException($"Failed to change status for camera with ID {cameraId}");
+            }
+            else if (newStatus == PairStatus.Forgotten)
+            {
+                _cameraFramesManagerService.CloseChannel(cameraId);
             }
         }
 
