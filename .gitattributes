@@ -1,1 +1,2 @@
-BlazorCamPortal/BlazorCamPortal/ffmpeg/* filter=lfs diff=lfs merge=lfs -text
+BlazorCamPortal/BlazorCamPortal/ffmpeg/linux-x64/ffmpeg filter=lfs diff=lfs merge=lfs -text
+BlazorCamPortal/BlazorCamPortal/ffmpeg/win-x64/ffmpeg.exe filter=lfs diff=lfs merge=lfs -text
