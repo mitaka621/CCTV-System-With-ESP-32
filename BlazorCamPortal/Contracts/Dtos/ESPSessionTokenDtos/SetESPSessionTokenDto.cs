@@ -1,8 +1,8 @@
 ﻿using BlazorCamPortal.Contracts.Enums;
 
-namespace BlazorCamPortal.Contracts.Dtos
+namespace BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos
 {
-    public class SetSessionTokenDto
+    public class SetESPSessionTokenDto
     {
         public required string Ipv4 { get; set; }
 

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
-using BlazorCamPortal.Contracts.Dtos;
+using BlazorCamPortal.Contracts.Dtos.CameraDtos;
+using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
 using BlazorCamPortal.Contracts.Models;
 using BlazorCamPortal.Infrastructure.Data.Entities;
 
@@ -19,6 +20,9 @@ namespace BlazorCamPortal.MapperConfiguration
                 .ReverseMap();
 
             CreateMap<CameraResponseModel, CreateCameraDto>()
+                .ReverseMap();
+
+            CreateMap<VideoChunk, CreateVideoChunkDto>()
                 .ReverseMap();
         }
     }

@@ -1,0 +1,146 @@
+@using MudBlazor
+@implements IDisposable
+@inject IJSRuntime JS
+@inject IConfiguration _configuration
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <div class="fullscreen-camera">
+            <div class="fullscreen-header">
+                <MudText Typo="Typo.h5" Color="Color.Surface">
+                    @(string.IsNullOrEmpty(Camera.Name) ? Camera.Ipv4Address : Camera.Name)
+                </MudText>
+                <div class="fullscreen-controls">
+                    <MudChip T="string" Color="Color.Success" Text="Live" Icon="Icons.Material.Filled.Circle" Class="mr-4" />
+                    <MudIconButton Icon="Icons.Material.Filled.Close" 
+                                   Color="Color.Surface" 
+                                   Size="Size.Large"
+                                   OnClick="CloseDialog" />
+                </div>
+            </div>
+            
+            <div class="fullscreen-video-container">
+                <canvas id="fullscreen-@Camera.Id" 
+                        width="1920" 
+                        height="1080"
+                        class="fullscreen-canvas">
+                </canvas>
+            </div>
+            
+            <div class="fullscreen-footer">
+                <MudText Typo="Typo.body2" Color="Color.Surface">
+                    @Camera.Ipv4Address | @Camera.MacAddress | @DateTime.Now.ToString("HH:mm:ss")
+                </MudText>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+<style>
+    .fullscreen-camera {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fullscreen-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0));
+        z-index: 10;
+    }
+
+    .fullscreen-controls {
+        display: flex;
+        align-items: center;
+    }
+
+    .fullscreen-video-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+    }
+
+    .fullscreen-canvas {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        border-radius: 8px;
+    }
+
+    .fullscreen-footer {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 16px 24px;
+        background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0));
+        text-align: center;
+        z-index: 10;
+    }
+</style>
+
+@code {
+    [CascadingParameter] 
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] 
+    public CameraDisplayModel Camera { get; set; } = default!;
+
+    [Parameter] 
+    public ICameraFramesManagerService CameraFramesManagerService { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize with default frame
+            await OnFrameAdded(Camera.Id, FrameUtilities.GetDefaultFrame(_configuration));
+            
+            // Subscribe to frame updates
+            CameraFramesManagerService.FrameAdded += OnFrameAdded;
+        }
+    }
+
+    private async Task OnFrameAdded(Guid cameraId, byte[] frame)
+    {
+        if (cameraId != Camera.Id) return;
+
+        try
+        {
+            using var stream = new MemoryStream(frame);
+            using var streamRef = new DotNetStreamReference(stream);
+
+            await JS.InvokeVoidAsync("drawFrame", $"fullscreen-{cameraId}", streamRef);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void CloseDialog()
+    {
+        MudDialog?.Close();
+    }
+
+    public void Dispose()
+    {
+        CameraFramesManagerService.FrameAdded -= OnFrameAdded;
+    }
+}

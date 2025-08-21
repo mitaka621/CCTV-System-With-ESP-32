@@ -1,4 +1,5 @@
-﻿using BlazorCamPortal.Contracts.Dtos;
+﻿using BlazorCamPortal.Contracts.Dtos.CameraDtos;
+using BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos;
 using BlazorCamPortal.Contracts.Enums;
 
 namespace BlazorCamPortal.Contracts.Abstractions.Repositories
@@ -37,9 +38,9 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
 
         Task<List<CameraDto>> GetAllCamerasAsync(PairStatus[] statuses);
 
-        Task<bool> SetSessionTokenAsync(SetSessionTokenDto dto);
+        Task<bool> SetSessionTokenAsync(SetESPSessionTokenDto dto);
 
-        Task<SessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac);
+        Task<ESPSessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac);
 
         Task<List<string>> GetAllPairedCamerasAsync();
 

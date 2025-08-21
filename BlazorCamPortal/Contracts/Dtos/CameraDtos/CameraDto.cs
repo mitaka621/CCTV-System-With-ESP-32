@@ -1,6 +1,6 @@
 ﻿using BlazorCamPortal.Contracts.Enums;
 
-namespace BlazorCamPortal.Contracts.Dtos
+namespace BlazorCamPortal.Contracts.Dtos.CameraDtos
 {
     public class CameraDto
     {

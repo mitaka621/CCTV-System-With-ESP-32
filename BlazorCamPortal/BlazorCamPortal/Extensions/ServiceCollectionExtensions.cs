@@ -3,6 +3,7 @@ using BlazorCamPortal.Contracts.Abstractions.Services;
 using BlazorCamPortal.Core.BackgroundServices;
 using BlazorCamPortal.Core.Services;
 using BlazorCamPortal.Infrastructure.Repositories;
+using MudBlazor.Services;
 
 namespace BlazorCamPortal.Extensions
 {
@@ -10,10 +11,14 @@ namespace BlazorCamPortal.Extensions
     {
         public static IServiceCollection AddServices(this IServiceCollection services)
         {
+            services.AddMudServices();
+
             services.AddScoped<ICameraService, CameraService>();
             services.AddScoped<IDeviceAuthenticatorService, DeviceAuthenticatorService>();
             services.AddScoped<IDevicePairHttpService, DevicePairHttpService>();
             services.AddScoped<HttpClient>();
+            services.AddScoped<IVideoChunkService, VideoChunkService>();
+            services.AddScoped<IVideoChunkRepository, VideoChunkRepository>();
 
             services.AddSingleton<IScanCoordinatorService, ScanCoordinatorService>();
             services.AddSingleton<ICameraFramesManagerService, CameraFramesManagerService>();

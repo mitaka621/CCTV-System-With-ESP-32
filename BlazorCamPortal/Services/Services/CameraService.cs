@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
 using BlazorCamPortal.Contracts.Abstractions.Repositories;
 using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Dtos;
+using BlazorCamPortal.Contracts.Dtos.CameraDtos;
+using BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos;
 using BlazorCamPortal.Contracts.Enums;
 using BlazorCamPortal.Contracts.Models;
 using Microsoft.Extensions.Configuration;
@@ -94,7 +95,7 @@ namespace BlazorCamPortal.Core.Services
         {
             var newSessionToken = _deviceAuthenticatorService.GenerateSessionToken();
 
-            var result = await _cameraRepository.SetSessionTokenAsync(new SetSessionTokenDto()
+            var result = await _cameraRepository.SetSessionTokenAsync(new SetESPSessionTokenDto()
             {
                 Ipv4 = ipv4,
                 Mac = mac,

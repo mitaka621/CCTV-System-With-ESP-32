@@ -64,6 +64,44 @@ namespace BlazorCamPortal.Infrastructure.Migrations
 
                     b.ToTable("Cameras");
                 });
+
+            modelBuilder.Entity("BlazorCamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CameraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ChunkEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ChunkStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CameraId");
+
+                    b.ToTable("VideoChunks");
+                });
+
+            modelBuilder.Entity("BlazorCamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
+                {
+                    b.HasOne("BlazorCamPortal.Infrastructure.Data.Entities.Camera", "Camera")
+                        .WithMany()
+                        .HasForeignKey("CameraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Camera");
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BlazorCamPortal.Contracts.Abstractions.Repositories;
-using BlazorCamPortal.Contracts.Dtos;
+using BlazorCamPortal.Contracts.Dtos.CameraDtos;
+using BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos;
 using BlazorCamPortal.Contracts.Enums;
 using BlazorCamPortal.Infrastructure.Data;
 using BlazorCamPortal.Infrastructure.Data.Entities;
@@ -169,7 +170,7 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return result;
         }
 
-        public async Task<bool> SetSessionTokenAsync(SetSessionTokenDto dto)
+        public async Task<bool> SetSessionTokenAsync(SetESPSessionTokenDto dto)
         {
             var result = await _dbContext.Cameras
                 .Where(x => x.Ipv4Address == dto.Ipv4 && x.MacAddress == dto.Mac && dto.AllowedStatuses.Contains(x.PairStatus))
@@ -180,12 +181,12 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return result != 0;
         }
 
-        public async Task<SessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac)
+        public async Task<ESPSessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac)
         {
             var result = await _dbContext.Cameras
                 .AsNoTracking()
                 .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && x.PairStatus == PairStatus.Paired)
-                .Select(x => new SessionTokenDto()
+                .Select(x => new ESPSessionTokenDto()
                 {
                     SessionToken = x.SessionToken,
                     SessionTokenExpirationDate = x.SessionTokenExpirationDate

@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using BlazorCamPortal.Contracts.Abstractions.Services;
+using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
 using BlazorCamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,8 @@ namespace BlazorCamPortal.Core.BackgroundServices
         private readonly ICameraFramesManagerService _framesManager;
         private readonly ILogger<VideoEncoderService> _logger;
         private readonly ICameraService _cameraService;
+        private readonly IVideoChunkService _videoChunkService;
+
         private readonly byte[] _placeholderFrame;
         private readonly int _encodedVideoOutputFps;
         private readonly int _videoChunksSizeInM;
@@ -29,12 +32,15 @@ namespace BlazorCamPortal.Core.BackgroundServices
             ILogger<VideoEncoderService> logger)
         {
             _framesManager = framesManager;
-
             _logger = logger;
 
             _cameraService = serviceProvider.CreateScope()
                 .ServiceProvider
                 .GetRequiredService<ICameraService>();
+
+            _videoChunkService = serviceProvider.CreateScope()
+                .ServiceProvider
+                .GetRequiredService<IVideoChunkService>(); ;
 
             _placeholderFrame = FrameUtilities.GetDefaultFrame(configuration);
 
@@ -133,14 +139,14 @@ namespace BlazorCamPortal.Core.BackgroundServices
             throw new PlatformNotSupportedException("Unsupported OS for FFmpeg");
         }
 
-        private void RenameProducedChunkFromFFMPEG(string filename, string outputDir, Guid cameraId)
+        private string RenameProducedChunkFromFFMPEG(string filename, DateTime dateCreated, string outputDir, Guid cameraId)
         {
             var segmentEndTime = DateTime.Now;
-            var startTime = File.GetCreationTime(filename);
+
 
             string newFileName = Path.Combine(
                 outputDir,
-                $"{cameraId}_={startTime:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.mp4"
+                $"{cameraId}_={dateCreated:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.mp4"
             );
 
             try
@@ -154,6 +160,8 @@ namespace BlazorCamPortal.Core.BackgroundServices
             {
                 _logger.LogError($"Failed to rename {filename}: {ex.Message}");
             }
+
+            return newFileName;
         }
 
         private void StartBackgroundVideoChunksRenamingJob(Process ffmpeg, string outputDir, Guid cameraId, CancellationToken stoppingToken)
@@ -174,7 +182,19 @@ namespace BlazorCamPortal.Core.BackgroundServices
 
                         if (lastFileName != null)
                         {
-                            RenameProducedChunkFromFFMPEG(lastFileName, outputDir, cameraId);
+                            var startTime = File.GetCreationTime(lastFileName);
+
+                            var fileName = RenameProducedChunkFromFFMPEG(lastFileName, startTime, outputDir, cameraId);
+
+                            var chunkDto = new CreateVideoChunkDto
+                            {
+                                CameraId = cameraId,
+                                ChunkStartDate = startTime,
+                                ChunkEndDate = DateTime.Now,
+                                FileName = fileName
+                            };
+
+                            await _videoChunkService.CreateVideoChunkAsync(chunkDto);
                         }
 
                         lastFileName = currentFile;
@@ -186,7 +206,19 @@ namespace BlazorCamPortal.Core.BackgroundServices
 
                 if (lastFileName != null)
                 {
-                    RenameProducedChunkFromFFMPEG(lastFileName, outputDir, cameraId);
+                    var startTime = File.GetCreationTime(lastFileName);
+
+                    var fileName = RenameProducedChunkFromFFMPEG(lastFileName, startTime, outputDir, cameraId);
+
+                    var chunkDto = new CreateVideoChunkDto
+                    {
+                        CameraId = cameraId,
+                        ChunkStartDate = startTime,
+                        ChunkEndDate = DateTime.Now,
+                        FileName = fileName
+                    };
+
+                    await _videoChunkService.CreateVideoChunkAsync(chunkDto);
                 }
 
             }, stoppingToken);

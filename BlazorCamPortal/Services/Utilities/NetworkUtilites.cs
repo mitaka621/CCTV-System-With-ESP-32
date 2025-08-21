@@ -1,6 +1,6 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
-using BlazorCamPortal.Contracts.Dtos;
+using BlazorCamPortal.Contracts.Dtos.LocalNetworkDtos;
 
 namespace BlazorCamPortal.Core.Utilities
 {

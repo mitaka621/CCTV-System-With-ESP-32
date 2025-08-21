@@ -1,6 +1,6 @@
-﻿namespace BlazorCamPortal.Contracts.Dtos
+﻿namespace BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos
 {
-    public class SessionTokenDto
+    public class ESPSessionTokenDto
     {
         public string? SessionToken { get; set; }
 

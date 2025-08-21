@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace BlazorCamPortal.Contracts.Dtos
+namespace BlazorCamPortal.Contracts.Dtos.LocalNetworkDtos
 {
     public class LocalNetworkInfoDto
     {
