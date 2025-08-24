@@ -5,33 +5,228 @@
 @inject ICameraFramesManagerService _cameraFramesManagerService
 @inject IJSRuntime JS
 @inject IConfiguration _configuration
+@inject IDialogService DialogService
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>Dashboard - BlazorCam Portal</PageTitle>
 
-<h1>Dashboard</h1>
-<hr />
+<MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
+    <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-3 icon-to-hide-on-mobile" />
+    Dashboard
+</MudText>
 
-@foreach (var camera in cameras)
+
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">@cameras.Count</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">@connectedCameras</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Online</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">2.4TB</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Storage Used</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">127</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Recordings</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Secondary">
+    <MudIcon Icon="@Icons.Material.Filled.GridView" Class="mr-2 icon-to-hide-on-mobile" />
+    Live Camera Feeds
+</MudText>
+
+@if (cameras.Count == 0)
 {
-    <div @key=camera.Id>
-	    <p>@camera.Id</p>
-	    <canvas id="@camera.Id" width="1280" height="720" style="border:1px solid #ccc;"></canvas>	
-    </div>
+    <MudPaper Elevation="2" Class="pa-8 text-center">
+        <MudIcon Icon="@Icons.Material.Outlined.VideocamOff" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Cameras Connected</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">Get started by configuring your first camera</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/camerasConfig">
+            Configure Cameras
+        </MudButton>
+    </MudPaper>
 }
+else
+{
+    <MudGrid>
+        @foreach (var camera in cameras)
+        {
+            <MudItem xs="12" sm="6" md="6" lg="4" xl="3" @key="camera.Id">
+                <MudCard Elevation="6" Class="camera-card">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <div class="d-flex align-center justify-space-between">
+                                <div class="camera-info-container">
+                                    <MudTooltip Text="@GetCameraDisplayName(camera)" 
+                                              Placement="Placement.Top"
+                                              ShowOnFocus="false"
+                                              ShowOnHover="true"
+                                              Class="camera-name-tooltip">
+                                        <MudText Typo="Typo.body1" Class="camera-name-text">
+                                            <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Class="mr-2" />
+                                            <span class="camera-name-span">@GetCameraDisplayName(camera)</span>
+                                        </MudText>
+                                    </MudTooltip>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @camera.Ipv4Address
+                                    </MudText>
+                                </div>
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.FiberManualRecord">
+                                    Live
+                                </MudChip>
+                            </div>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Class="pa-0">
+                        <div class="camera-container">
+                            <canvas id="@camera.Id" width="1280" height="720" class="camera-canvas"></canvas>
+                            <div class="camera-overlay">
+                                <MudIconButton Icon="@Icons.Material.Filled.Fullscreen" 
+                                             Color="Color.Primary" 
+                                             Size="Size.Large"
+                                             Class="fullscreen-btn"
+                                             OnClick="() => OpenFullScreen(camera)" />
+                            </div>
+                        </div>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton StartIcon="@Icons.Material.Filled.PhotoCamera" Color="Color.Secondary" Size="Size.Small">
+                            Snapshot
+                        </MudButton>
+                        <MudSpacer />
+                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" />
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<style>
+    .camera-card {
+        transition: all 0.3s ease;
+        border-radius: 12px !important;
+    }
+    
+    .camera-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .camera-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #000;
+    }
+    
+    .camera-canvas {
+        width: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    
+    .camera-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .camera-container:hover .camera-overlay {
+        opacity: 1;
+    }
+    
+    .fullscreen-btn {
+        background: rgba(255,255,255,0.1) !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    .camera-info-container {
+        flex: 1;
+        min-width: 0;
+        margin-right: 12px;
+    }
+    
+    .camera-name-text {
+        margin-bottom: 4px;
+    }
+    
+    .camera-name-span {
+        display: inline-block;
+        max-width: 100%;
+    }
+    
+    @@media (max-width: 767px) {
+        .camera-name-span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100px;
+            vertical-align: top;
+        }
+        
+        .camera-name-tooltip {
+            cursor: pointer;
+        }
+        
+        .camera-info-container {
+            margin-right: 8px;
+        }
+    }
+    
+    @@media (min-width: 768px) {
+        .camera-name-span {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: unset;
+        }
+        
+        .camera-name-tooltip .mud-tooltip {
+            display: none !important;
+        }
+    }
+</style>
 
 @code {
     private List<CameraDisplayModel> cameras = new();
+    private int connectedCameras = 0;
 
     protected override async Task OnParametersSetAsync()
     {  
         cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired);
+        connectedCameras = cameras.Count; // In a real scenario, this would check actual connection status
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {   
-            //the cameras field is 40% of the time empty here despite it being populated before this method in OnParametersSetAsync
+            //the cameras field is empty here 40% of the time despite it being populated before this method in OnParametersSetAsync
             //this is why they are extracted for the second time
             foreach (var camera in await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired))
             {
@@ -59,8 +254,36 @@
         }
     }
 
+    private async Task OpenFullScreen(CameraDisplayModel camera)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Camera"] = camera,
+            ["CameraFramesManagerService"] = _cameraFramesManagerService
+        };
+
+        var options = new DialogOptions()
+        {
+            MaxWidth = MaxWidth.False,
+            FullWidth = true,
+            CloseButton = false,
+            NoHeader = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<FullscreenCameraDialog>("", parameters, options);
+    }
+
     public void Dispose()
     {
         _cameraFramesManagerService.FrameAdded -= OnFrameAdded;
+    }
+
+    private string GetCameraDisplayName(CameraDisplayModel camera)
+    {
+        if (!string.IsNullOrEmpty(camera.Name))
+            return camera.Name;
+
+        return $"{camera.Id}";
     }
 }

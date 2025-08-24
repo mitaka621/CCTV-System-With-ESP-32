@@ -18,7 +18,8 @@
 
 #define RESET_BUTTON_PIN 14
 
-#define FAILED_FRAMES_TO_SEND_RESTART_LIMIT 1000
+#define MAX_FAILED_ATTEMPTS_TO_CONNECT_TO_SERVER 50
+#define FAILED_ATTEMPTS_TO_PAIR_WITH_SERVER_LIMIT 20
 #define FAILED_FRAMES_TO_SEND_MARK_AS_NOT_PAIRED_LIMIT 10
 
 #define CAMERA_MODEL_AI_THINKER
@@ -303,7 +304,6 @@ bool isServerValid()
   if (!httpsClient.connect(host.c_str(), ServerHttpsPort))
   {
     DEBUG_PRINT("HTTPS connection to host " + host + " failed");
-    ESP.restart();
     return false;
   }
 
@@ -652,6 +652,8 @@ void setup()
   DEBUG_PRINT("Setup complete.");
 }
 
+int failedAttemptsToConnectToserver = 0;
+int failedAttemptsToPairWithServer = 0;
 int failedFramesToSendCounter = 0;
 
 // if we are in the main loop it means we are successfully paired to the server and have all its info including ip, port etc.
@@ -678,23 +680,37 @@ void loop()
       return;
     }
 
-    while (!isPaired)
+    isPaired = getSessionTokenFromServer(baseServerUrl, macAddress);
+
+    if (isPaired)
     {
-      isPaired = getSessionTokenFromServer(baseServerUrl, macAddress);
-      delay(1000);
+      DEBUG_PRINT("Successfully paired with server.");
+
+      doesHaveToReloadSessionToken = true;
+      failedFramesToSendCounter = 0;
     }
+    else
+    {
+      DEBUG_PRINT("Failed to pair with server.");
 
-    doesHaveToReloadSessionToken = true;
-    failedFramesToSendCounter = 0;
-
-    DEBUG_PRINT("New Session token retrieved successfully.");
+      failedAttemptsToPairWithServer++;
+    }
   }
 
-  // if we fail to obtain session token from the server multiple times then we reset the persistant storage and restart the device
+  // if we fail to connect to the server entierly multiple times then we reset the persistant storage and restart the device
   //(the same will happen if the reset button is pressed this is just a failsafe)
-  if (failedFramesToSendCounter >= FAILED_FRAMES_TO_SEND_RESTART_LIMIT)
+  if (failedAttemptsToConnectToserver >= MAX_FAILED_ATTEMPTS_TO_CONNECT_TO_SERVER) // 30 min failsafe time before reset
   {
-    DEBUG_PRINT("Failed frames to send limit reached. Restarting...");
+    DEBUG_PRINT("Max failed attempts to connect to server reached. Restarting...");
+    forgetServer();
+    ESP.restart();
+  }
+
+  // if we fail to pair with the server multiple times then we reset the persistant storage and restart the device
+  //(the same will happen if the reset button is pressed this is just a failsafe)
+  if (failedAttemptsToPairWithServer >= FAILED_ATTEMPTS_TO_PAIR_WITH_SERVER_LIMIT)
+  {
+    DEBUG_PRINT("Failed attempts to pair with server limit reached. Restarting...");
     forgetServer();
     ESP.restart();
     return;
@@ -703,6 +719,7 @@ void loop()
   if (failedFramesToSendCounter >= FAILED_FRAMES_TO_SEND_MARK_AS_NOT_PAIRED_LIMIT)
   {
     isPaired = false;
+    return;
   }
 
   if (!client.connected())
@@ -718,7 +735,8 @@ void loop()
     if (!client.connect(serverAddressStr.c_str(), ServerTcpPort))
     {
       DEBUG_PRINT("TCP connection failed.");
-      delay(2000);
+      delay(20000);
+      failedAttemptsToConnectToserver++;
       return;
     }
     DEBUG_PRINT("TCP connected.");

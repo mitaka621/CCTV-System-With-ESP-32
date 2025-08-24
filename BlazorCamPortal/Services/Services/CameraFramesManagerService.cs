@@ -105,7 +105,7 @@ namespace BlazorCamPortal.Core.Services
 
             image.SaveAsJpeg(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
             {
-                Quality = 95
+                Quality = 100,
             });
             return ms.ToArray();
         }

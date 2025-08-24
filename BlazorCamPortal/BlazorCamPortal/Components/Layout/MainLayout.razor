@@ -1,35 +1,109 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    @* Required *@
-    <MudThemeProvider />
-    <MudPopoverProvider />
+<MudThemeProvider Theme="_customTheme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-    @* Needed for dialogs *@
-    <MudDialogProvider />
-
-    @* Needed for snackbars *@
-    <MudSnackbarProvider />
-
-    <div class="sidebar">
+<MudLayout>
+    <MudAppBar Elevation="4" Class="app-bar">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" 
+                       Color="Color.Inherit" 
+                       Class="mobile-menu-btn"
+                       OnClick="@ToggleMobileDrawer" />
+        <MudText Typo="Typo.h5" Class="brand-text">BlazorCam Portal</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Brightness4" Color="Color.Inherit" Href="https://learn.microsoft.com/aspnet/core/" Target="_blank" />
+        <MudIconButton Icon="@Icons.Material.Filled.Code" Color="Color.Inherit" />
+    </MudAppBar>
+    
+    <MudDrawer Open="@_desktopDrawerOpen" 
+               Elevation="2" 
+               Variant="@_drawerVariant" 
+               OpenMiniOnHover="@_openMiniOnHover" 
+               ClipMode="DrawerClipMode.Always" 
+               Class="drawer desktop-drawer">
         <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    </MudDrawer>
+    
+    <MudDrawer Open="@_mobileDrawerOpen"
+               Elevation="2"
+               Variant="DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Never"
+               Class="drawer mobile-drawer"
+               OnOpenChanged="@OnMobileDrawerOpenChanged">
+        <NavMenu />
+    </MudDrawer>
+    
+    <MudMainContent Class="main-content">
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="my-4">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
 
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>
 
-<script src="/js/camera.js"></script>
+
+<script src="@Assets["/js/camera.js"]"></script>
+<script src="@Assets["/js/navigation.js"]"></script>
+
+@code {
+    private bool _desktopDrawerOpen = true;
+    private bool _mobileDrawerOpen = false;
+    private DrawerVariant _drawerVariant = DrawerVariant.Mini;
+    private bool _openMiniOnHover = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ToggleMobileDrawer()
+    {
+        _mobileDrawerOpen = !_mobileDrawerOpen;
+        StateHasChanged();
+    }
+
+    private void OnMobileDrawerOpenChanged(bool isOpen)
+    {
+        _mobileDrawerOpen = isOpen;
+        StateHasChanged();
+    }
+
+    private readonly MudTheme _customTheme = new()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#594AE2",
+            Secondary = "#FF4081",
+            Tertiary = "#1EC8A5",
+            Info = "#2196F3",
+            Success = "#4CAF50",
+            Warning = "#FF9800",
+            Error = "#F44336",
+            Dark = "#424242"
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#776be7",
+            Secondary = "#FF6EC7",
+            Tertiary = "#1ED5A6",
+            Surface = "#1e1e2e",
+            Background = "#0d1117",
+            AppbarBackground = "#1e1e2e",
+            AppbarText = "#ffffff",
+            DrawerBackground = "#1a1a2e",
+            DrawerText = "#ffffff",
+            DrawerIcon = "#ffffff"
+        },
+
+        LayoutProperties = new LayoutProperties()
+        {
+            DrawerWidthLeft = "260px",
+            DrawerWidthRight = "300px"
+        }
+    };
+}

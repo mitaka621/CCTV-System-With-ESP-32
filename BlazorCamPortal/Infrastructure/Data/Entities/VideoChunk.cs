@@ -23,5 +23,8 @@ namespace BlazorCamPortal.Infrastructure.Data.Entities
 
         [ForeignKey(nameof(CameraId))]
         public required Camera Camera { get; set; }
+
+        [Required]
+        public double SizeInMB { get; set; }
     }
 }

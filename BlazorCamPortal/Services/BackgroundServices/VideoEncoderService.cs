@@ -94,7 +94,7 @@ namespace BlazorCamPortal.Core.BackgroundServices
                     FileName = GetFfmpegPath(),
                     Arguments =
                         $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
-                        "-c:v libx264 -preset veryfast -tune zerolatency " +
+                        "-c:v libx264 -preset medium -tune zerolatency " +
                         $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
                         $"-f segment -segment_time {_videoChunksSizeInM * 60} -reset_timestamps 1 " +
                         $"{tempPattern}",
@@ -143,7 +143,6 @@ namespace BlazorCamPortal.Core.BackgroundServices
         {
             var segmentEndTime = DateTime.Now;
 
-
             string newFileName = Path.Combine(
                 outputDir,
                 $"{cameraId}_={dateCreated:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.mp4"
@@ -171,6 +170,8 @@ namespace BlazorCamPortal.Core.BackgroundServices
                 using var reader = ffmpeg.StandardError;
                 string? line;
                 string? lastFileName = null;
+                DateTime? lastFileStartTime = null;
+                CreateVideoChunkDto? lastFileDto = null;
 
                 while ((line = await reader.ReadLineAsync()) != null && !stoppingToken.IsCancellationRequested)
                 {
@@ -180,24 +181,24 @@ namespace BlazorCamPortal.Core.BackgroundServices
                         var rawFileName = ExtractFileName(line);
                         var currentFile = Path.Combine(outputDir, rawFileName);
 
-                        if (lastFileName != null)
+                        if (lastFileName != null && lastFileStartTime != null)
                         {
-                            var startTime = File.GetCreationTime(lastFileName);
+                            var fileName = RenameProducedChunkFromFFMPEG(lastFileName, lastFileStartTime.Value, outputDir, cameraId);
 
-                            var fileName = RenameProducedChunkFromFFMPEG(lastFileName, startTime, outputDir, cameraId);
-
-                            var chunkDto = new CreateVideoChunkDto
+                            lastFileDto = new CreateVideoChunkDto
                             {
                                 CameraId = cameraId,
-                                ChunkStartDate = startTime,
+                                ChunkStartDate = lastFileStartTime.Value,
                                 ChunkEndDate = DateTime.Now,
-                                FileName = fileName
+                                FileName = fileName,
+                                SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                             };
 
-                            await _videoChunkService.CreateVideoChunkAsync(chunkDto);
+                            await _videoChunkService.CreateVideoChunkAsync(lastFileDto!);
                         }
 
                         lastFileName = currentFile;
+                        lastFileStartTime = DateTime.Now;
                     }
                 }
 
@@ -210,15 +211,10 @@ namespace BlazorCamPortal.Core.BackgroundServices
 
                     var fileName = RenameProducedChunkFromFFMPEG(lastFileName, startTime, outputDir, cameraId);
 
-                    var chunkDto = new CreateVideoChunkDto
+                    if (lastFileDto != null)
                     {
-                        CameraId = cameraId,
-                        ChunkStartDate = startTime,
-                        ChunkEndDate = DateTime.Now,
-                        FileName = fileName
-                    };
-
-                    await _videoChunkService.CreateVideoChunkAsync(chunkDto);
+                        await _videoChunkService.CreateVideoChunkAsync(lastFileDto);
+                    }
                 }
 
             }, stoppingToken);
@@ -303,6 +299,8 @@ namespace BlazorCamPortal.Core.BackgroundServices
         private void OnChannelClose(Guid cameraId)
         {
             _cameraEncodersCancelationSources.GetValueOrDefault(cameraId)?.Cancel();
+
+            _cameraEncodersCancelationSources.Remove(cameraId);
 
             _logger.LogInformation($"Channel closed for camera {cameraId}. Cancelling video encoding task.");
         }

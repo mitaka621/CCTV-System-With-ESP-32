@@ -9,5 +9,7 @@
         public DateTime ChunkEndDate { get; set; }
 
         public Guid CameraId { get; set; }
+
+        public double SizeInMB { get; set; }
     }
 }

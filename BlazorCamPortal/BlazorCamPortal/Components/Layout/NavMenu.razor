@@ -1,23 +1,247 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">BlazorCamPortal</a>
+﻿<div class="drawer-header" id="drawer-header">
+    <div class="header-content">
+        <MudIcon Icon="@Icons.Material.Filled.Videocam" Class="header-icon" Color="Color.Primary" />
+        <MudText Typo="Typo.h6" Class="header-text" Color="Color.Primary" id="header-text">
+            CCTV Portal
+        </MudText>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<MudNavMenu Class="navigation-menu" id="navigation-menu">
+    <div class="nav-item-wrapper" id="nav-dashboard">
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+            <span class="nav-text" id="text-dashboard">Dashboard</span>
+        </MudNavLink>
+    </div>
+    <div class="nav-item-wrapper" id="nav-cameras">
+        <MudNavLink Href="/camerasConfig" Icon="@Icons.Material.Filled.Settings">
+            <span class="nav-text" id="text-cameras">Configure Cameras</span>
+        </MudNavLink>
+    </div>
+    <div class="nav-item-wrapper" id="nav-recordings">
+        <MudNavLink Href="/recordings" Icon="@Icons.Material.Filled.VideoLibrary">
+            <span class="nav-text" id="text-recordings">Recordings</span>
+        </MudNavLink>
+    </div>
+    <div class="nav-item-wrapper" id="nav-analytics">
+        <MudNavLink Href="/analytics" Icon="@Icons.Material.Filled.Analytics">
+            <span class="nav-text" id="text-analytics">Analytics</span>
+        </MudNavLink>
+    </div>
+    
+    <MudDivider Class="my-2" />
+    
+    <div class="nav-item-wrapper" id="nav-system">
+        <MudNavGroup Icon="@Icons.Material.Filled.Computer" Expanded="false">
+            <TitleContent>
+                <span class="nav-text" id="text-system">System</span>
+            </TitleContent>
+            <ChildContent>
+                <div class="nav-item-wrapper" id="nav-logs">
+                    <MudNavLink Href="/system/logs" Icon="@Icons.Material.Filled.Article">
+                        <span class="nav-text" id="text-logs">System Logs</span>
+                    </MudNavLink>
+                </div>
+                <div class="nav-item-wrapper" id="nav-status">
+                    <MudNavLink Href="/system/status" Icon="@Icons.Material.Filled.HealthAndSafety">
+                        <span class="nav-text" id="text-status">System Status</span>
+                    </MudNavLink>
+                </div>
+                <div class="nav-item-wrapper" id="nav-settings">
+                    <MudNavLink Href="/system/settings" Icon="@Icons.Material.Filled.Tune">
+                        <span class="nav-text" id="text-settings">Settings</span>
+                    </MudNavLink>
+                </div>
+            </ChildContent>
+        </MudNavGroup>
+    </div>
+</MudNavMenu>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="camerasConfig">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Configure Cameras
-            </NavLink>
-        </div>
-    </nav>
+<div class="drawer-footer" id="drawer-footer">
+    <MudPaper Class="ma-2 pa-2" Elevation="0">
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" id="version-text">v1.0.0</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Secondary" />
+        </MudStack>
+    </MudPaper>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+            await Task.Delay(100);
+            await InvokeAsync(() => {
+                _ = Task.Run(async () => {
+                    await Task.Delay(500);
+                    await InvokeAsync(StateHasChanged);
+                });
+            });
+        }
+    }
+}
+
+<style>
+    .drawer-header {
+        border-bottom: 1px solid var(--mud-palette-divider);
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    
+    .header-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .header-icon {
+        font-size: 1.5rem !important;
+        transition: all 0.3s ease;
+    }
+    
+    .header-text {
+        margin-left: 8px;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+    
+
+    .mud-drawer-mini .header-text {
+        display: none;
+    }
+    
+    .mud-drawer-mini:hover .header-text {
+        display: block;
+        opacity: 1;
+        animation: fadeInSlide 0.3s ease-in-out;
+    }
+    
+    @@keyframes fadeInSlide {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .mud-drawer-mini .header-content {
+        justify-content: center;
+    }
+    
+    .mud-drawer-mini:hover .header-content {
+        justify-content: flex-start;
+        padding-left: 16px;
+    }
+    
+    .mud-drawer-mini .header-icon {
+        margin-right: 0;
+        transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .mud-drawer-mini:hover .header-icon {
+        margin-right: 8px;
+    }
+    
+    .navigation-menu {
+        flex-grow: 1;
+        padding: 8px;
+    }
+    
+    .drawer-footer {
+        margin-top: auto;
+        border-top: 1px solid var(--mud-palette-divider);
+        height: 60px;
+        display: flex;
+        align-items: center;
+    }
+    
+
+    .mud-nav-link {
+        border-radius: 12px !important;
+        margin-bottom: 4px !important;
+        min-height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    .mud-nav-link:hover {
+        background: var(--mud-palette-action-hover) !important;
+        transform: translateX(4px);
+    }
+    
+    .mud-nav-link-active {
+        background: linear-gradient(45deg, var(--mud-palette-primary), rgba(119, 107, 231, 0.8)) !important;
+        color: var(--mud-palette-primary-text) !important;
+        box-shadow: 0 4px 12px rgba(119, 107, 231, 0.3) !important;
+    }
+    
+
+    .mud-drawer-mini .mud-nav-link .mud-icon-root {
+        margin: 0 auto !important;
+    }
+    
+    .mud-drawer-mini .mud-nav-link {
+        justify-content: center !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+
+    .mud-nav-group {
+        margin-bottom: 8px;
+    }
+    
+    .mud-nav-group .mud-button-root {
+        border-radius: 12px !important;
+        min-height: 48px !important;
+    }
+    
+
+    .mud-drawer-mini .drawer-footer .mud-text {
+        display: none;
+    }
+    
+    .mud-drawer-mini:hover .drawer-footer .mud-text {
+        display: block;
+        animation: fadeInSlide 0.3s ease-in-out;
+    }
+    
+    .mud-drawer-mini .drawer-footer {
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .mud-drawer-mini:hover .drawer-footer {
+        justify-content: space-between;
+        padding: 0 16px;
+        overflow: visible;
+    }
+    
+
+    .mud-drawer-mini .mud-nav-menu * {
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    .mud-drawer-mini:hover .mud-nav-menu * {
+        overflow: visible;
+    }
+    
+
+    .mud-drawer-mini * {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+</style>
 

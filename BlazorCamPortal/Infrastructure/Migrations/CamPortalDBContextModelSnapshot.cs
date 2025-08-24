@@ -85,6 +85,9 @@ namespace BlazorCamPortal.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<double>("SizeInMB")
+                        .HasColumnType("float");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CameraId");
