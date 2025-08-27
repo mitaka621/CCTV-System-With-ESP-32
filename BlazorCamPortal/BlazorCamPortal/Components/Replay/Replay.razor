@@ -1,0 +1,243 @@
+@page "/replay"
+@rendermode InteractiveServer
+@using BlazorCamPortal.Components.Replay
+@using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos
+@inject IJSRuntime _js
+@inject IDialogService _dialogService
+@inject ICameraService _cameraService
+@inject IVideoReplayService _videoReplayService
+
+<PageTitle>Replay - BlazorCam Portal</PageTitle>
+
+<MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
+    <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Class="mr-3 icon-to-hide-on-mobile" />
+    Video Replay & Events
+</MudText>
+
+<MudPaper Elevation="4" Class="pa-6 mb-6">
+    <MudGrid>
+        <MudItem xs="12" md="6" lg="3">
+            <MudDatePicker Label="From Date"
+                @bind-Date="selectedStartDateTime"
+                MinDate="minDateTime.Date"
+                MaxDate="selectedEndDateTime?.Date ?? maxDateTime.Date"
+                Class="mb-2" />
+            <MudTimePicker Label="From Time"
+                @bind-Time="selectedStartTime"
+                Class="mb-3" />
+        </MudItem>
+        <MudItem xs="12" md="6" lg="3">
+            <MudDatePicker Label="To Date"
+                @bind-Date="selectedEndDateTime"
+                MinDate="selectedStartDateTime?.Date ?? minDateTime.Date"
+                MaxDate="maxDateTime.Date"
+                Class="mb-2" />
+            <MudTimePicker Label="To Time"
+                @bind-Time="selectedEndTime"
+                Class="mb-3" />
+        </MudItem>
+        <MudItem xs="12" md="6" lg="3">
+            <MudSelect T="Guid" Label="Camera Filter"
+                Class="mb-3"
+                MultiSelection="true"
+                @bind-SelectedValues="selectedCameraIds">
+                @foreach (var camera in allCamerasNameAndId)
+                {
+                    <MudSelectItem Value="@camera.Id">@($"{camera.Name} - ({camera.Status})")</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="6" lg="3">
+            <MudSelect T="int" Label="Event Type Filter"
+                SelectedValues="selectedEventTypes"
+                Class="mb-3"
+                MultiSelection="true">
+                @foreach (var item in Enum.GetValues<CameraEvents>())
+                {
+                    <MudSelectItem Value="@((int)item)">
+                        @MiscUtilities.GetDisplayNameAttributeValue(item)
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12">
+            @if (minDateTime != default && maxDateTime != default)
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    <MudText Typo="Typo.caption">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
+                        Available video range: <strong>@minDateTime.ToString("MMM dd, yyyy HH:mm")</strong> to <strong>@maxDateTime.ToString("MMM dd, yyyy HH:mm")</strong>
+                    </MudText>
+                </MudAlert>
+            }
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FilterCameras" Disabled="isFiltering" Loading="isFiltering">
+                Apply Filters
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+
+<!-- Cameras Grid -->
+@if (currentCameras.Count == 0)
+{
+    <MudPaper Elevation="2" Class="pa-8 text-center">
+        <MudIcon Icon="@Icons.Material.Outlined.VideoLibrary" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Cameras Found</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            Adjust your filters to see available cameras and recordings
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudStack Spacing="4">
+        @foreach (var camera in currentCameras)
+        {
+            <MudCard Elevation="8" 
+                Class="camera-timeline-card">
+                <MudCardContent Class="pa-4">
+                    <MudGrid AlignItems="Center">
+                        <!-- Left Side: Camera Preview and Info -->
+                        <MudItem xs="12" md="5" lg="4">
+                            <video style="width:700px" id="video-@camera.Id" controls></video>
+                        </MudItem>
+                        
+                        <!-- Right Side: Timeline and Events -->
+                        <MudItem xs="12" md="7" lg="8">
+                            <div class="timeline-section">
+                                <!-- Timeline Header -->
+                                <div class="timeline-header mb-3">
+                                    <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small" Class="mr-2" />
+                                        Event Timeline - @GetCombinedStartDateTime()?.ToString("MMM dd, HH:mm") to @GetCombinedEndDateTime()?.ToString("MMM dd, HH:mm")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Drag the cursor to navigate through time
+                                    </MudText>
+                                </div>                              
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudStack>
+}
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="@Assets["/js/hlsPlayback.js"]"></script>
+
+@code {
+    List<NameAndIdWithStatusModel> allCamerasNameAndId = new();
+    List<CameraDisplayModel> currentCameras = new();
+    IEnumerable<Guid> selectedCameraIds = new HashSet<Guid>();
+    HashSet<int> selectedEventTypes = Enum.GetValues<CameraEvents>().Cast<int>().ToHashSet();
+    DateTime? selectedStartDateTime;
+    DateTime? selectedEndDateTime;
+    TimeSpan? selectedStartTime;
+    TimeSpan? selectedEndTime;
+
+    // DateTime constraints
+    DateTime minDateTime;
+    DateTime maxDateTime;
+
+    List<HLSPlaylistDto> hLSPlaylists = new();
+    bool isFiltering = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        (minDateTime, maxDateTime) = await _videoReplayService.GetMinAndMaxDateTimeOfAvailableVideoChunksAsync();
+        allCamerasNameAndId = await _cameraService.GetAllCameraNameAndIdAsync();
+
+        // Set default date range - last 7 days or available range
+        var defaultStartDateTime = maxDateTime.AddDays(-7) > minDateTime ? maxDateTime.AddDays(-7) : minDateTime;
+        selectedStartDateTime = defaultStartDateTime.Date;
+        selectedEndDateTime = maxDateTime.Date;
+        selectedStartTime = defaultStartDateTime.TimeOfDay;
+        selectedEndTime = maxDateTime.TimeOfDay;
+    }
+
+    private async Task FilterCameras()
+    {
+        try
+        {
+            var startDateTime = GetCombinedStartDateTime();
+            var endDateTime = GetCombinedEndDateTime();
+
+            if (startDateTime == null || endDateTime == null || selectedCameraIds.Count() == 0)
+            {
+                currentCameras = new();
+                return;
+            }
+
+            // Validate datetime range
+            if (startDateTime < minDateTime || endDateTime > maxDateTime || startDateTime >= endDateTime)
+            {
+                var message = $"Invalid date/time selection. Available range: {minDateTime:MMM dd, yyyy HH:mm} to {maxDateTime:MMM dd, yyyy HH:mm}";
+                await _dialogService.ShowMessageBox("Invalid Date Range", message, "OK");
+                return;
+            }
+
+            isFiltering = true;
+
+            var selectedCameraIdsList = selectedCameraIds.ToList();
+
+            currentCameras = await _cameraService.GetAllCamerasAsync(selectedCameraIdsList);
+
+            hLSPlaylists = await _videoReplayService
+                .GenerateHLSPlaylistsAsync(selectedCameraIdsList, startDateTime.Value, endDateTime.Value);
+
+            var missingChunks = hLSPlaylists.SelectMany(x => x.MissingVideoChunkEvents);
+
+            List<Task> generateMissingChunksTasks = new();
+
+            foreach (var missingEvent in missingChunks)
+            {
+                if (missingEvent.Duration <= 0)
+                {
+                    continue;
+                }
+
+                generateMissingChunksTasks.Add(_videoReplayService.GeneratePlaceholderChunksForMissingOnesAsync(missingEvent.Duration));
+            }
+
+            await Task.WhenAll(generateMissingChunksTasks);
+        }
+        finally
+        {
+            isFiltering = false;
+            StateHasChanged();
+
+            await Task.Delay(50);
+            await BeginHLSStream();
+        }
+
+    }
+
+    private async Task BeginHLSStream()
+    {
+        if (hLSPlaylists.Any())
+        {
+            foreach (var cam in hLSPlaylists)
+            {
+                await _js.InvokeVoidAsync("initHlsStream", $"video-{cam.CameraId}", cam.HLSPlaylistString);
+            }
+        }
+    }
+
+    private DateTime? GetCombinedStartDateTime()
+    {
+        if (selectedStartDateTime.HasValue && selectedStartTime.HasValue)
+            return selectedStartDateTime.Value.Date.Add(selectedStartTime.Value);
+        return null;
+    }
+
+    private DateTime? GetCombinedEndDateTime()
+    {
+        if (selectedEndDateTime.HasValue && selectedEndTime.HasValue)
+            return selectedEndDateTime.Value.Date.Add(selectedEndTime.Value);
+        return null;
+    }   
+}

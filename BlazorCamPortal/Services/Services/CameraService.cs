@@ -133,6 +133,13 @@ namespace BlazorCamPortal.Core.Services
             return _mapper.Map<List<CameraDisplayModel>>(result);
         }
 
+        public async Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> cameraIds)
+        {
+            var result = await _cameraRepository.GetAllCamerasAsync(cameraIds);
+
+            return _mapper.Map<List<CameraDisplayModel>>(result);
+        }
+
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync(params PairStatus[] statuses)
         {
             var result = await _cameraRepository.GetAllCamerasAsync(statuses);
@@ -171,6 +178,20 @@ namespace BlazorCamPortal.Core.Services
             var result = await _cameraRepository.GetCameraIdAsync(ipv4, mac);
 
             return result;
+        }
+
+        public async Task<List<NameAndIdWithStatusModel>> GetAllCameraNameAndIdAsync()
+        {
+            var result = await _cameraRepository.GetAllCameraNameAndIdAsync();
+
+            return _mapper.Map<List<NameAndIdWithStatusModel>>(result);
+        }
+
+        public async Task<List<CreateCameraModel>> GetCamerasByIdAsync(List<Guid> cameraIds)
+        {
+            var allCameras = await _cameraRepository.GetAllCamerasAsync();
+            var filteredCameras = allCameras.Where(c => cameraIds.Contains(c.Id)).ToList();
+            return _mapper.Map<List<CreateCameraModel>>(filteredCameras);
         }
     }
 }

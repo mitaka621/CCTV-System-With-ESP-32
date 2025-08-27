@@ -24,7 +24,7 @@ namespace BlazorCamPortal.Core.Services
 
         public CameraFramesManagerService(IConfiguration configuration, IServiceProvider serviceProvider)
         {
-            _defaultFrame = FrameUtilities.GetDefaultFrame(configuration);
+            _defaultFrame = VideoChunkUtilities.GetDefaultFrame(configuration);
         }
 
         public ConcurrentDictionary<Guid, Channel<byte[]>> GetCameraChannels { get => _cameraChannels; }
@@ -105,7 +105,7 @@ namespace BlazorCamPortal.Core.Services
 
             image.SaveAsJpeg(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
             {
-                Quality = 100,
+                Quality = 95,
             });
             return ms.ToArray();
         }

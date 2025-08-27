@@ -1,0 +1,122 @@
+﻿/* Main Replay Page Styles */
+.camera-timeline-card {
+    animation: slideInUp 0.6s ease-out forwards;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 20px !important;
+    overflow: hidden;
+    background: rgba(30, 30, 46, 0.7) !important;
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(119, 107, 231, 0.15);
+    margin-bottom: 24px;
+}
+
+    .camera-timeline-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 60px rgba(119, 107, 231, 0.25) !important;
+        border-color: rgba(119, 107, 231, 0.4);
+    }
+
+@@keyframes slideInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Timeline Section */
+.timeline-section {
+    padding: 16px;
+}
+
+.timeline-header {
+    border-bottom: 1px solid rgba(119, 107, 231, 0.2);
+    padding-bottom: 12px;
+}
+
+/* General Animations */
+.pulse-animation {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* Enhanced Components */
+.mud-chip {
+    backdrop-filter: blur(10px);
+    font-weight: 500;
+    border-radius: 20px;
+}
+
+.mud-chip-color-success {
+    background: rgba(76, 175, 80, 0.2) !important;
+    color: #4caf50 !important;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.mud-chip-color-error {
+    background: rgba(244, 67, 54, 0.2) !important;
+    color: #f44336 !important;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.mud-chip-color-warning {
+    background: rgba(255, 152, 0, 0.2) !important;
+    color: #ff9800 !important;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+/* Filter Section Styling */
+.mud-paper {
+    background: rgba(30, 30, 46, 0.6) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(119, 107, 231, 0.1);
+}
+
+.mud-input-outlined .mud-input-outlined-border {
+    border-color: rgba(119, 107, 231, 0.2) !important;
+    transition: all 0.3s ease;
+}
+
+.mud-input-outlined:hover .mud-input-outlined-border {
+    border-color: rgba(119, 107, 231, 0.4) !important;
+    box-shadow: 0 0 0 1px rgba(119, 107, 231, 0.1);
+}
+
+.mud-input-outlined:focus-within .mud-input-outlined-border {
+    border-color: #776be7 !important;
+    box-shadow: 0 0 0 2px rgba(119, 107, 231, 0.2);
+}
+
+/* Select dropdown styling */
+.mud-select .mud-input-outlined .mud-input-outlined-border {
+    border-color: rgba(119, 107, 231, 0.2) !important;
+}
+
+.mud-select:hover .mud-input-outlined .mud-input-outlined-border {
+    border-color: rgba(119, 107, 231, 0.4) !important;
+}
+
+/* Date picker styling */
+.mud-picker-input-button {
+    color: #776be7 !important;
+}
+
+/* Responsive Design */
+@@media (max-width: 768px) {
+    .camera-timeline-card:hover {
+        transform: translateY(-2px);
+    }
+}

@@ -5,7 +5,7 @@
 @inject ICameraFramesManagerService _cameraFramesManagerService
 @inject IJSRuntime JS
 @inject IConfiguration _configuration
-@inject IDialogService DialogService
+@inject IDialogService _dialogService
 
 <PageTitle>Dashboard - BlazorCam Portal</PageTitle>
 
@@ -119,98 +119,6 @@ else
     </MudGrid>
 }
 
-<style>
-    .camera-card {
-        transition: all 0.3s ease;
-        border-radius: 12px !important;
-    }
-    
-    .camera-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
-    }
-    
-    .camera-container {
-        position: relative;
-        overflow: hidden;
-        border-radius: 8px;
-        background: #000;
-    }
-    
-    .camera-canvas {
-        width: 100%;
-        object-fit: cover;
-        display: block;
-    }
-    
-    .camera-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    .camera-container:hover .camera-overlay {
-        opacity: 1;
-    }
-    
-    .fullscreen-btn {
-        background: rgba(255,255,255,0.1) !important;
-        backdrop-filter: blur(10px);
-    }
-    
-    .camera-info-container {
-        flex: 1;
-        min-width: 0;
-        margin-right: 12px;
-    }
-    
-    .camera-name-text {
-        margin-bottom: 4px;
-    }
-    
-    .camera-name-span {
-        display: inline-block;
-        max-width: 100%;
-    }
-    
-    @@media (max-width: 767px) {
-        .camera-name-span {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100px;
-            vertical-align: top;
-        }
-        
-        .camera-name-tooltip {
-            cursor: pointer;
-        }
-        
-        .camera-info-container {
-            margin-right: 8px;
-        }
-    }
-    
-    @@media (min-width: 768px) {
-        .camera-name-span {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: unset;
-        }
-        
-        .camera-name-tooltip .mud-tooltip {
-            display: none !important;
-        }
-    }
-</style>
 
 @code {
     private List<CameraDisplayModel> cameras = new();
@@ -230,7 +138,7 @@ else
             //this is why they are extracted for the second time
             foreach (var camera in await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired))
             {
-                await OnFrameAdded(camera.Id, FrameUtilities.GetDefaultFrame(_configuration));
+                await OnFrameAdded(camera.Id, VideoChunkUtilities.GetDefaultFrame(_configuration));
             }
 
             _cameraFramesManagerService.FrameAdded += OnFrameAdded;
@@ -271,7 +179,7 @@ else
             CloseOnEscapeKey = true
         };
 
-        await DialogService.ShowAsync<FullscreenCameraDialog>("", parameters, options);
+        await _dialogService.ShowAsync<FullscreenCameraDialog>("", parameters, options);
     }
 
     public void Dispose()

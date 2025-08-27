@@ -149,11 +149,17 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return result;
         }
 
-        public async Task<List<CameraDto>> GetAllCamerasAsync()
+        public async Task<List<CameraDto>> GetAllCamerasAsync(params List<Guid> ids)
         {
-            var result = await _dbContext.Cameras
-                .AsNoTracking()
-                .Select(camera => _mapper.Map<CameraDto>(camera))
+            var query = _dbContext.Cameras
+                .AsNoTracking();
+
+            if (ids != null && ids.Count > 0)
+            {
+                query = query.Where(x => ids != null && ids.Count != 0 && ids.Contains(x.Id));
+            }
+
+            var result = await query.Select(camera => _mapper.Map<CameraDto>(camera))
                 .ToListAsync();
 
             return result;
@@ -214,6 +220,16 @@ namespace BlazorCamPortal.Infrastructure.Repositories
                 .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac)
                 .Select(x => x.Id)
                 .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+        public async Task<List<NameAndIdWithStatusDto>> GetAllCameraNameAndIdAsync()
+        {
+            var result = await _dbContext.Cameras
+                .AsNoTracking()
+                .Select(camera => _mapper.Map<NameAndIdWithStatusDto>(camera))
+                .ToListAsync();
 
             return result;
         }

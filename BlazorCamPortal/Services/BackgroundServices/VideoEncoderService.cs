@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using BlazorCamPortal.Contracts.Abstractions.Services;
 using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
@@ -16,12 +15,13 @@ namespace BlazorCamPortal.Core.BackgroundServices
         private readonly ICameraFramesManagerService _framesManager;
         private readonly ILogger<VideoEncoderService> _logger;
         private readonly ICameraService _cameraService;
-        private readonly IVideoChunkService _videoChunkService;
+        private readonly IVideoReplayService _videoChunkService;
 
         private readonly byte[] _placeholderFrame;
         private readonly int _encodedVideoOutputFps;
-        private readonly int _videoChunksSizeInM;
+        private readonly int _videoChunksSizeInS;
         private readonly int _timeoutInS;
+        private readonly string _footagePath;
 
         private readonly Dictionary<Guid, CancellationTokenSource> _cameraEncodersCancelationSources = new();
 
@@ -40,9 +40,9 @@ namespace BlazorCamPortal.Core.BackgroundServices
 
             _videoChunkService = serviceProvider.CreateScope()
                 .ServiceProvider
-                .GetRequiredService<IVideoChunkService>(); ;
+                .GetRequiredService<IVideoReplayService>(); ;
 
-            _placeholderFrame = FrameUtilities.GetDefaultFrame(configuration);
+            _placeholderFrame = VideoChunkUtilities.GetDefaultFrame(configuration);
 
             _timeoutInS = int.Parse(
                 configuration.GetSection("ESPCamera")["CameraTimeoutInSeconds"]
@@ -54,10 +54,13 @@ namespace BlazorCamPortal.Core.BackgroundServices
                 ?? throw new ArgumentNullException("Encoded video output FPS not configured")
             );
 
-            _videoChunksSizeInM = int.Parse(
-                configuration.GetSection("VideoEncoderConfig")["VideoChunksSizeInM"]
+            _videoChunksSizeInS = int.Parse(
+                configuration.GetSection("VideoEncoderConfig")["VideoChunksSizeInS"]
                 ?? throw new ArgumentNullException("Video chunk size not configured")
             );
+
+            _footagePath = configuration.GetSection("VideoEncoderConfig")["VideoChunksFolder"]
+                ?? throw new ArgumentNullException("VideoChunksFolder not configured");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -82,29 +85,12 @@ namespace BlazorCamPortal.Core.BackgroundServices
             var framesChannel = _framesManager.GetOrCreateChannel(cameraId);
             DateTime segmentStartTime = DateTime.Now;
 
-            string outputDir = Path.Combine("footage", cameraId.ToString(), DateTime.Now.ToString("yyyy-MM-dd"));
+            string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.Now.ToString("yyyy-MM-dd"));
             Directory.CreateDirectory(outputDir);
 
-            string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.mp4");
+            string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
 
-            var ffmpeg = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = GetFfmpegPath(),
-                    Arguments =
-                        $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
-                        "-c:v libx264 -preset medium -tune zerolatency " +
-                        $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
-                        $"-f segment -segment_time {_videoChunksSizeInM * 60} -reset_timestamps 1 " +
-                        $"{tempPattern}",
-                    RedirectStandardInput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                },
-                EnableRaisingEvents = true
-            };
+            var ffmpeg = CreateNewFfmpegProccess(tempPattern);
 
             ffmpeg.Start();
             var input = ffmpeg.StandardInput.BaseStream;
@@ -126,26 +112,13 @@ namespace BlazorCamPortal.Core.BackgroundServices
             return "unknown.mp4";
         }
 
-        private string GetFfmpegPath()
-        {
-            string basePath = AppContext.BaseDirectory;
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return Path.Combine(basePath, "ffmpeg", "win-x64", "ffmpeg.exe");
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return Path.Combine(basePath, "ffmpeg", "linux-x64", "ffmpeg");
-
-            throw new PlatformNotSupportedException("Unsupported OS for FFmpeg");
-        }
-
         private string RenameProducedChunkFromFFMPEG(string filename, DateTime dateCreated, string outputDir, Guid cameraId)
         {
             var segmentEndTime = DateTime.Now;
 
             string newFileName = Path.Combine(
                 outputDir,
-                $"{cameraId}_={dateCreated:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.mp4"
+                $"{cameraId}_={dateCreated:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.ts"
             );
 
             try
@@ -194,7 +167,7 @@ namespace BlazorCamPortal.Core.BackgroundServices
                                 SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                             };
 
-                            await _videoChunkService.CreateVideoChunkAsync(lastFileDto!);
+                            await _videoChunkService.SaveVideoChunkInfoAsync(lastFileDto!);
                         }
 
                         lastFileName = currentFile;
@@ -213,7 +186,7 @@ namespace BlazorCamPortal.Core.BackgroundServices
 
                     if (lastFileDto != null)
                     {
-                        await _videoChunkService.CreateVideoChunkAsync(lastFileDto);
+                        await _videoChunkService.SaveVideoChunkInfoAsync(lastFileDto);
                     }
                 }
 
@@ -303,6 +276,32 @@ namespace BlazorCamPortal.Core.BackgroundServices
             _cameraEncodersCancelationSources.Remove(cameraId);
 
             _logger.LogInformation($"Channel closed for camera {cameraId}. Cancelling video encoding task.");
+        }
+
+        private Process CreateNewFfmpegProccess(string filePath)
+        {
+            var ffmpeg = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = VideoChunkUtilities.GetFfmpegPath(),
+                    Arguments =
+                        $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
+                        "-map 0:v:0 -an " +
+                        "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
+                        $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
+                        $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
+                        $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts " +
+                        $"{filePath}",
+                    RedirectStandardInput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                },
+                EnableRaisingEvents = true
+            };
+
+            return ffmpeg;
         }
 
         public override void Dispose()

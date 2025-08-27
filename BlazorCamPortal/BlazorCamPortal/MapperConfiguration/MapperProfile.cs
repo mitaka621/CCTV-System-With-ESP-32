@@ -24,6 +24,15 @@ namespace BlazorCamPortal.MapperConfiguration
 
             CreateMap<VideoChunk, CreateVideoChunkDto>()
                 .ReverseMap();
+
+            CreateMap<NameAndIdWithStatusDto, Camera>()
+                .ReverseMap();
+
+            CreateMap<NameAndIdWithStatusDto, NameAndIdWithStatusModel>()
+                .ReverseMap();
+
+            CreateMap<VideoChunkShortInfoDto, VideoChunk>()
+                .ReverseMap();
         }
     }
 }

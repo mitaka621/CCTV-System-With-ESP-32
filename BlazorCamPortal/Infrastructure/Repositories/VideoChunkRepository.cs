@@ -29,14 +29,30 @@ namespace BlazorCamPortal.Infrastructure.Repositories
             return entity.Id;
         }
 
-        public async Task<List<VideoChunkShortInfoDto>> GetVideoChunksForPeriodForCameraAsync(Guid cameraId, DateTime startDate, DateTime endDate)
+        public async Task<Dictionary<Guid, List<VideoChunkShortInfoDto>>> GetVideoChunksForPeriodForCameraAsync(List<Guid> cameraId, DateTime startDate, DateTime endDate)
         {
             var result = await _dbContext.VideoChunks
                 .AsNoTracking()
-                .Where(x => x.CameraId == cameraId)
-                .Where(x => (x.ChunkStartDate >= startDate && x.ChunkStartDate < endDate) || (x.ChunkEndDate > startDate && x.ChunkEndDate <= endDate))
-                .Select(x => _mapper.Map<VideoChunkShortInfoDto>(x))
-                .ToListAsync();
+                .Where(x => cameraId.Contains(x.CameraId))
+                .Where(x => x.ChunkStartDate < endDate && x.ChunkEndDate > startDate)
+                .GroupBy(x => x.CameraId)
+                .ToDictionaryAsync(g => g.Key, _mapper.Map<List<VideoChunkShortInfoDto>>);
+
+            return result;
+        }
+
+        public async Task<DateTime> GetMaxDateTimeOfAvailableVideoChunksAsync()
+        {
+            var result = await _dbContext.VideoChunks
+                .MaxAsync(x => x.ChunkEndDate);
+
+            return result;
+        }
+
+        public async Task<DateTime> GetMinDateTimeOfAvailableVideoChunksAsync()
+        {
+            var result = await _dbContext.VideoChunks
+                .MinAsync(x => x.ChunkStartDate);
 
             return result;
         }

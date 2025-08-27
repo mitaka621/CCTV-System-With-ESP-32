@@ -34,7 +34,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> DoesCameraExistWithStatusAsync(string ipv4, PairStatus[] statuses);
 
-        Task<List<CameraDto>> GetAllCamerasAsync();
+        Task<List<CameraDto>> GetAllCamerasAsync(params List<Guid> Ids);
 
         Task<List<CameraDto>> GetAllCamerasAsync(PairStatus[] statuses);
 
@@ -45,5 +45,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
         Task<List<string>> GetAllPairedCamerasAsync();
 
         Task<Guid> GetCameraIdAsync(string ipv4, string mac);
+
+        Task<List<NameAndIdWithStatusDto>> GetAllCameraNameAndIdAsync();
     }
 }

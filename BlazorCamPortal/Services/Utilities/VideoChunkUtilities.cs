@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Runtime.InteropServices;
+using Microsoft.Extensions.Configuration;
 
 namespace BlazorCamPortal.Core.Utilities
 {
-    public static class FrameUtilities
+    public static class VideoChunkUtilities
     {
         public static byte[] GetDefaultFrame(IConfiguration configuration)
         {
@@ -20,6 +21,19 @@ namespace BlazorCamPortal.Core.Utilities
             }
 
             return Array.Empty<byte>();
+        }
+
+        public static string GetFfmpegPath()
+        {
+            string basePath = AppContext.BaseDirectory;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return Path.Combine(basePath, "ffmpeg", "win-x64", "ffmpeg.exe");
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return Path.Combine(basePath, "ffmpeg", "linux-x64", "ffmpeg");
+
+            throw new PlatformNotSupportedException("Unsupported OS for FFmpeg");
         }
     }
 }

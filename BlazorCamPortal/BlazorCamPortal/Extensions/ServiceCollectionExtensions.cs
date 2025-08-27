@@ -17,7 +17,7 @@ namespace BlazorCamPortal.Extensions
             services.AddScoped<IDeviceAuthenticatorService, DeviceAuthenticatorService>();
             services.AddScoped<IDevicePairHttpService, DevicePairHttpService>();
             services.AddScoped<HttpClient>();
-            services.AddScoped<IVideoChunkService, VideoChunkService>();
+            services.AddScoped<IVideoReplayService, VideoReplayService>();
             services.AddScoped<IVideoChunkRepository, VideoChunkRepository>();
 
             services.AddSingleton<IScanCoordinatorService, ScanCoordinatorService>();

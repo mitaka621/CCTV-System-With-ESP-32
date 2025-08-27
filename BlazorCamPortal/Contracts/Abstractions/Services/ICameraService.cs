@@ -15,6 +15,8 @@ namespace BlazorCamPortal.Contracts.Abstractions.Services
 
         Task<List<CameraDisplayModel>> GetAllCamerasAsync();
 
+        Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> Ids);
+
         Task<List<CameraDisplayModel>> GetAllCamerasAsync(params PairStatus[] statuses);
 
         Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac);
@@ -26,5 +28,9 @@ namespace BlazorCamPortal.Contracts.Abstractions.Services
         Task ChangeCameraStatusAsync(Guid cameraId, PairStatus newStatus);
 
         Task<Guid> GetCameraIdAsync(string ipv4, string mac);
+
+        Task<List<NameAndIdWithStatusModel>> GetAllCameraNameAndIdAsync();
+
+        Task<List<CreateCameraModel>> GetCamerasByIdAsync(List<Guid> cameraIds);
     }
 }
