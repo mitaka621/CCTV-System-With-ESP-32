@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using BlazorCamPortal.Components.Replay
 @using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos
+@using Microsoft.JSInterop
 @inject IJSRuntime _js
 @inject IDialogService _dialogService
 @inject ICameraService _cameraService
@@ -101,7 +102,12 @@ else
                     <MudGrid AlignItems="Center">
                         <!-- Left Side: Camera Preview and Info -->
                         <MudItem xs="12" md="5" lg="4">
-                            <video style="width:700px" id="video-@camera.Id" controls></video>
+                            <div class="video-container">
+                                <video id="video-@camera.Id"></video>
+                                <div class="camera-info-overlay">
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">@camera.Name</MudText>
+                                </div>
+                            </div>
                         </MudItem>
                         
                         <!-- Right Side: Timeline and Events -->
@@ -111,12 +117,123 @@ else
                                 <div class="timeline-header mb-3">
                                     <MudText Typo="Typo.subtitle1" Color="Color.Primary">
                                         <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small" Class="mr-2" />
-                                        Event Timeline - @GetCombinedStartDateTime()?.ToString("MMM dd, HH:mm") to @GetCombinedEndDateTime()?.ToString("MMM dd, HH:mm")
+                                        Event Timeline - @camera.Name
                                     </MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        Drag the cursor to navigate through time
+                                        @GetCombinedStartDateTime()?.ToString("MMM dd, HH:mm") to @GetCombinedEndDateTime()?.ToString("MMM dd, HH:mm")
                                     </MudText>
-                                </div>                              
+                                </div>
+
+                                <!-- Interactive Timeline Container -->
+                                <div class="timeline-container" id="timeline-@camera.Id">
+                                    <!-- Timeline Background -->
+                                    <div class="timeline-track">
+                                        <!-- Time Markers -->
+                                        <div class="timeline-markers">
+                                            @{
+                                                var timelineDuration = GetTimelineDurationInMinutes();
+                                                var playlist = hLSPlaylists.FirstOrDefault(p => p.CameraId == camera.Id);
+                                            }
+
+                                            @if (timelineDuration > 0)
+                                            {
+                                                @for (int minute = 0; minute <= timelineDuration; minute++)
+                                                {
+                                                    var leftPosition = (double)minute / timelineDuration * 100;
+                                                    var isRoundNumber = minute % 10 == 0 && minute > 0;
+                                                    var showLabel = minute % 5 == 0; // Show label at 0 and every 5 minutes
+                                                    
+                                                    <div class="timeline-marker @(isRoundNumber ? "round-marker" : (showLabel ? "label-marker" : "minute-marker"))"
+                                                         style="left: @(leftPosition.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))%;"
+                                                         data-minute="@minute">
+                                                        @if (showLabel)
+                                                        {
+                                                            <div class="marker-label" 
+                                                                 style="position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%); z-index: 20;">
+                                                                @GetCombinedStartDateTime()?.AddMinutes(minute).ToString("HH:mm")
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+
+                                        <!-- Events Layer -->
+                                        <div class="timeline-events">
+                                            @if (playlist != null)
+                                            {
+                                                <!-- Available Video Chunk Events (Green) -->
+                                                @foreach (var eventItem in playlist.AvailableVideoChunkEvents)
+                                                {
+                                                    var eventStart = GetCombinedStartDateTime();
+                                                    var eventEnd = GetCombinedEndDateTime();
+                                                    if (eventStart != null && eventEnd != null)
+                                                    {
+                                                        var totalDuration = (eventEnd.Value - eventStart.Value).TotalMinutes;
+                                                        var eventStartOffset = (eventItem.EventStartTime - eventStart.Value).TotalMinutes;
+                                                        var eventDuration = eventItem.Duration / 60.0; // Convert to minutes
+                                                        
+                                                        var leftPos = (eventStartOffset / totalDuration) * 100;
+                                                        var widthPercent = (eventDuration / totalDuration) * 100;
+                                                        
+                                                        <div class="timeline-event available-event"
+                                                             style="left: @(leftPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))%; 
+                                                                    width: @(Math.Max(0.5, widthPercent).ToString("F2", System.Globalization.CultureInfo.InvariantCulture))%;"
+                                                             title="Available: @eventItem.EventStartTime.ToString("HH:mm:ss") - @eventItem.EventEndTime.ToString("HH:mm:ss")">
+                                                        </div>
+                                                    }
+                                                }
+
+                                                <!-- Missing Video Chunk Events (Red) -->
+                                                @foreach (var eventItem in playlist.MissingVideoChunkEvents)
+                                                {
+                                                    var eventStart = GetCombinedStartDateTime();
+                                                    var eventEnd = GetCombinedEndDateTime();
+                                                    if (eventStart != null && eventEnd != null)
+                                                    {
+                                                        var totalDuration = (eventEnd.Value - eventStart.Value).TotalMinutes;
+                                                        var eventStartOffset = (eventItem.EventStartTime - eventStart.Value).TotalMinutes;
+                                                        var eventDuration = eventItem.Duration / 60.0; // Convert to minutes
+                                                        
+                                                        var leftPos = (eventStartOffset / totalDuration) * 100;
+                                                        var widthPercent = (eventDuration / totalDuration) * 100;
+                                                        
+                                                        <div class="timeline-event missing-event"
+                                                             style="left: @(leftPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))%; 
+                                                                    width: @(Math.Max(0.5, widthPercent).ToString("F2", System.Globalization.CultureInfo.InvariantCulture))%;"
+                                                             title="Missing: @eventItem.EventStartTime.ToString("HH:mm:ss") - @eventItem.EventEndTime.ToString("HH:mm:ss")">
+                                                        </div>
+                                                    }
+                                                }
+                                            }
+                                        </div>
+
+                                        <!-- Interactive Cursor -->
+                                        <div class="timeline-cursor" 
+                                             id="cursor-@camera.Id"
+                                             @onmousedown="@((e) => StartDrag(camera.Id, e))"
+                                             style="left: 0%;">
+                                            <div class="cursor-line"></div>
+                                            <div class="cursor-handle"></div>
+                                            <!-- DateTime Bubble -->
+                                            <div class="cursor-bubble" id="bubble-@camera.Id" style="display: none;">
+                                                <span id="bubble-text-@camera.Id"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Timeline Controls -->
+                                    <div class="timeline-controls mt-2">
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Current Time: <span id="current-time-@camera.Id">@GetCombinedStartDateTime()?.ToString("HH:mm:ss")</span>
+                                            </MudText>
+                                            <div class="timeline-sync-controls">
+                                                <MudCheckBox T="bool" @bind-Value="syncAllTimelines" Label="Sync All Cameras" Color="Color.Primary" Size="Size.Small" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </MudItem>
                     </MudGrid>
@@ -128,6 +245,7 @@ else
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script src="@Assets["/js/hlsPlayback.js"]"></script>
+<script src="@Assets["/js/timelineController.js"]"></script>
 
 @code {
     List<NameAndIdWithStatusModel> allCamerasNameAndId = new();
@@ -144,6 +262,9 @@ else
 
     List<HLSPlaylistDto> hLSPlaylists = new();
     bool isFiltering = false;
+    bool syncAllTimelines = true;
+    private bool isDragging = false;
+    private Guid currentDraggingCamera = Guid.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -236,7 +357,14 @@ else
             foreach (var cam in hLSPlaylists)
             {
                 await _js.InvokeVoidAsync("initHlsStream", $"video-{cam.CameraId}", cam.HLSPlaylistString);
+                
+                // Initialize timeline for this camera
+                await _js.InvokeVoidAsync("initTimelineForCamera", cam.CameraId.ToString());
             }
+            
+            // Set up Blazor component reference for JavaScript callbacks
+            var objRef = DotNetObjectReference.Create(this);
+            await _js.InvokeVoidAsync("setBlazorComponentInstance", objRef);
         }
     }
 
@@ -252,5 +380,95 @@ else
         if (selectedEndDateTime.HasValue && selectedEndTime.HasValue)
             return selectedEndDateTime.Value.Date.Add(selectedEndTime.Value);
         return null;
-    }   
+    }
+
+    private double GetTimelineDurationInMinutes()
+    {
+        var start = GetCombinedStartDateTime();
+        var end = GetCombinedEndDateTime();
+        
+        if (start != null && end != null)
+        {
+            return (end.Value - start.Value).TotalMinutes;
+        }
+        
+        return 0;
+    }
+
+    private async Task StartDrag(Guid cameraId, MouseEventArgs e)
+    {
+        isDragging = true;
+        currentDraggingCamera = cameraId;
+        
+        // Show the bubble immediately when dragging starts
+        await _js.InvokeVoidAsync("showTimelineBubble", cameraId.ToString());
+        
+        // Add global mouse events
+        await _js.InvokeVoidAsync("addGlobalTimelineEvents", cameraId.ToString(), syncAllTimelines);
+    }
+
+    [JSInvokable]
+    public async Task OnTimelinePositionChanged(string cameraId, double percentage)
+    {
+        var start = GetCombinedStartDateTime();
+        var end = GetCombinedEndDateTime();
+        
+        if (start != null && end != null && Guid.TryParse(cameraId, out var camGuid))
+        {
+            var totalDuration = (end.Value - start.Value).TotalSeconds;
+            var targetTime = start.Value.AddSeconds(totalDuration * (percentage / 100));
+            
+            // Calculate relative seconds from start for video seeking
+            var relativeSeconds = totalDuration * (percentage / 100);
+            
+            // Update the current time display
+            await _js.InvokeVoidAsync("updateCurrentTimeDisplay", cameraId, targetTime.ToString("HH:mm:ss"));
+            
+            // Update the datetime bubble
+            await _js.InvokeVoidAsync("updateTimelineBubble", cameraId, targetTime.ToString("MMM dd, HH:mm:ss"));
+            
+            // Sync video player to this time using relative seconds
+            await _js.InvokeVoidAsync("seekVideoToRelativeTime", $"video-{cameraId}", relativeSeconds);
+            
+            // If sync is enabled, update all other timelines
+            if (syncAllTimelines)
+            {
+                foreach (var camera in currentCameras)
+                {
+                    if (camera.Id.ToString() != cameraId)
+                    {
+                        await _js.InvokeVoidAsync("updateTimelineCursor", camera.Id.ToString(), percentage);
+                        await _js.InvokeVoidAsync("updateCurrentTimeDisplay", camera.Id.ToString(), targetTime.ToString("HH:mm:ss"));
+                        await _js.InvokeVoidAsync("seekVideoToRelativeTime", $"video-{camera.Id}", relativeSeconds);
+                    }
+                }
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnTimelineDragEnd(string cameraId)
+    {
+        isDragging = false;
+        currentDraggingCamera = Guid.Empty;
+        
+        // Hide the bubble after drag ends
+        await _js.InvokeVoidAsync("hideTimelineBubble", cameraId);
+    }
+
+    [JSInvokable]
+    public string GetFormattedTimeForPercentage(string cameraId, double percentage)
+    {
+        var start = GetCombinedStartDateTime();
+        var end = GetCombinedEndDateTime();
+        
+        if (start != null && end != null)
+        {
+            var totalDuration = (end.Value - start.Value).TotalSeconds;
+            var targetTime = start.Value.AddSeconds(totalDuration * (percentage / 100));
+            return targetTime.ToString("HH:mm:ss");
+        }
+        
+        return "00:00:00";
+    }
 }
