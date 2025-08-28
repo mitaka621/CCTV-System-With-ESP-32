@@ -193,5 +193,11 @@ namespace BlazorCamPortal.Core.Services
             var filteredCameras = allCameras.Where(c => cameraIds.Contains(c.Id)).ToList();
             return _mapper.Map<List<CreateCameraModel>>(filteredCameras);
         }
+
+        public async Task<int> GetTotalCamerasAsync(params List<PairStatus> status)
+        {
+            var result = await _cameraRepository.GetTotalCamerasAsync(status);
+            return result;
+        }
     }
 }

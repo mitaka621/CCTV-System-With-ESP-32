@@ -11,5 +11,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Services
         Task GeneratePlaceholderChunksForMissingOnesAsync(double durationSeconds);
 
         Task<(DateTime, DateTime)> GetMinAndMaxDateTimeOfAvailableVideoChunksAsync();
+
+        Task<double> GetTotalVideoChinksSizeInGBAsync();
     }
 }

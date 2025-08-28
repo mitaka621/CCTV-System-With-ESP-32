@@ -17,6 +17,8 @@ namespace BlazorCamPortal.Core.Services
         private readonly string _missingPlaceholderChunksPath;
         private readonly string _videoChunksBaseApiUrl;
         private readonly string _defaultFramePathOnMissingChunk;
+        private readonly int _encodedVideoOutputFps;
+        private readonly int _maxChunksSizeInS;
 
         public VideoReplayService(
             IVideoChunkRepository videoChunkRepository,
@@ -34,6 +36,16 @@ namespace BlazorCamPortal.Core.Services
 
             _defaultFramePathOnMissingChunk = configuration.GetSection("VideoEncoderConfig")["DefaultFramePathOnMissingChunk"]
                ?? throw new ArgumentNullException("DefaultFramePathOnMissingChunk not configured");
+
+            _encodedVideoOutputFps = int.Parse(
+                configuration.GetSection("VideoEncoderConfig")["EncodedVideoOutputFps"]
+                ?? throw new ArgumentNullException("Encoded video output FPS not configured")
+            );
+
+            _maxChunksSizeInS = int.Parse(
+                configuration.GetSection("VideoEncoderConfig")["VideoChunksSizeInS"]
+                ?? throw new ArgumentNullException("Video chunk size not configured")
+            );
         }
 
         public async Task<Guid> SaveVideoChunkInfoAsync(CreateVideoChunkDto createVideoChunkDto)
@@ -60,45 +72,40 @@ namespace BlazorCamPortal.Core.Services
                 }
 
                 List<VideoChunkDateTimeEventDto> missingVideoChunkEvents = new();
-
                 List<VideoChunkShortInfoDto> fullTimeline = new();
 
-                if (availableChunks.Count > 1)
+                DateTime cursor = startTime;
+
+                foreach (var chunk in availableChunks)
                 {
-                    for (int i = 0; i < availableChunks.Count - 1; i++)
+                    if (chunk.ChunkStartTime > cursor)
                     {
-                        fullTimeline.Add(availableChunks[i]);
+                        FillGap(cursor, chunk.ChunkStartTime, fullTimeline, missingVideoChunkEvents);
+                    }
 
-                        //compare the datetimes up to the seconds
-                        if (availableChunks[i].ChunkEndDate.ToString("yyyy-MM-dd-HH-mm-ss") == availableChunks[i + 1].ChunkStartDate.ToString("yyyy-MM-dd-HH-mm-ss"))
-                        {
-                            continue;
-                        }
+                    fullTimeline.Add(new VideoChunkShortInfoDto
+                    {
+                        FileName = chunk.FileName.Replace('\\', '/'),
+                        ChunkStartTime = chunk.ChunkStartTime,
+                        ChunkEndTime = chunk.ChunkEndTime
+                    });
 
-                        missingVideoChunkEvents.Add(new VideoChunkDateTimeEventDto
-                        {
-                            EventStartTime = availableChunks[i].ChunkEndDate,
-                            EventEndTime = availableChunks[i + 1].ChunkStartDate
-                        });
-
-                        var missingDuration = (availableChunks[i + 1].ChunkStartDate - availableChunks[i].ChunkEndDate).TotalSeconds;
-
-                        fullTimeline.Add(new VideoChunkShortInfoDto()
-                        {
-                            FileName = string.Format(_missingPlaceholderChunksPath, missingDuration).Replace('\\', '/'),
-                            ChunkStartDate = availableChunks[i].ChunkEndDate,
-                            ChunkEndDate = availableChunks[i + 1].ChunkStartDate
-                        });
+                    if (chunk.ChunkEndTime > cursor)
+                    {
+                        cursor = chunk.ChunkEndTime;
                     }
                 }
 
-                fullTimeline.Add(availableChunks.Last());
+                if (cursor < endTime)
+                {
+                    FillGap(cursor, endTime, fullTimeline, missingVideoChunkEvents);
+                }
 
                 var sb = new StringBuilder();
                 sb.AppendLine("#EXTM3U");
                 sb.AppendLine("#EXT-X-VERSION:7");
 
-                double targetDurationSeconds = fullTimeline.Max(x => (x.ChunkEndDate - x.ChunkStartDate).TotalSeconds);
+                double targetDurationSeconds = fullTimeline.Max(x => (x.ChunkEndTime - x.ChunkStartTime).TotalSeconds);
                 int targetDurationInteger = Math.Max(1, (int)Math.Ceiling(targetDurationSeconds));
 
                 // HLS spec requires TARGETDURATION to be an integer, rounded to the ceiling of the longest segment
@@ -107,22 +114,22 @@ namespace BlazorCamPortal.Core.Services
                 sb.AppendLine("#EXT-X-INDEPENDENT-SEGMENTS");
                 sb.AppendLine("#EXT-X-MEDIA-SEQUENCE:0");
 
-                foreach (var chunk in fullTimeline)
+                foreach (var segment in fullTimeline)
                 {
-                    sb.AppendLine($"#EXTINF:{(chunk.ChunkEndDate - chunk.ChunkStartDate).TotalSeconds:0.###},");
-                    sb.AppendLine(_videoChunksBaseApiUrl + chunk.FileName.Replace('\\', '/'));
+                    sb.AppendLine($"#EXTINF:{(segment.ChunkEndTime - segment.ChunkStartTime).TotalSeconds:0.###},");
+                    sb.AppendLine(_videoChunksBaseApiUrl + segment.FileName.Replace('\\', '/'));
                 }
 
                 sb.AppendLine("#EXT-X-ENDLIST");
-                playlists.Add(new HLSPlaylistDto()
+                playlists.Add(new HLSPlaylistDto
                 {
                     CameraId = cameraId,
                     HLSPlaylistString = sb.ToString(),
                     MissingVideoChunkEvents = missingVideoChunkEvents,
                     AvailableVideoChunkEvents = availableChunks.Select(x => new VideoChunkDateTimeEventDto
                     {
-                        EventStartTime = x.ChunkStartDate,
-                        EventEndTime = x.ChunkEndDate
+                        EventStartTime = x.ChunkStartTime,
+                        EventEndTime = x.ChunkEndTime
                     }).ToList()
                 });
             }
@@ -150,12 +157,13 @@ namespace BlazorCamPortal.Core.Services
 
             var args =
                 $"-loop 1 -i \"{_defaultFramePathOnMissingChunk}\" " +
-                $"-t {durationSeconds:0.###} " +
+                $"-framerate {_encodedVideoOutputFps} " +
                 "-map 0:v:0 -an " +
-                "-c:v libx264 -preset veryfast -tune zerolatency -sc_threshold 0 " +
-                "-pix_fmt yuv420p -r 25 " +
-                "-f mpegts -y " +
-                $"\"{outputPath}\"";
+                "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
+                $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
+                $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
+                $"-t {durationSeconds} " +
+                $"{outputPath}";
 
             var ffmpeg = new Process
             {
@@ -187,6 +195,70 @@ namespace BlazorCamPortal.Core.Services
             var maxTime = await _videoChunkRepository.GetMaxDateTimeOfAvailableVideoChunksAsync();
 
             return (minTime, maxTime);
+        }
+
+        public async Task<double> GetTotalVideoChinksSizeInGBAsync()
+        {
+            var chunksInMB = await _videoChunkRepository.GetTotalVideoChinksSizeInMBAsync();
+
+            return chunksInMB / 1024.0;
+        }
+
+        private void FillGap(DateTime gapStart, DateTime gapEnd, List<VideoChunkShortInfoDto> fullTimeline, List<VideoChunkDateTimeEventDto> missingVideoChunkEvents)
+        {
+            if (gapEnd <= gapStart)
+            {
+                return;
+            }
+
+            // Only consider whole-second gaps to avoid flicker from sub-second gaps
+            DateTime effectiveStart = CeilToSecond(gapStart);
+            DateTime effectiveEnd = FloorToSecond(gapEnd);
+
+            int missingSeconds = (int)(effectiveEnd - effectiveStart).TotalSeconds;
+            if (missingSeconds <= 0)
+            {
+                return;
+            }
+
+            DateTime current = effectiveStart;
+
+            while (missingSeconds > 0)
+            {
+                int segmentSeconds = Math.Min(_maxChunksSizeInS, missingSeconds);
+
+                fullTimeline.Add(new VideoChunkShortInfoDto
+                {
+                    FileName = string.Format(_missingPlaceholderChunksPath, segmentSeconds).Replace('\\', '/'),
+                    ChunkStartTime = current,
+                    ChunkEndTime = current.AddSeconds(segmentSeconds)
+                });
+
+                missingVideoChunkEvents.Add(new VideoChunkDateTimeEventDto
+                {
+                    EventStartTime = current,
+                    EventEndTime = current.AddSeconds(segmentSeconds)
+                });
+
+                current = current.AddSeconds(segmentSeconds);
+                missingSeconds -= segmentSeconds;
+            }
+        }
+
+        private static DateTime FloorToSecond(DateTime dt)
+        {
+            return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+        }
+
+        private static DateTime CeilToSecond(DateTime dt)
+        {
+            if (dt.Millisecond == 0 && dt.Ticks % TimeSpan.TicksPerSecond == 0)
+            {
+                return dt;
+            }
+
+            var floored = FloorToSecond(dt);
+            return floored.AddSeconds(1);
         }
     }
 }

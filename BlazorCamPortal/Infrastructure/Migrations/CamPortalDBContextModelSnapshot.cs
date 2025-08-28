@@ -74,10 +74,10 @@ namespace BlazorCamPortal.Infrastructure.Migrations
                     b.Property<Guid>("CameraId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("ChunkEndDate")
+                    b.Property<DateTime>("ChunkEndTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("ChunkStartDate")
+                    b.Property<DateTime>("ChunkStartTime")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("FileName")

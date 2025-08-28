@@ -1,4 +1,5 @@
 ﻿@page "/"
+@implements IDisposable
 @rendermode InteractiveServer
 
 @inject ICameraService _cameraService
@@ -9,43 +10,7 @@
 
 <PageTitle>Dashboard - BlazorCam Portal</PageTitle>
 
-<MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
-    <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-3 icon-to-hide-on-mobile" />
-    Dashboard
-</MudText>
-
-
-<MudGrid Class="mb-6">
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">@cameras.Count</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">@connectedCameras</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Online</MudText>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">2.4TB</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Storage Used</MudText>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-            <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">127</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Recordings</MudText>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
-
+<Dashboard></Dashboard>
 
 <MudText Typo="Typo.h4" Class="mb-4" Color="Color.Secondary">
     <MudIcon Icon="@Icons.Material.Filled.GridView" Class="mr-2 icon-to-hide-on-mobile" />
@@ -123,26 +88,34 @@ else
 @code {
     private List<CameraDisplayModel> cameras = new();
     private int connectedCameras = 0;
+    private Task _initialLoadTask = Task.CompletedTask;
 
-    protected override async Task OnParametersSetAsync()
-    {  
-        cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired);
-        connectedCameras = cameras.Count; // In a real scenario, this would check actual connection status
+    protected override async Task OnInitializedAsync()
+    {
+        _initialLoadTask = LoadCamerasAsync();
+        await _initialLoadTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {   
-            //the cameras field is empty here 40% of the time despite it being populated before this method in OnParametersSetAsync
-            //this is why they are extracted for the second time
-            foreach (var camera in await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired))
+            await _initialLoadTask;
+
+            foreach (var camera in cameras)
             {
                 await OnFrameAdded(camera.Id, VideoChunkUtilities.GetDefaultFrame(_configuration));
             }
 
             _cameraFramesManagerService.FrameAdded += OnFrameAdded;
         }
+    }
+
+    private async Task LoadCamerasAsync()
+    {
+        cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired);
+        connectedCameras = cameras.Count;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnFrameAdded(Guid cameraId, byte[] frame)

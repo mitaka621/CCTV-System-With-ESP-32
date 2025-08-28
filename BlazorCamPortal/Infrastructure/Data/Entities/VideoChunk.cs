@@ -13,10 +13,10 @@ namespace BlazorCamPortal.Infrastructure.Data.Entities
         public required string FileName { get; set; }
 
         [Required]
-        public DateTime ChunkStartDate { get; set; }
+        public DateTime ChunkStartTime { get; set; }
 
         [Required]
-        public DateTime ChunkEndDate { get; set; }
+        public DateTime ChunkEndTime { get; set; }
 
         [Required]
         public Guid CameraId { get; set; }

@@ -11,12 +11,12 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 {
     public class CameraRepository : ICameraRepository
     {
-        private readonly CamPortalDBContext _dbContext;
+        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public CameraRepository(CamPortalDBContext dbContext, IMapper mapper)
+        public CameraRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
         {
-            _dbContext = dbContext;
+            _dbContextFactory = dbContextFactory;
             _mapper = mapper;
         }
 
@@ -24,16 +24,18 @@ namespace BlazorCamPortal.Infrastructure.Repositories
         {
             var cameraEntity = _mapper.Map<Camera>(dto);
 
-            _dbContext.Cameras.Add(cameraEntity);
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            db.Cameras.Add(cameraEntity);
 
-            await _dbContext.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return cameraEntity.Id;
         }
 
         public async Task<bool> DeleteCameraAsync(Guid cameraId)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .Where(x => x.Id == cameraId)
                 .ExecuteDeleteAsync();
 
@@ -42,19 +44,22 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> DoesCameraIpExistAsync(string ipv4Address)
         {
-            return await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            return await db.Cameras
                 .AnyAsync(x => x.Ipv4Address == ipv4Address);
         }
 
         public async Task<bool> DoesCameraMacExistAsync(string macAddress)
         {
-            return await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            return await db.Cameras
                 .AnyAsync(x => x.MacAddress == macAddress);
         }
 
         public async Task<CameraDto?> GetCameraByIdAsync(Guid cameraId)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.Id == cameraId)
                 .Select(camera => _mapper.Map<CameraDto>(camera))
@@ -66,7 +71,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<CameraDto?> GetCameraByMacAsync(string mac)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.MacAddress == mac)
                 .Select(camera => _mapper.Map<CameraDto>(camera))
@@ -77,7 +83,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<PairStatus?> GetCameraStatusAsync(Guid cameraId)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.Id == cameraId)
                 .Select(x => x.PairStatus)
@@ -88,7 +95,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> SetCameraNameAsync(Guid cameraId, string name)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .Where(x => x.Id == cameraId)
                 .ExecuteUpdateAsync(x => x.SetProperty(c => c.Name, name).SetProperty(c => c.UpdatedAt, DateTime.Now));
 
@@ -97,7 +105,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> SetCameraStatusAsync(Guid cameraId, PairStatus newStatus)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .Where(x => x.Id == cameraId)
                 .ExecuteUpdateAsync(x => x.SetProperty(c => c.PairStatus, newStatus).SetProperty(c => c.UpdatedAt, DateTime.Now));
 
@@ -106,7 +115,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> SetCameraStatusAsync(string mac, PairStatus newStatus)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .Where(x => x.MacAddress == mac)
                 .ExecuteUpdateAsync(x => x.SetProperty(c => c.PairStatus, newStatus).SetProperty(c => c.UpdatedAt, DateTime.Now));
 
@@ -115,7 +125,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> UpdateCameraIpAsync(Guid cameraId, string newIpv4)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .Where(x => x.Id == cameraId)
                 .ExecuteUpdateAsync(x => x.SetProperty(c => c.Ipv4Address, newIpv4).SetProperty(c => c.UpdatedAt, DateTime.Now));
 
@@ -124,7 +135,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<CameraDto?> GetCameraByIpAsync(string ipv4)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.Ipv4Address == ipv4)
                 .Select(camera => _mapper.Map<CameraDto>(camera))
@@ -135,7 +147,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, string mac, PairStatus[] statuses)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AnyAsync(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && statuses.Contains(x.PairStatus));
 
             return result;
@@ -143,7 +156,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> DoesCameraExistWithStatusAsync(string ipv4, PairStatus[] statuses)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AnyAsync(x => x.Ipv4Address == ipv4 && statuses.Contains(x.PairStatus));
 
             return result;
@@ -151,7 +165,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<List<CameraDto>> GetAllCamerasAsync(params List<Guid> ids)
         {
-            var query = _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var query = db.Cameras
                 .AsNoTracking();
 
             if (ids != null && ids.Count > 0)
@@ -167,7 +182,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<List<CameraDto>> GetAllCamerasAsync(PairStatus[] statuses)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => statuses.Contains(x.PairStatus))
                 .Select(camera => _mapper.Map<CameraDto>(camera))
@@ -178,7 +194,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<bool> SetSessionTokenAsync(SetESPSessionTokenDto dto)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .Where(x => x.Ipv4Address == dto.Ipv4 && x.MacAddress == dto.Mac && dto.AllowedStatuses.Contains(x.PairStatus))
                 .ExecuteUpdateAsync(x => x.SetProperty(c => c.SessionToken, dto.SessionToken)
                     .SetProperty(x => x.UpdatedAt, DateTime.Now)
@@ -189,7 +206,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<ESPSessionTokenDto?> GetSessionTokenAsync(string ipv4, string mac)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac && x.PairStatus == PairStatus.Paired)
                 .Select(x => new ESPSessionTokenDto()
@@ -204,7 +222,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<List<string>> GetAllPairedCamerasAsync()
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.PairStatus == PairStatus.Paired)
                 .Select(x => x.Ipv4Address)
@@ -215,7 +234,8 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<Guid> GetCameraIdAsync(string ipv4, string mac)
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Where(x => x.Ipv4Address == ipv4 && x.MacAddress == mac)
                 .Select(x => x.Id)
@@ -226,10 +246,27 @@ namespace BlazorCamPortal.Infrastructure.Repositories
 
         public async Task<List<NameAndIdWithStatusDto>> GetAllCameraNameAndIdAsync()
         {
-            var result = await _dbContext.Cameras
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.Cameras
                 .AsNoTracking()
                 .Select(camera => _mapper.Map<NameAndIdWithStatusDto>(camera))
                 .ToListAsync();
+
+            return result;
+        }
+
+        public async Task<int> GetTotalCamerasAsync(params List<PairStatus> status)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var query = db.Cameras
+                .AsNoTracking();
+
+            if (status != null && status.Count > 0)
+            {
+                query = query.Where(x => status != null && status.Count != 0 && status.Contains(x.PairStatus));
+            }
+
+            var result = await query.CountAsync();
 
             return result;
         }

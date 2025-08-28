@@ -11,5 +11,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
         Task<DateTime> GetMinDateTimeOfAvailableVideoChunksAsync();
 
         Task<DateTime> GetMaxDateTimeOfAvailableVideoChunksAsync();
+
+        Task<double> GetTotalVideoChinksSizeInMBAsync();
     }
 }

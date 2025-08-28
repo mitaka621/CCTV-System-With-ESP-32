@@ -1,0 +1,163 @@
+﻿@implements IDisposable
+@inject ICameraService _cameraService
+@inject IVideoReplayService _videoReplayService
+
+<MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
+    <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-3 icon-to-hide-on-mobile" />
+    Dashboard
+</MudText>
+
+<MudGrid Class="mb-6">
+    <!-- Active Cameras -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="relative pa-4 text-center" 
+                  Style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div style="position:absolute; top:4px; right:4px;">
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenActiveDuration" />
+            </div>
+
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">@activeCameras</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Total Cameras -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="relative pa-4 text-center" 
+                  Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div style="position:absolute; top:4px; right:4px;">
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenTotalDuration" />
+            </div>
+
+            <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">@totalCameras</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Total Cameras</MudText>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Storage Used -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="relative pa-4 text-center" 
+                  Style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div style="position:absolute; top:4px; right:4px;">
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenStorageDuration" />
+            </div>
+
+            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">@(storageUsedInGB.ToString("0.##"))GB</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Storage Used</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">127</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Recordings</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Inject] IDialogService _dialogService { get; set; } = default!;
+
+    int activeCameras = 0;
+    int totalCameras = 0;
+    double storageUsedInGB = 0;
+
+    private Dictionary<string, (PeriodicTimer timer, CancellationTokenSource cts)> _timers = new();
+    private Dictionary<string, int> _refreshIntervalsInMinutes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshActiveCameras();
+        await RefreshTotalCameras();
+        await RefreshStorageUsed();
+    }
+
+    private async Task RefreshActiveCameras()
+    {
+        activeCameras = await _cameraService.GetTotalCamerasAsync(PairStatus.Paired);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshTotalCameras()
+    {
+        totalCameras = await _cameraService.GetTotalCamerasAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshStorageUsed()
+    {
+        storageUsedInGB = await _videoReplayService.GetTotalVideoChinksSizeInGBAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void SetInterval(string metric, int minutes)
+    {
+        if (_timers.ContainsKey(metric))
+        {
+            _timers[metric].cts.Cancel();
+            _timers[metric].timer.Dispose();
+            _timers.Remove(metric);
+        }
+
+        var cts = new CancellationTokenSource();
+        var timer = new PeriodicTimer(TimeSpan.FromMinutes(minutes));
+
+        _timers[metric] = (timer, cts);
+        _refreshIntervalsInMinutes[metric] = minutes;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (await timer.WaitForNextTickAsync(cts.Token))
+                {
+                    switch (metric)
+                    {
+                        case nameof(activeCameras): await RefreshActiveCameras(); break;
+                        case nameof(totalCameras): await RefreshTotalCameras(); break;
+                        case nameof(storageUsedInGB): await RefreshStorageUsed(); break;
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+        });
+    }
+
+    private async Task OpenDurationDialog(string metric, string label)
+    {
+        var initialMinutes = _refreshIntervalsInMinutes.TryGetValue(metric, out var m) ? m : 5;
+
+        var parameters = new DialogParameters
+        {
+            ["MetricLabel"] = label,
+            ["InitialMinutes"] = initialMinutes
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+
+        var dialog = await _dialogService.ShowAsync<DurationDialog>("Update duration", parameters, options);
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is int minutes && minutes > 0)
+        {
+            SetInterval(metric, minutes);
+        }
+    }
+
+    private Task OpenActiveDuration() => OpenDurationDialog(nameof(activeCameras), "Active cameras");
+    private Task OpenTotalDuration() => OpenDurationDialog(nameof(totalCameras), "Total cameras");
+    private Task OpenStorageDuration() => OpenDurationDialog(nameof(storageUsedInGB), "Storage used");
+
+    public void Dispose()
+    {
+        foreach (var kvp in _timers.Values)
+        {
+            kvp.cts.Cancel();
+            kvp.timer.Dispose();
+        }
+    }
+}

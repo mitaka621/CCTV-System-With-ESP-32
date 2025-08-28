@@ -189,7 +189,8 @@ else
             hLSPlaylists = await _videoReplayService
                 .GenerateHLSPlaylistsAsync(selectedCameraIdsList, startDateTime.Value, endDateTime.Value);
 
-            var missingChunks = hLSPlaylists.SelectMany(x => x.MissingVideoChunkEvents);
+            var missingChunks = hLSPlaylists.SelectMany(x => x.MissingVideoChunkEvents)
+                .DistinctBy(x=>x.Duration);
 
             List<Task> generateMissingChunksTasks = new();
 

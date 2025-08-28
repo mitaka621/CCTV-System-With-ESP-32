@@ -47,5 +47,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Repositories
         Task<Guid> GetCameraIdAsync(string ipv4, string mac);
 
         Task<List<NameAndIdWithStatusDto>> GetAllCameraNameAndIdAsync();
+
+        Task<int> GetTotalCamerasAsync(params List<PairStatus> status);
     }
 }

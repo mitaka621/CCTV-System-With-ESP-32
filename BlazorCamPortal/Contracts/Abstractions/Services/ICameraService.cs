@@ -32,5 +32,7 @@ namespace BlazorCamPortal.Contracts.Abstractions.Services
         Task<List<NameAndIdWithStatusModel>> GetAllCameraNameAndIdAsync();
 
         Task<List<CreateCameraModel>> GetCamerasByIdAsync(List<Guid> cameraIds);
+
+        Task<int> GetTotalCamerasAsync(params List<PairStatus> status);
     }
 }

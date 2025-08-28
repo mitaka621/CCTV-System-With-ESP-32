@@ -161,8 +161,8 @@ namespace BlazorCamPortal.Core.BackgroundServices
                             lastFileDto = new CreateVideoChunkDto
                             {
                                 CameraId = cameraId,
-                                ChunkStartDate = lastFileStartTime.Value,
-                                ChunkEndDate = DateTime.Now,
+                                ChunkStartTime = lastFileStartTime.Value,
+                                ChunkEndTime = DateTime.Now,
                                 FileName = fileName,
                                 SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                             };

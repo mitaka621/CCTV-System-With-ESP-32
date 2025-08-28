@@ -8,9 +8,11 @@ namespace BlazorCamPortal.Extensions
     {
         public static IApplicationBuilder ApplyMigrations(this IApplicationBuilder app, IServiceProvider serviceProvider)
         {
-            var db = serviceProvider.CreateScope()
+            var dbFactory = serviceProvider.CreateScope()
                 .ServiceProvider
-                .GetRequiredService<CamPortalDBContext>();
+                .GetRequiredService<IDbContextFactory<CamPortalDBContext>>();
+
+            using var db = dbFactory.CreateDbContext();
 
             db.Database.Migrate();
 

@@ -1,0 +1,56 @@
+@using MudBlazor
+@inherits ComponentBase
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string MetricLabel { get; set; } = string.Empty;
+
+    [Parameter]
+    public int InitialMinutes { get; set; } = 5;
+
+    private int _selectedMinutes;
+
+    protected override void OnInitialized()
+    {
+        _selectedMinutes = InitialMinutes <= 0 ? 1 : InitialMinutes;
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Save()
+    {
+        MudDialog?.Close(DialogResult.Ok<int>(_selectedMinutes));
+    }
+}
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-2">Update duration</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            This duration controls how often this metric refreshes.
+        </MudText>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.body2">Minutes:</MudText>
+            <MudSelect T="int" @bind-Value="_selectedMinutes" Dense="true" Style="min-width: 96px;">
+                @foreach (var minutes in Enumerable.Range(1, 10))
+                {
+                    <MudSelectItem Value="@minutes">@minutes</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+

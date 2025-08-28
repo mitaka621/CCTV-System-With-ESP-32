@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<CamPortalDBContext>(options =>
+builder.Services.AddDbContextFactory<CamPortalDBContext>(options =>
 options.UseSqlServer(connectionString));
 
 builder.Services.AddRazorComponents()
