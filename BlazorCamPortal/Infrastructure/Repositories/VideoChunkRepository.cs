@@ -33,13 +33,20 @@ namespace BlazorCamPortal.Infrastructure.Repositories
         public async Task<Dictionary<Guid, List<VideoChunkShortInfoDto>>> GetVideoChunksForPeriodForCameraAsync(List<Guid> cameraId, DateTime startDate, DateTime endDate)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();
+
             var result = await db.VideoChunks
                 .AsNoTracking()
                 .Where(x => cameraId.Contains(x.CameraId))
                 .Where(x => x.ChunkStartTime < endDate && x.ChunkEndTime > startDate)
-                .OrderBy(c => c.ChunkStartTime)
                 .GroupBy(x => x.CameraId)
-                .ToDictionaryAsync(g => g.Key, _mapper.Map<List<VideoChunkShortInfoDto>>);
+                .Select(g => new
+                {
+                    CameraId = g.Key,
+                    Chunks = g.OrderBy(c => c.ChunkStartTime)
+                        .Select(c => _mapper.Map<VideoChunkShortInfoDto>(c))
+                        .ToList()
+                })
+                .ToDictionaryAsync(g => g.CameraId, g => g.Chunks);
 
             return result;
         }

@@ -139,7 +139,6 @@ else
     TimeSpan? selectedStartTime;
     TimeSpan? selectedEndTime;
 
-    // DateTime constraints
     DateTime minDateTime;
     DateTime maxDateTime;
 
@@ -151,12 +150,26 @@ else
         (minDateTime, maxDateTime) = await _videoReplayService.GetMinAndMaxDateTimeOfAvailableVideoChunksAsync();
         allCamerasNameAndId = await _cameraService.GetAllCameraNameAndIdAsync();
 
-        // Set default date range - last 7 days or available range
-        var defaultStartDateTime = maxDateTime.AddDays(-7) > minDateTime ? maxDateTime.AddDays(-7) : minDateTime;
-        selectedStartDateTime = defaultStartDateTime.Date;
-        selectedEndDateTime = maxDateTime.Date;
-        selectedStartTime = defaultStartDateTime.TimeOfDay;
-        selectedEndTime = maxDateTime.TimeOfDay;
+        var now = DateTime.Now;
+        var defaultEnd = now <= maxDateTime ? now : maxDateTime;
+        var defaultStart = defaultEnd.AddMinutes(-30);
+        if (defaultStart < minDateTime)
+        {
+            defaultStart = minDateTime;
+        }
+        if (defaultStart >= defaultEnd)
+        {
+            defaultStart = defaultEnd.AddMinutes(-1);
+            if (defaultStart < minDateTime)
+            {
+                defaultStart = minDateTime;
+            }
+        }
+
+        selectedStartDateTime = defaultStart.Date;
+        selectedEndDateTime = defaultEnd.Date;
+        selectedStartTime = defaultStart.TimeOfDay;
+        selectedEndTime = defaultEnd.TimeOfDay;
     }
 
     private async Task FilterCameras()
@@ -172,7 +185,6 @@ else
                 return;
             }
 
-            // Validate datetime range
             if (startDateTime < minDateTime || endDateTime > maxDateTime || startDateTime >= endDateTime)
             {
                 var message = $"Invalid date/time selection. Available range: {minDateTime:MMM dd, yyyy HH:mm} to {maxDateTime:MMM dd, yyyy HH:mm}";

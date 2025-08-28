@@ -116,6 +116,7 @@ namespace BlazorCamPortal.Core.Services
 
                 foreach (var segment in fullTimeline)
                 {
+                    sb.AppendLine("#EXT-X-DISCONTINUITY");
                     sb.AppendLine($"#EXTINF:{(segment.ChunkEndTime - segment.ChunkStartTime).TotalSeconds:0.###},");
                     sb.AppendLine(_videoChunksBaseApiUrl + segment.FileName.Replace('\\', '/'));
                 }
