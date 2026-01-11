@@ -1,6 +1,6 @@
-﻿using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
+﻿using CamPortal.Contracts.Dtos.VideoChunkDtos;
 
-namespace BlazorCamPortal.Contracts.Abstractions.Services
+namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface IVideoReplayService
     {

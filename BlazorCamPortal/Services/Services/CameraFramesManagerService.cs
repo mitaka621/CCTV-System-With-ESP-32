@@ -1,15 +1,15 @@
 ﻿using System.Collections.Concurrent;
 using System.Threading.Channels;
-using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Enums;
-using BlazorCamPortal.Core.Utilities;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Enums;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Processing;
 
-namespace BlazorCamPortal.Core.Services
+namespace CamPortal.Core.Services
 {
     public class CameraFramesManagerService : ICameraFramesManagerService
     {

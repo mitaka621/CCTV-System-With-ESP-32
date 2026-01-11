@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace BlazorCamPortal.Infrastructure.Migrations
+namespace CamPortal.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class Add_VideoChunks_Table : Migration

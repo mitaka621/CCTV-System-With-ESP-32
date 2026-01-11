@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BlazorCamPortal.Core.Utilities
+namespace CamPortal.Core.Utilities
 {
     public static class MiscUtilities
     {

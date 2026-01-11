@@ -1,13 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Text;
-using BlazorCamPortal.Contracts.Abstractions.Repositories;
-using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
-using BlazorCamPortal.Core.Utilities;
+using CamPortal.Contracts.Abstractions.Repositories;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.VideoChunkDtos;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace BlazorCamPortal.Core.Services
+namespace CamPortal.Core.Services
 {
     public class VideoReplayService : IVideoReplayService
     {

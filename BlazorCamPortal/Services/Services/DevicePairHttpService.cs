@@ -1,12 +1,12 @@
 ﻿using System.Text.Json;
 using AutoMapper;
-using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Enums;
-using BlazorCamPortal.Contracts.Models;
-using BlazorCamPortal.Core.Utilities;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Enums;
+using CamPortal.Contracts.Models;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 
-namespace BlazorCamPortal.Core.Services
+namespace CamPortal.Core.Services
 {
     public class DevicePairHttpService : IDevicePairHttpService
     {

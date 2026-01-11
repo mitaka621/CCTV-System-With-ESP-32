@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlazorCamPortal.Controllers
+namespace CamPortal.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

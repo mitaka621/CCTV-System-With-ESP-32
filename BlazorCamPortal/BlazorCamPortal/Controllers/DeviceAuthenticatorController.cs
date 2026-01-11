@@ -1,8 +1,8 @@
-﻿using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Enums;
+﻿using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlazorCamPortal.Controllers
+namespace CamPortal.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

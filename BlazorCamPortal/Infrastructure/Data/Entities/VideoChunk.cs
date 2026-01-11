@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace BlazorCamPortal.Infrastructure.Data.Entities
+namespace CamPortal.Infrastructure.Data.Entities
 {
     public class VideoChunk
     {

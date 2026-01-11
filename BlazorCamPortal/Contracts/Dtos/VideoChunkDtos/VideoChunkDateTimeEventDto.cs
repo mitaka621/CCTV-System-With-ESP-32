@@ -1,4 +1,4 @@
-﻿namespace BlazorCamPortal.Contracts.Dtos.VideoChunkDtos
+﻿namespace CamPortal.Contracts.Dtos.VideoChunkDtos
 {
     public class VideoChunkDateTimeEventDto
     {

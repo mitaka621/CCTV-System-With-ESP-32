@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-namespace BlazorCamPortal.Contracts.Abstractions.Services
+namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface ICameraFramesManagerService
     {

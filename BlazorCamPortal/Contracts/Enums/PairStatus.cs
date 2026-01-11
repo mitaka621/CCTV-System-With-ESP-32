@@ -1,4 +1,4 @@
-﻿namespace BlazorCamPortal.Contracts.Enums
+﻿namespace CamPortal.Contracts.Enums
 {
     public enum PairStatus
     {

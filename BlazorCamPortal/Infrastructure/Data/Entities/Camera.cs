@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using BlazorCamPortal.Contracts.Enums;
+using CamPortal.Contracts.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorCamPortal.Infrastructure.Data.Entities
+namespace CamPortal.Infrastructure.Data.Entities
 {
     [Index(nameof(Ipv4Address))]
     public class Camera

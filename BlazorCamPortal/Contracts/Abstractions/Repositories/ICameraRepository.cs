@@ -1,8 +1,8 @@
-﻿using BlazorCamPortal.Contracts.Dtos.CameraDtos;
-using BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos;
-using BlazorCamPortal.Contracts.Enums;
+﻿using CamPortal.Contracts.Dtos.CameraDtos;
+using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
+using CamPortal.Contracts.Enums;
 
-namespace BlazorCamPortal.Contracts.Abstractions.Repositories
+namespace CamPortal.Contracts.Abstractions.Repositories
 {
     public interface ICameraRepository
     {

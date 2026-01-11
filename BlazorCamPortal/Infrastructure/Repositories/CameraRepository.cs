@@ -1,13 +1,13 @@
 ﻿using AutoMapper;
-using BlazorCamPortal.Contracts.Abstractions.Repositories;
-using BlazorCamPortal.Contracts.Dtos.CameraDtos;
-using BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos;
-using BlazorCamPortal.Contracts.Enums;
-using BlazorCamPortal.Infrastructure.Data;
-using BlazorCamPortal.Infrastructure.Data.Entities;
+using CamPortal.Contracts.Abstractions.Repositories;
+using CamPortal.Contracts.Dtos.CameraDtos;
+using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
+using CamPortal.Contracts.Enums;
+using CamPortal.Infrastructure.Data;
+using CamPortal.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorCamPortal.Infrastructure.Repositories
+namespace CamPortal.Infrastructure.Repositories
 {
     public class CameraRepository : ICameraRepository
     {

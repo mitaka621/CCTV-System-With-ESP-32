@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
 
-namespace BlazorCamPortal.Core.Utilities
+namespace CamPortal.Core.Utilities
 {
     public static class VideoChunkUtilities
     {

@@ -1,6 +1,6 @@
-﻿using BlazorCamPortal.Contracts.Enums;
+﻿using CamPortal.Contracts.Enums;
 
-namespace BlazorCamPortal.Contracts.Models
+namespace CamPortal.Contracts.Models
 {
     public class NameAndIdWithStatusModel
     {

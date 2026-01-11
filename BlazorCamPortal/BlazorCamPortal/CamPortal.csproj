@@ -42,7 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Services\BlazorCamPortal.Core.csproj" />
+    <ProjectReference Include="..\Services\CamPortal.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

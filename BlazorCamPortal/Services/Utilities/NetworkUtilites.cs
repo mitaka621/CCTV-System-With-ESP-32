@@ -1,8 +1,8 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
-using BlazorCamPortal.Contracts.Dtos.LocalNetworkDtos;
+using CamPortal.Contracts.Dtos.LocalNetworkDtos;
 
-namespace BlazorCamPortal.Core.Utilities
+namespace CamPortal.Core.Utilities
 {
     public static class NetworkUtilites
     {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BlazorCamPortal.Contracts.Enums
+namespace CamPortal.Contracts.Enums
 {
     public enum CameraEvents
     {

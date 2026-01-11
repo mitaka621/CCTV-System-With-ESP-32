@@ -3,13 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36301.6
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal", "BlazorCamPortal\BlazorCamPortal.csproj", "{90B5DBE9-D5F9-453D-913A-CF969FC33624}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CamPortal", "BlazorCamPortal\CamPortal.csproj", "{90B5DBE9-D5F9-453D-913A-CF969FC33624}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal.Contracts", "Contracts\BlazorCamPortal.Contracts.csproj", "{3FC438BF-B41D-462B-A9E8-C2884C431EB3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CamPortal.Contracts", "Contracts\CamPortal.Contracts.csproj", "{3FC438BF-B41D-462B-A9E8-C2884C431EB3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal.Infrastructure", "Infrastructure\BlazorCamPortal.Infrastructure.csproj", "{8D425466-239E-43AE-8E2B-86DB472D994F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CamPortal.Infrastructure", "Infrastructure\CamPortal.Infrastructure.csproj", "{8D425466-239E-43AE-8E2B-86DB472D994F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorCamPortal.Core", "Services\BlazorCamPortal.Core.csproj", "{F1419F5D-FF4B-4FC4-833B-32468B0BD569}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CamPortal.Core", "Services\CamPortal.Core.csproj", "{F1419F5D-FF4B-4FC4-833B-32468B0BD569}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "web", "web", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{079DC76B-0DA3-4B58-A156-2796FDD39A19}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,6 +40,12 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{90B5DBE9-D5F9-453D-913A-CF969FC33624} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{3FC438BF-B41D-462B-A9E8-C2884C431EB3} = {079DC76B-0DA3-4B58-A156-2796FDD39A19}
+		{8D425466-239E-43AE-8E2B-86DB472D994F} = {079DC76B-0DA3-4B58-A156-2796FDD39A19}
+		{F1419F5D-FF4B-4FC4-833B-32468B0BD569} = {079DC76B-0DA3-4B58-A156-2796FDD39A19}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F65BD76D-CB96-4952-9D46-B625C656E42F}

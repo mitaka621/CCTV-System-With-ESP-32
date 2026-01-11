@@ -1,6 +1,6 @@
-﻿using BlazorCamPortal.Contracts.Abstractions.Services;
+﻿using CamPortal.Contracts.Abstractions.Services;
 
-namespace BlazorCamPortal.Core.Services
+namespace CamPortal.Core.Services
 {
     public class ScanCoordinatorService : IScanCoordinatorService
     {

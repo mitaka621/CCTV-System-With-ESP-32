@@ -1,11 +1,11 @@
 ﻿using AutoMapper;
-using BlazorCamPortal.Contracts.Abstractions.Repositories;
-using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
-using BlazorCamPortal.Infrastructure.Data;
-using BlazorCamPortal.Infrastructure.Data.Entities;
+using CamPortal.Contracts.Abstractions.Repositories;
+using CamPortal.Contracts.Dtos.VideoChunkDtos;
+using CamPortal.Infrastructure.Data;
+using CamPortal.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorCamPortal.Infrastructure.Repositories
+namespace CamPortal.Infrastructure.Repositories
 {
     public class VideoChunkRepository : IVideoChunkRepository
     {

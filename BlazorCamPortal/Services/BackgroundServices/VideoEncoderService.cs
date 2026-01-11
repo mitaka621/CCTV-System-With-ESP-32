@@ -1,14 +1,14 @@
 ﻿using System.Diagnostics;
 using System.Threading.Channels;
-using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
-using BlazorCamPortal.Core.Utilities;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.VideoChunkDtos;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace BlazorCamPortal.Core.BackgroundServices
+namespace CamPortal.Core.BackgroundServices
 {
     public class VideoEncoderService : BackgroundService
     {
@@ -286,15 +286,14 @@ namespace BlazorCamPortal.Core.BackgroundServices
                 {
                     FileName = VideoChunkUtilities.GetFfmpegPath(),
                     Arguments =
-    $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
-    "-map 0:v:0 -an " +
-    "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
-    $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
-    $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
-    "-b:v 1500k -maxrate 2000k -bufsize 4000k " +
-    $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts " +
-    $"{filePath}",
-
+                        $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
+                        "-map 0:v:0 -an " +
+                        "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
+                        $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
+                        $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
+                        "-b:v 1500k -maxrate 2000k -bufsize 4000k " +
+                        $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts " +
+                        $"{filePath}",
                     RedirectStandardInput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,

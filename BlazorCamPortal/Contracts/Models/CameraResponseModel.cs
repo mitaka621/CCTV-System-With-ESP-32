@@ -1,4 +1,4 @@
-﻿namespace BlazorCamPortal.Contracts.Models
+﻿namespace CamPortal.Contracts.Models
 {
     public class CameraResponseModel : CreateCameraModel
     {

@@ -1,6 +1,6 @@
-﻿using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
+﻿using CamPortal.Contracts.Dtos.VideoChunkDtos;
 
-namespace BlazorCamPortal.Contracts.Abstractions.Repositories
+namespace CamPortal.Contracts.Abstractions.Repositories
 {
     public interface IVideoChunkRepository
     {

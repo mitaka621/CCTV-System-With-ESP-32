@@ -1,4 +1,4 @@
-﻿namespace BlazorCamPortal.Contracts.Dtos.ESPSessionTokenDtos
+﻿namespace CamPortal.Contracts.Dtos.ESPSessionTokenDtos
 {
     public class ESPSessionTokenDto
     {

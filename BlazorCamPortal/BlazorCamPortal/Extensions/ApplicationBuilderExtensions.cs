@@ -1,8 +1,8 @@
-﻿using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Infrastructure.Data;
+﻿using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorCamPortal.Extensions
+namespace CamPortal.Extensions
 {
     public static class ApplicationBuilderExtensions
     {

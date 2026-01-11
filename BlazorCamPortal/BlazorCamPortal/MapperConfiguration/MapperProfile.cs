@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
-using BlazorCamPortal.Contracts.Dtos.CameraDtos;
-using BlazorCamPortal.Contracts.Dtos.VideoChunkDtos;
-using BlazorCamPortal.Contracts.Models;
-using BlazorCamPortal.Infrastructure.Data.Entities;
+using CamPortal.Contracts.Dtos.CameraDtos;
+using CamPortal.Contracts.Dtos.VideoChunkDtos;
+using CamPortal.Contracts.Models;
+using CamPortal.Infrastructure.Data.Entities;
 
-namespace BlazorCamPortal.MapperConfiguration
+namespace CamPortal.MapperConfiguration
 {
     public class MapperProfile : Profile
     {

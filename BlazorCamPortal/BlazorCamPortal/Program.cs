@@ -1,7 +1,7 @@
-using BlazorCamPortal.Components;
-using BlazorCamPortal.Extensions;
-using BlazorCamPortal.Infrastructure.Data;
-using BlazorCamPortal.MapperConfiguration;
+using CamPortal.Components;
+using CamPortal.Extensions;
+using CamPortal.Infrastructure.Data;
+using CamPortal.MapperConfiguration;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

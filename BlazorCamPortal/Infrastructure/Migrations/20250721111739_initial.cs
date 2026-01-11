@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace BlazorCamPortal.Infrastructure.Migrations
+namespace CamPortal.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class initial : Migration

@@ -1,7 +1,7 @@
-﻿using BlazorCamPortal.Contracts.Enums;
-using BlazorCamPortal.Contracts.Models;
+﻿using CamPortal.Contracts.Enums;
+using CamPortal.Contracts.Models;
 
-namespace BlazorCamPortal.Contracts.Abstractions.Services
+namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface ICameraService
     {

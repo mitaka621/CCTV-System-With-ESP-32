@@ -1,6 +1,6 @@
-﻿using BlazorCamPortal.Contracts.Enums;
+﻿using CamPortal.Contracts.Enums;
 
-namespace BlazorCamPortal.Contracts.Dtos.CameraDtos
+namespace CamPortal.Contracts.Dtos.CameraDtos
 {
     public class NameAndIdWithStatusDto
     {

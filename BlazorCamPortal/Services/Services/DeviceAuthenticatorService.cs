@@ -1,9 +1,9 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using BlazorCamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Abstractions.Services;
 using Microsoft.Extensions.Configuration;
 
-namespace BlazorCamPortal.Core.Services
+namespace CamPortal.Core.Services
 {
     public class DeviceAuthenticatorService : IDeviceAuthenticatorService
     {

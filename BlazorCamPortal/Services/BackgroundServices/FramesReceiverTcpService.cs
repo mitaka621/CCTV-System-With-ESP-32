@@ -1,13 +1,13 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Contracts.Enums;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace BlazorCamPortal.Core.BackgroundServices
+namespace CamPortal.Core.BackgroundServices
 {
     public class FramesReceiverTcpService : BackgroundService
     {

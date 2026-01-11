@@ -1,11 +1,11 @@
-﻿using BlazorCamPortal.Contracts.Abstractions.Repositories;
-using BlazorCamPortal.Contracts.Abstractions.Services;
-using BlazorCamPortal.Core.BackgroundServices;
-using BlazorCamPortal.Core.Services;
-using BlazorCamPortal.Infrastructure.Repositories;
+﻿using CamPortal.Contracts.Abstractions.Repositories;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Core.BackgroundServices;
+using CamPortal.Core.Services;
+using CamPortal.Infrastructure.Repositories;
 using MudBlazor.Services;
 
-namespace BlazorCamPortal.Extensions
+namespace CamPortal.Extensions
 {
     public static class ServiceCollectionExtensions
     {

@@ -1,7 +1,7 @@
-﻿using BlazorCamPortal.Infrastructure.Data.Entities;
+﻿using CamPortal.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorCamPortal.Infrastructure.Data
+namespace CamPortal.Infrastructure.Data
 {
     public class CamPortalDBContext : DbContext
     {
