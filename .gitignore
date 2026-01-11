@@ -127,3 +127,6 @@ obj/**/staticwebassets.runtime.json
 /BlazorCamPortal/.vs/CamPortal/FileContentIndex
 /BlazorCamPortal/.vs/CamPortal/v17
 /BlazorCamPortal/.vs
+/ESP32MockClient/.vs
+
+/ESP32MockClient/ESP32MockClient/footage/*.mp4
