@@ -286,13 +286,15 @@ namespace BlazorCamPortal.Core.BackgroundServices
                 {
                     FileName = VideoChunkUtilities.GetFfmpegPath(),
                     Arguments =
-                        $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
-                        "-map 0:v:0 -an " +
-                        "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
-                        $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
-                        $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
-                        $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts " +
-                        $"{filePath}",
+    $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
+    "-map 0:v:0 -an " +
+    "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
+    $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
+    $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
+    "-b:v 1500k -maxrate 2000k -bufsize 4000k " +
+    $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts " +
+    $"{filePath}",
+
                     RedirectStandardInput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
