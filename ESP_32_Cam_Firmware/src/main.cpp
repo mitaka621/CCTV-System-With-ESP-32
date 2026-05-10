@@ -22,7 +22,7 @@
 #define FAILED_ATTEMPTS_TO_PAIR_WITH_SERVER_LIMIT 20
 #define FAILED_FRAMES_TO_SEND_MARK_AS_NOT_PAIRED_LIMIT 10
 
-#define CAMERA_MODEL_AI_THINKER
+#define ENCRYPTION_BUFFER_SIZE (1024 * 1024)
 
 #define DEBUG_ON true
 
@@ -48,6 +48,8 @@ bool isPaired = false;
 
 uint8_t aesKey[32];
 size_t aesKeyLen = 0;
+
+uint8_t *encryptionBuffer = nullptr;
 
 void parseHostAndPath(String &host, String &path, String baseServerUrl, String url)
 {
@@ -392,6 +394,7 @@ bool connectWiFi()
 {
   DEBUG_PRINT("Connecting to WiFi...");
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED)
@@ -400,12 +403,21 @@ bool connectWiFi()
     if (millis() - start > 15000)
       return false;
   }
+  WiFi.setSleep(false);
   DEBUG_PRINT("WiFi connected. IP: " + WiFi.localIP().toString());
   return true;
 }
 
 bool initCamera()
 {
+  if (!psramFound())
+  {
+    DEBUG_PRINT("PSRAM not detected. Full HD streaming requires PSRAM.");
+    return false;
+  }
+
+  DEBUG_PRINT("PSRAM size (bytes): " + String((uint32_t)ESP.getPsramSize()));
+
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -427,9 +439,12 @@ bool initCamera()
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_HD;
+  config.frame_size = FRAMESIZE_FHD;
   config.jpeg_quality = 12;
-  config.fb_count = 1;
+  config.fb_count = 3;
+  config.fb_location = CAMERA_FB_IN_PSRAM;
+  config.grab_mode = CAMERA_GRAB_LATEST;
+
   DEBUG_PRINT("Initializing camera...");
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK)
@@ -437,6 +452,33 @@ bool initCamera()
     DEBUG_PRINT("Camera init failed with error " + String(err));
     return false;
   }
+
+  sensor_t *sensor = esp_camera_sensor_get();
+  if (sensor != nullptr)
+  {
+    sensor->set_framesize(sensor, FRAMESIZE_FHD);
+    sensor->set_quality(sensor, 12);
+    sensor->set_brightness(sensor, 0);
+    sensor->set_contrast(sensor, 0);
+    sensor->set_saturation(sensor, 0);
+    sensor->set_whitebal(sensor, 1);
+    sensor->set_awb_gain(sensor, 1);
+    sensor->set_wb_mode(sensor, 0);
+    sensor->set_exposure_ctrl(sensor, 1);
+    sensor->set_aec2(sensor, 1);
+    sensor->set_ae_level(sensor, 0);
+    sensor->set_gain_ctrl(sensor, 1);
+    sensor->set_gainceiling(sensor, (gainceiling_t)0);
+    sensor->set_bpc(sensor, 1);
+    sensor->set_wpc(sensor, 1);
+    sensor->set_raw_gma(sensor, 1);
+    sensor->set_lenc(sensor, 1);
+    sensor->set_hmirror(sensor, 0);
+    sensor->set_vflip(sensor, 0);
+    sensor->set_dcw(sensor, 1);
+    sensor->set_colorbar(sensor, 0);
+  }
+
   return true;
 }
 
@@ -483,6 +525,24 @@ bool getAesKeyFromPrefs(uint8_t *keyBuf, size_t keyBufSize, size_t &keyLen)
 
 bool sendFrameToServer(camera_fb_t *fb, WiFiClient &client)
 {
+  if (encryptionBuffer == nullptr)
+    return false;
+
+  if (fb->len > ENCRYPTION_BUFFER_SIZE)
+  {
+    DEBUG_PRINT("Frame too large for encryption buffer: " + String(fb->len));
+    return false;
+  }
+
+  if (doesHaveToReloadSessionToken)
+  {
+    if (!getAesKeyFromPrefs(aesKey, sizeof(aesKey), aesKeyLen))
+    {
+      return false;
+    }
+    doesHaveToReloadSessionToken = false;
+  }
+
   uint8_t mac[6];
   WiFi.macAddress(mac);
 
@@ -491,51 +551,27 @@ bool sendFrameToServer(camera_fb_t *fb, WiFiClient &client)
 
   uint8_t tag[16];
 
-  uint8_t *encBuf = (uint8_t *)malloc(fb->len);
-  if (!encBuf)
-    return false;
-
-  if (doesHaveToReloadSessionToken)
+  if (!encryptAESGCM(fb->buf, fb->len, encryptionBuffer, iv, tag, aesKey))
   {
-    if (!getAesKeyFromPrefs(aesKey, sizeof(aesKey), aesKeyLen))
-    {
-      free(encBuf);
-      return false;
-    }
-
-    doesHaveToReloadSessionToken = false;
-  }
-
-  if (!encryptAESGCM(fb->buf, fb->len, encBuf, iv, tag, aesKey))
-  {
-    free(encBuf);
     return false;
   }
 
-  // Total length = MAC(6) + IV(12) + TAG(16) + Ciphertext
   uint32_t totalLen = 6 + sizeof(iv) + sizeof(tag) + fb->len;
-  uint8_t sizeBuf[4] = {
-      (uint8_t)(totalLen >> 24),
-      (uint8_t)(totalLen >> 16),
-      (uint8_t)(totalLen >> 8),
-      (uint8_t)(totalLen)};
+  uint8_t header[4 + sizeof(mac) + sizeof(iv) + sizeof(tag)];
+  header[0] = (uint8_t)(totalLen >> 24);
+  header[1] = (uint8_t)(totalLen >> 16);
+  header[2] = (uint8_t)(totalLen >> 8);
+  header[3] = (uint8_t)(totalLen);
+  memcpy(header + 4, mac, sizeof(mac));
+  memcpy(header + 4 + sizeof(mac), iv, sizeof(iv));
+  memcpy(header + 4 + sizeof(mac) + sizeof(iv), tag, sizeof(tag));
 
-  if (client.write(sizeBuf, 4) != 4)
+  if (client.write(header, sizeof(header)) != sizeof(header))
     return false;
 
-  if (client.write(mac, sizeof(mac)) != sizeof(mac))
+  if (client.write(encryptionBuffer, fb->len) != fb->len)
     return false;
 
-  if (client.write(iv, sizeof(iv)) != sizeof(iv))
-    return false;
-
-  if (client.write(tag, sizeof(tag)) != sizeof(tag))
-    return false;
-
-  if (client.write(encBuf, fb->len) != fb->len)
-    return false;
-
-  free(encBuf);
   return true;
 }
 
@@ -607,11 +643,23 @@ void setup()
   pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
 
   Serial.begin(115200);
-  delay(1000);
+  unsigned long serialReadyStart = millis();
+  while (!Serial && (millis() - serialReadyStart) < 3000)
+  {
+    delay(10);
+  }
+  delay(500);
   DEBUG_PRINT("Booting...");
   if (!prefs.begin("settings"))
   {
     DEBUG_PRINT("Preferences begin failed!");
+  }
+  encryptionBuffer = (uint8_t *)heap_caps_malloc(ENCRYPTION_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
+  if (encryptionBuffer == nullptr)
+  {
+    DEBUG_PRINT("Failed to allocate encryption buffer in PSRAM. Restarting...");
+    delay(5000);
+    ESP.restart();
   }
   if (!connectWiFi())
   {
@@ -739,6 +787,7 @@ void loop()
       failedAttemptsToConnectToserver++;
       return;
     }
+    client.setNoDelay(true);
     DEBUG_PRINT("TCP connected.");
   }
 
@@ -759,10 +808,10 @@ void loop()
   }
   else
   {
-    DEBUG_PRINT("Frame sent");
+    DEBUG_PRINT(String(millis()) + " -> Frame sent");
 
     failedFramesToSendCounter = 0;
   }
   esp_camera_fb_return(fb);
-  delay(100);
+  delay(1);
 }
