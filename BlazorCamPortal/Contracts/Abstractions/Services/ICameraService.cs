@@ -21,11 +21,11 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac);
 
-        Task<(byte[]? token, bool isExpired)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac);
+        Task<(byte[]? token, DateTime expires)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac);
 
         Task<List<string>> GetAllActiveCameraIpsAsync();
 
-        Task ChangeCameraStatusAsync(Guid cameraId, PairStatus newStatus);
+        Task ChangeStatusAndInvalidateCameraAsync(Guid cameraId, PairStatus newStatus);
 
         Task<Guid> GetCameraIdAsync(string ipv4, string mac);
 

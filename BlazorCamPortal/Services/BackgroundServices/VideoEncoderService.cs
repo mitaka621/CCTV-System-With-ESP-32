@@ -1,12 +1,12 @@
-﻿using System.Diagnostics;
-using System.Threading.Channels;
-using CamPortal.Contracts.Abstractions.Services;
+﻿using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Threading.Channels;
 
 namespace CamPortal.Core.BackgroundServices
 {
@@ -82,7 +82,7 @@ namespace CamPortal.Core.BackgroundServices
 
         private async Task EncodeCameraFramesAsync(Guid cameraId, CancellationToken stoppingToken)
         {
-            var framesChannel = _framesManager.GetOrCreateChannel(cameraId);
+            var framesChannel = _framesManager.GetOrCreateProcessedFramesCameraChannel(cameraId);
             DateTime segmentStartTime = DateTime.Now;
 
             string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.Now.ToString("yyyy-MM-dd"));

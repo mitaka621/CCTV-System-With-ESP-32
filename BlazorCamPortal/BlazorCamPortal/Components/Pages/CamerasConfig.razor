@@ -215,7 +215,7 @@ else
 
 	private async Task ForgetCamera(Guid cameraId)
 	{
-        await _cameraService.ChangeCameraStatusAsync(cameraId, PairStatus.Forgotten);
+        await _cameraService.ChangeStatusAndInvalidateCameraAsync(cameraId, PairStatus.Forgotten);
 
 		cameraDisplayModels.First(x => x.Id == cameraId).PairStatus = PairStatus.Forgotten;
 		StateHasChanged();

@@ -1,7 +1,7 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using CamPortal.Contracts.Abstractions.Services;
+﻿using CamPortal.Contracts.Abstractions.Services;
 using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CamPortal.Core.Services
 {
@@ -52,7 +52,7 @@ namespace CamPortal.Core.Services
             return Convert.ToBase64String(key);
         }
 
-        public byte[] DecryptAesGcm(byte[] ciphertext, byte[] key, byte[] iv, byte[] tag)
+        public byte[] DecryptAesGcm(Span<byte> ciphertext, Span<byte> key, Span<byte> iv, Span<byte> tag)
         {
             byte[] plaintext = new byte[ciphertext.Length];
 

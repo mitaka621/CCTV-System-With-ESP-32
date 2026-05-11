@@ -1,11 +1,11 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using CamPortal.Contracts.Abstractions.Services;
+﻿using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net;
+using System.Net.Sockets;
 
 namespace CamPortal.Core.BackgroundServices
 {
@@ -14,6 +14,7 @@ namespace CamPortal.Core.BackgroundServices
         private readonly ILogger<FramesReceiverTcpService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
+        private readonly IActiveCameraConnections _activeCameraConnections;
 
         private readonly int _port;
 
@@ -21,12 +22,14 @@ namespace CamPortal.Core.BackgroundServices
             ILogger<FramesReceiverTcpService> logger,
             IConfiguration configuration,
             IServiceProvider serviceProvider,
-            ICameraFramesManagerService cameraFramesManagerService)
+            ICameraFramesManagerService cameraFramesManagerService,
+            IActiveCameraConnections activeCameraConnections)
 
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _cameraFramesManagerService = cameraFramesManagerService;
+            _activeCameraConnections = activeCameraConnections;
 
             _port = int.Parse(configuration.GetSection("TCPServerConfig")["Port"] ?? throw new ArgumentNullException("TCP server port not configured"));
         }
@@ -43,8 +46,13 @@ namespace CamPortal.Core.BackgroundServices
                 {
                     var client = await listener.AcceptTcpClientAsync(stoppingToken);
 
-                    _ = Task.Run(() => HandleClientFramesAsync(client, stoppingToken), stoppingToken);
+                    _ = Task.Run(async () =>
+                    {
+                        try { await HandleClientFramesAsync(client, stoppingToken); }
+                        catch (Exception ex) { _logger.LogError(ex, "Unhandled exception in client handler"); }
+                    }, stoppingToken);
                 }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error accepting client");
@@ -56,37 +64,42 @@ namespace CamPortal.Core.BackgroundServices
 
         private async Task HandleClientFramesAsync(TcpClient client, CancellationToken ct)
         {
-            var cameraService = _serviceProvider.CreateScope()
-                .ServiceProvider
-                .GetRequiredService<ICameraService>();
-
-            var deviceAuthenticatorService = _serviceProvider.CreateScope()
-                .ServiceProvider
-                .GetRequiredService<IDeviceAuthenticatorService>();
-
             var remote = client.Client.RemoteEndPoint;
             _logger.LogInformation($"Client connected: {remote}");
 
             var remoteEndPoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remoteIp = remoteEndPoint?.Address.MapToIPv4().ToString();
 
-            if (!await cameraService.DoesCameraExistWithStatusAsync(remoteIp ?? string.Empty, PairStatus.Paired))
+            using (var cameraServiceScope = _serviceProvider.CreateScope())
             {
-                _logger.LogError($"Unauthorized connection: {remote}");
+                var cameraService = cameraServiceScope.ServiceProvider.GetRequiredService<ICameraService>();
 
-                client.Close();
+                if (!await cameraService.DoesCameraExistWithStatusAsync(remoteIp ?? string.Empty, PairStatus.Paired))
+                {
+                    _logger.LogError($"Unauthorized connection: {remote}");
 
-                return;
+                    client.Close();
+
+                    return;
+                }
             }
 
+            Guid cameraId = default;
+            byte[]? key = default;
+            DateTime expiresOn = default;
+            bool sessionInitialized = false;
             try
             {
                 using var stream = client.GetStream();
 
-                while (!ct.IsCancellationRequested && client.Connected)
+                while (!ct.IsCancellationRequested)
                 {
                     byte[] sizeBuf = new byte[4];
-                    int bytesRead = await stream.ReadAsync(sizeBuf.AsMemory(0, 4), ct);
+                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
+
+                    int bytesRead = await stream.ReadAsync(sizeBuf.AsMemory(0, 4), timeoutCts.Token);
+
                     if (bytesRead < 4)
                     {
                         _logger.LogWarning("Incomplete size received");
@@ -116,11 +129,22 @@ namespace CamPortal.Core.BackgroundServices
                     }
 
                     var mac = BitConverter.ToString(frameData.AsSpan(0, 6).ToArray()).Replace("-", ":");
-                    var iv = frameData.AsSpan(6, 12).ToArray();
-                    var tag = frameData.AsSpan(18, 16).ToArray();
-                    var ciphertext = frameData.AsSpan(34).ToArray();
 
-                    var (key, isExpired) = await cameraService.GetSessionTokenAsByteArrayAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
+
+                    using var frameScope = _serviceProvider.CreateScope();
+                    var cameraService = frameScope.ServiceProvider.GetRequiredService<ICameraService>();
+                    var deviceAuthenticatorService = frameScope.ServiceProvider.GetRequiredService<IDeviceAuthenticatorService>();
+
+                    if (!sessionInitialized)
+                    {
+                        (key, expiresOn) = await cameraService.GetSessionTokenAsByteArrayAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
+
+                        cameraId = await cameraService.GetCameraIdAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
+
+                        ct = _activeCameraConnections.Register(cameraId, ct);
+
+                        sessionInitialized = true;
+                    }
 
                     if (key == null || key.Length != 32)
                     {
@@ -129,16 +153,20 @@ namespace CamPortal.Core.BackgroundServices
                         break;
                     }
 
-                    if (isExpired)
+                    if (expiresOn < DateTime.Now)
                     {
                         _logger.LogWarning($"Session expired for {remote}.");
 
                         await cameraService.UpdateCameraStatusAsync(mac ?? string.Empty, PairStatus.SessionTokenExpired);
+
+                        break;
                     }
 
-                    var frameBuffer = deviceAuthenticatorService.DecryptAesGcm(ciphertext, key, iv, tag);
+                    var iv = frameData.AsSpan(6, 12);
+                    var tag = frameData.AsSpan(18, 16);
+                    var ciphertext = frameData.AsSpan(34);
 
-                    var cameraId = await cameraService.GetCameraIdAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
+                    var frameBuffer = deviceAuthenticatorService.DecryptAesGcm(ciphertext, key, iv, tag);
 
                     _cameraFramesManagerService.AddFrame(cameraId, frameBuffer);
                 }
@@ -151,6 +179,11 @@ namespace CamPortal.Core.BackgroundServices
             }
             finally
             {
+                if (cameraId != default)
+                {
+                    _activeCameraConnections.Unregister(cameraId);
+                }
+
                 client.Close();
                 _logger.LogInformation($"Client {remote} disconnected");
             }

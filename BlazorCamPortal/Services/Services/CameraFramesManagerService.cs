@@ -1,43 +1,60 @@
-﻿using System.Collections.Concurrent;
-using System.Threading.Channels;
-using CamPortal.Contracts.Abstractions.Services;
+﻿using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Processing;
+using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace CamPortal.Core.Services
 {
     public class CameraFramesManagerService : ICameraFramesManagerService
     {
-        private readonly ConcurrentDictionary<Guid, Channel<byte[]>> _cameraChannels = new();
+        private readonly int _numberOfBufferFramesInChannel;
+        private readonly ILogger<ICameraFramesManagerService> _logger;
+        private readonly ConcurrentDictionary<Guid, Channel<byte[]>> _processedFramesCameraChannels = new();
         private readonly byte[] _defaultFrame;
+        private Channel<(Guid, byte[])> _rawFramesChannel;
 
-        private const int _numberOfBufferFramesInChannel = 100;
+        private int _highWaterMark = 0;
+        private DateTime _lastSaturationLogUtc = default;
 
-        public event Func<Guid, byte[], Task>? FrameAdded;
+        public event Func<Guid, byte[], Task>? FrameProcessed;
         public event Action<Guid>? ChannelClosed;
         public event Action<Guid>? ChannelOpened;
 
-        public CameraFramesManagerService(IConfiguration configuration, IServiceProvider serviceProvider)
-        {
-            _defaultFrame = VideoChunkUtilities.GetDefaultFrame(configuration);
-        }
+        public ChannelReader<(Guid, byte[])> RawFramesChannelReader => _rawFramesChannel.Reader;
 
-        public ConcurrentDictionary<Guid, Channel<byte[]>> GetCameraChannels { get => _cameraChannels; }
+        public CameraFramesManagerService(IConfiguration configuration, IServiceProvider serviceProvider, ILogger<ICameraFramesManagerService> logger)
+        {
+            _numberOfBufferFramesInChannel = int.Parse(configuration.GetSection("TCPServerConfig")["NumberOfBufferRawFrames"]
+                ?? throw new InvalidOperationException("NumberOfBufferRawFrames configuration is missing"));
+
+            _rawFramesChannel = Channel.CreateBounded<(Guid, byte[])>(
+                new BoundedChannelOptions(_numberOfBufferFramesInChannel)
+                {
+                    FullMode = BoundedChannelFullMode.DropOldest,
+                    SingleReader = true,
+                    SingleWriter = false
+                });
+
+            _defaultFrame = VideoChunkUtilities.GetDefaultFrame(configuration);
+            _logger = logger;
+        }
 
         public async Task InitializeAsync(ICameraService _cameraService)
         {
             var cameras = await _cameraService.GetAllCamerasAsync(PairStatus.Paired);
 
             cameras.ForEach(camera =>
-                {
-                    var channel = GetOrCreateChannel(camera.Id);
-                    channel.Writer.TryWrite(_defaultFrame);
-                });
+            {
+                var channel = GetOrCreateProcessedFramesCameraChannel(camera.Id);
+                channel.Writer.TryWrite(_defaultFrame);
+            });
         }
 
         public void AddFrame(Guid cameraId, byte[] frame)
@@ -47,51 +64,58 @@ namespace CamPortal.Core.Services
             if (frame == null || frame.Length == 0)
                 throw new ArgumentException("Frame data cannot be null or empty", nameof(frame));
 
-            var stampedFrame = StampFrame(frame);
+            _rawFramesChannel.Writer.TryWrite((cameraId, frame));
 
-            var channel = GetOrCreateChannel(cameraId);
-            channel.Writer.TryWrite(stampedFrame);
+            int depth = _rawFramesChannel.Reader.Count;
 
-            var handlers = FrameAdded;
-            if (handlers != null)
+            int oldMax;
+            do
             {
-                foreach (Func<Guid, byte[], Task> handler in handlers.GetInvocationList())
+                oldMax = _highWaterMark;
+                if (depth <= oldMax) break;
+            }
+            while (Interlocked.CompareExchange(ref _highWaterMark, depth, oldMax) != oldMax);
+
+            if (depth >= _numberOfBufferFramesInChannel * 0.9)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastSaturationLogUtc).TotalSeconds >= 5)
                 {
-                    _ = handler.Invoke(cameraId, stampedFrame);
+                    _lastSaturationLogUtc = now;
+                    _logger.LogCritical($"Raw frame channel near capacity: {depth}/{_numberOfBufferFramesInChannel}");
                 }
             }
         }
 
-        public void CloseChannel(Guid cameraId)
+        public void CloseProcessedFramesCameraChannel(Guid cameraId)
         {
-            try
+            if (_processedFramesCameraChannels.TryRemove(cameraId, out var channel))
             {
+                channel.Writer.TryComplete();
                 ChannelClosed?.Invoke(cameraId);
             }
-            finally
-            {
-                _cameraChannels.Remove(cameraId, out _);
-            }
         }
 
-        public Channel<byte[]> GetOrCreateChannel(Guid cameraId)
+        public Channel<byte[]> GetOrCreateProcessedFramesCameraChannel(Guid cameraId)
         {
-            if (!_cameraChannels.ContainsKey(cameraId))
+            if (_processedFramesCameraChannels.TryGetValue(cameraId, out var existing))
+                return existing;
+
+            var newChannel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(_numberOfBufferFramesInChannel)
             {
-                _cameraChannels.TryAdd(
-                    cameraId,
-                    Channel.CreateBounded<byte[]>(new BoundedChannelOptions(_numberOfBufferFramesInChannel)
-                    {
-                        FullMode = BoundedChannelFullMode.DropOldest
-                    }));
-
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+                SingleWriter = false,
+            });
+            if (_processedFramesCameraChannels.TryAdd(cameraId, newChannel))
+            {
                 ChannelOpened?.Invoke(cameraId);
+                return newChannel;
             }
-
-            return _cameraChannels[cameraId];
+            return _processedFramesCameraChannels[cameraId];
         }
 
-        private byte[] StampFrame(byte[] frame)
+        public byte[] StampFrame(byte[] frame)
         {
             using var image = Image.Load(frame);
 
@@ -108,6 +132,26 @@ namespace CamPortal.Core.Services
                 Quality = 95,
             });
             return ms.ToArray();
+        }
+
+        public void PublishProcessedFrame(Guid cameraId, byte[] frame)
+        {
+            var channel = GetOrCreateProcessedFramesCameraChannel(cameraId);
+            channel.Writer.TryWrite(frame);
+
+            var handlers = FrameProcessed;
+            if (handlers != null)
+            {
+                foreach (Func<Guid, byte[], Task> handler in handlers.GetInvocationList())
+                {
+                    var localHandler = handler;
+                    _ = Task.Run(async () =>
+                    {
+                        try { await localHandler(cameraId, frame); }
+                        catch (Exception ex) { _logger.LogError(ex, $"Frame handler failed for {cameraId}"); }
+                    });
+                }
+            }
         }
     }
 }

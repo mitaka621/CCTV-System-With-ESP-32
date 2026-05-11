@@ -22,9 +22,11 @@ namespace CamPortal.Extensions
 
             services.AddSingleton<IScanCoordinatorService, ScanCoordinatorService>();
             services.AddSingleton<ICameraFramesManagerService, CameraFramesManagerService>();
+            services.AddSingleton<IActiveCameraConnections, ActiveCameraConnections>();
 
             services.AddHostedService<FramesReceiverTcpService>();
             services.AddHostedService<VideoEncoderService>();
+            services.AddHostedService<RawFrameProcessorService>();
 
             return services;
         }

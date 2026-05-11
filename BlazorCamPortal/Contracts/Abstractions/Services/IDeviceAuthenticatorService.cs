@@ -10,6 +10,6 @@
 
         string GenerateSessionToken(int keySizeInBits = 256);
 
-        byte[] DecryptAesGcm(byte[] ciphertext, byte[] key, byte[] iv, byte[] tag);
+        byte[] DecryptAesGcm(Span<byte> ciphertext, Span<byte> key, Span<byte> iv, Span<byte> tag);
     }
 }

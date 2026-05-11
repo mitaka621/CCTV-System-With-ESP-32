@@ -15,6 +15,7 @@ namespace CamPortal.Core.Services
         private readonly IMapper _mapper;
         private readonly IDeviceAuthenticatorService _deviceAuthenticatorService;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
+        private readonly IActiveCameraConnections _activeCameraConnections;
 
         private readonly int _sessionTokenDurationInMinutes;
 
@@ -23,12 +24,14 @@ namespace CamPortal.Core.Services
             IMapper mapper,
             IDeviceAuthenticatorService deviceAuthenticatorService,
             IConfiguration configuration,
-            ICameraFramesManagerService cameraFramesManagerService)
+            ICameraFramesManagerService cameraFramesManagerService,
+            IActiveCameraConnections activeCameraConnections)
         {
             _cameraRepository = cameraRepository;
             _mapper = mapper;
             _deviceAuthenticatorService = deviceAuthenticatorService;
             _cameraFramesManagerService = cameraFramesManagerService;
+            _activeCameraConnections = activeCameraConnections;
 
             _sessionTokenDurationInMinutes = int.Parse(configuration
                 .GetSection("ESPCamera")["SessionTokenDurationInMinutes"]
@@ -112,18 +115,16 @@ namespace CamPortal.Core.Services
             return null;
         }
 
-        public async Task<(byte[]? token, bool isExpired)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac)
+        public async Task<(byte[]? token, DateTime expires)> GetSessionTokenAsByteArrayAsync(string ipv4, string mac)
         {
             var dto = await _cameraRepository.GetSessionTokenAsync(ipv4, mac);
 
-            bool isSessionTokenExpired = dto != null && dto.SessionTokenExpirationDate < DateTime.Now;
-
             if (dto == null || dto.SessionToken == null || dto.SessionTokenExpirationDate == null)
             {
-                return (null, false);
+                return (null, default);
             }
 
-            return (Convert.FromBase64String(dto.SessionToken), isSessionTokenExpired);
+            return (Convert.FromBase64String(dto.SessionToken), dto.SessionTokenExpirationDate.Value);
         }
 
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync()
@@ -159,7 +160,7 @@ namespace CamPortal.Core.Services
             return cameras;
         }
 
-        public async Task ChangeCameraStatusAsync(Guid cameraId, PairStatus newStatus)
+        public async Task ChangeStatusAndInvalidateCameraAsync(Guid cameraId, PairStatus newStatus)
         {
             var result = await _cameraRepository.SetCameraStatusAsync(cameraId, newStatus);
 
@@ -167,10 +168,11 @@ namespace CamPortal.Core.Services
             {
                 throw new InvalidOperationException($"Failed to change status for camera with ID {cameraId}");
             }
-            else if (newStatus == PairStatus.Forgotten)
-            {
-                _cameraFramesManagerService.CloseChannel(cameraId);
-            }
+
+            //we have to disconnect the camera in order to update the status accross services
+            //and avoid the case where the camera is still considered paired in some services but not in others,
+            //which can cause issues with the camera connection and pairing process
+            InvalidateCamera(cameraId);
         }
 
         public async Task<Guid> GetCameraIdAsync(string ipv4, string mac)
@@ -198,6 +200,13 @@ namespace CamPortal.Core.Services
         {
             var result = await _cameraRepository.GetTotalCamerasAsync(status);
             return result;
+        }
+
+        private void InvalidateCamera(Guid cameraId)
+        {
+            _cameraFramesManagerService.CloseProcessedFramesCameraChannel(cameraId);
+
+            _activeCameraConnections.TryDisconnect(cameraId);
         }
     }
 }

@@ -1,13 +1,12 @@
-﻿using System.Collections.Concurrent;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 
 namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface ICameraFramesManagerService
     {
-        ConcurrentDictionary<Guid, Channel<byte[]>> GetCameraChannels { get; }
+        ChannelReader<(Guid, byte[])> RawFramesChannelReader { get; }
 
-        public event Func<Guid, byte[], Task>? FrameAdded;
+        public event Func<Guid, byte[], Task>? FrameProcessed;
 
         public event Action<Guid>? ChannelOpened;
 
@@ -15,10 +14,14 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         void AddFrame(Guid cameraId, byte[] frame);
 
-        void CloseChannel(Guid cameraId);
+        void CloseProcessedFramesCameraChannel(Guid cameraId);
 
         Task InitializeAsync(ICameraService _cameraService);
 
-        Channel<byte[]> GetOrCreateChannel(Guid cameraId);
+        byte[] StampFrame(byte[] frame);
+
+        Channel<byte[]> GetOrCreateProcessedFramesCameraChannel(Guid cameraId);
+
+        void PublishProcessedFrame(Guid cameraId, byte[] frame);
     }
 }

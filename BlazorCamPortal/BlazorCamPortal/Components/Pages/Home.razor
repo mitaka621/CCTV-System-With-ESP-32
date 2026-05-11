@@ -107,7 +107,7 @@ else
                 await OnFrameAdded(camera.Id, VideoChunkUtilities.GetDefaultFrame(_configuration));
             }
 
-            _cameraFramesManagerService.FrameAdded += OnFrameAdded;
+            _cameraFramesManagerService.FrameProcessed += OnFrameAdded;
         }
     }
 
@@ -157,7 +157,7 @@ else
 
     public void Dispose()
     {
-        _cameraFramesManagerService.FrameAdded -= OnFrameAdded;
+        _cameraFramesManagerService.FrameProcessed -= OnFrameAdded;
     }
 
     private string GetCameraDisplayName(CameraDisplayModel camera)
