@@ -51,6 +51,9 @@ size_t aesKeyLen = 0;
 
 uint8_t *encryptionBuffer = nullptr;
 
+uint32_t lastEncryptUs = 0;
+uint32_t lastSendUs = 0;
+
 void parseHostAndPath(String &host, String &path, String baseServerUrl, String url)
 {
   int idx = baseServerUrl.indexOf("://");
@@ -551,10 +554,12 @@ bool sendFrameToServer(camera_fb_t *fb, WiFiClient &client)
 
   uint8_t tag[16];
 
+  uint32_t encryptStartUs = micros();
   if (!encryptAESGCM(fb->buf, fb->len, encryptionBuffer, iv, tag, aesKey))
   {
     return false;
   }
+  lastEncryptUs = (uint32_t)(micros() - encryptStartUs);
 
   uint32_t totalLen = 6 + sizeof(iv) + sizeof(tag) + fb->len;
   uint8_t header[4 + sizeof(mac) + sizeof(iv) + sizeof(tag)];
@@ -566,11 +571,13 @@ bool sendFrameToServer(camera_fb_t *fb, WiFiClient &client)
   memcpy(header + 4 + sizeof(mac), iv, sizeof(iv));
   memcpy(header + 4 + sizeof(mac) + sizeof(iv), tag, sizeof(tag));
 
+  uint32_t sendStartUs = micros();
   if (client.write(header, sizeof(header)) != sizeof(header))
     return false;
 
   if (client.write(encryptionBuffer, fb->len) != fb->len)
     return false;
+  lastSendUs = (uint32_t)(micros() - sendStartUs);
 
   return true;
 }
@@ -704,6 +711,18 @@ int failedAttemptsToConnectToserver = 0;
 int failedAttemptsToPairWithServer = 0;
 int failedFramesToSendCounter = 0;
 
+unsigned long statsLastReportMs = 0;
+unsigned long statsLastFrameMs = 0;
+uint32_t statsFrameCount = 0;
+uint32_t statsMinFrameMs = UINT32_MAX;
+uint32_t statsMaxFrameMs = 0;
+uint64_t statsTotalFrameMs = 0;
+uint64_t statsTotalBytes = 0;
+uint64_t statsTotalEncryptUs = 0;
+uint32_t statsMaxEncryptUs = 0;
+uint64_t statsTotalSendUs = 0;
+uint32_t statsMaxSendUs = 0;
+
 // if we are in the main loop it means we are successfully paired to the server and have all its info including ip, port etc.
 void loop()
 {
@@ -809,6 +828,55 @@ void loop()
   else
   {
     DEBUG_PRINT(String(millis()) + " -> Frame sent");
+
+    unsigned long now = millis();
+    if (statsLastFrameMs > 0)
+    {
+      uint32_t deltaMs = (uint32_t)(now - statsLastFrameMs);
+      statsFrameCount++;
+      statsTotalFrameMs += deltaMs;
+      if (deltaMs < statsMinFrameMs)
+        statsMinFrameMs = deltaMs;
+      if (deltaMs > statsMaxFrameMs)
+        statsMaxFrameMs = deltaMs;
+    }
+    statsLastFrameMs = now;
+    statsTotalBytes += fb->len;
+    statsTotalEncryptUs += lastEncryptUs;
+    if (lastEncryptUs > statsMaxEncryptUs)
+      statsMaxEncryptUs = lastEncryptUs;
+    statsTotalSendUs += lastSendUs;
+    if (lastSendUs > statsMaxSendUs)
+      statsMaxSendUs = lastSendUs;
+
+    if (now - statsLastReportMs >= 5000)
+    {
+      if (statsFrameCount > 0)
+      {
+        DEBUG_PRINT("[stats] frames=" + String(statsFrameCount) +
+                    " w=" + String((uint32_t)fb->width) + "x" + String((uint32_t)fb->height) +
+                    " avg=" + String((uint32_t)(statsTotalFrameMs / statsFrameCount)) + "ms" +
+                    " min=" + String(statsMinFrameMs) + "ms" +
+                    " max=" + String(statsMaxFrameMs) + "ms" +
+                    " encAvg=" + String((uint32_t)(statsTotalEncryptUs / statsFrameCount / 1000)) + "ms" +
+                    " encMax=" + String((uint32_t)(statsMaxEncryptUs / 1000)) + "ms" +
+                    " sendAvg=" + String((uint32_t)(statsTotalSendUs / statsFrameCount / 1000)) + "ms" +
+                    " sendMax=" + String((uint32_t)(statsMaxSendUs / 1000)) + "ms" +
+                    " bytes=" + String((uint32_t)statsTotalBytes) +
+                    " heap=" + String((uint32_t)ESP.getFreeHeap()) +
+                    " psram=" + String((uint32_t)ESP.getFreePsram()));
+      }
+      statsLastReportMs = now;
+      statsFrameCount = 0;
+      statsMinFrameMs = UINT32_MAX;
+      statsMaxFrameMs = 0;
+      statsTotalFrameMs = 0;
+      statsTotalBytes = 0;
+      statsTotalEncryptUs = 0;
+      statsMaxEncryptUs = 0;
+      statsTotalSendUs = 0;
+      statsMaxSendUs = 0;
+    }
 
     failedFramesToSendCounter = 0;
   }
