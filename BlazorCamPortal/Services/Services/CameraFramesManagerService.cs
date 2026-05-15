@@ -14,9 +14,13 @@ namespace CamPortal.Core.Services
 {
     public class CameraFramesManagerService : ICameraFramesManagerService
     {
+        private const int _viewerChannelBufferSize = 4;
+
         private readonly int _numberOfBufferFramesInChannel;
         private readonly ILogger<ICameraFramesManagerService> _logger;
         private readonly ConcurrentDictionary<Guid, Channel<byte[]>> _processedFramesCameraChannels = new();
+        private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, ChannelWriter<byte[]>>> _viewerWritersByCamera = new();
+        private readonly ConcurrentDictionary<Guid, byte[]> _latestFrameByCamera = new();
         private readonly byte[] _defaultFrame;
         private readonly Font _stampFont = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
 
@@ -136,6 +140,16 @@ namespace CamPortal.Core.Services
             var channel = GetOrCreateProcessedFramesCameraChannel(cameraId);
             channel.Writer.TryWrite(frame);
 
+            _latestFrameByCamera[cameraId] = frame;
+
+            if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers))
+            {
+                foreach (var writer in viewers.Values)
+                {
+                    writer.TryWrite(frame);
+                }
+            }
+
             var handlers = FrameProcessed;
             if (handlers != null)
             {
@@ -148,6 +162,45 @@ namespace CamPortal.Core.Services
                         catch (Exception ex) { _logger.LogError(ex, $"Frame handler failed for {cameraId}"); }
                     });
                 }
+            }
+        }
+
+        public ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId)
+        {
+            var channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(_viewerChannelBufferSize)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+                SingleWriter = true,
+            });
+
+            var viewers = _viewerWritersByCamera.GetOrAdd(cameraId, _ => new ConcurrentDictionary<Guid, ChannelWriter<byte[]>>());
+
+            if (viewers.TryGetValue(viewerId, out var previousWriter))
+            {
+                previousWriter.TryComplete();
+            }
+
+            viewers[viewerId] = channel.Writer;
+
+            if (_latestFrameByCamera.TryGetValue(cameraId, out var lastFrame))
+            {
+                channel.Writer.TryWrite(lastFrame);
+            }
+            else
+            {
+                channel.Writer.TryWrite(_defaultFrame);
+            }
+
+            return channel.Reader;
+        }
+
+        public void UnsubscribeViewer(Guid cameraId, Guid viewerId)
+        {
+            if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers) &&
+                viewers.TryRemove(viewerId, out var writer))
+            {
+                writer.TryComplete();
             }
         }
     }

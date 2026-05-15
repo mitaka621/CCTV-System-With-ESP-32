@@ -2,6 +2,7 @@ using CamPortal.Components;
 using CamPortal.Extensions;
 using CamPortal.Infrastructure.Data;
 using CamPortal.MapperConfiguration;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,9 +33,13 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(7010, listenOptions =>
     {
+        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
         listenOptions.UseHttps("server.pfx", certificatePassword);
     });
-    options.ListenAnyIP(5120);
+    options.ListenAnyIP(5120, listenOptions =>
+    {
+        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
+    });
 });
 
 builder.Services.AddServices();

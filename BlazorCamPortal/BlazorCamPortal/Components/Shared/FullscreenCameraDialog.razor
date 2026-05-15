@@ -1,7 +1,6 @@
 @using MudBlazor
-@implements IDisposable
+@implements IAsyncDisposable
 @inject IJSRuntime JS
-@inject IConfiguration _configuration
 @inject IDialogService DialogService
 
 <MudDialog>
@@ -21,11 +20,11 @@
             </div>
             
             <div class="fullscreen-video-container">
-                <canvas id="fullscreen-@Camera.Id" 
-                        width="1920" 
-                        height="1080"
-                        class="fullscreen-canvas">
-                </canvas>
+                <img id="fullscreen-@Camera.Id"
+                     src="@GetStreamUrl()"
+                     alt="@GetCameraDisplayName()"
+                     class="fullscreen-stream"
+                     draggable="false" />
             </div>
             
 
@@ -40,38 +39,14 @@
     [Parameter] 
     public CameraDisplayModel Camera { get; set; } = default!;
 
-    [Parameter] 
-    public ICameraFramesManagerService CameraFramesManagerService { get; set; } = default!;
+    private bool _hasRenderedInteractively;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Force dialog to be fullscreen via JavaScript as backup
+            _hasRenderedInteractively = true;
             await JS.InvokeVoidAsync("forceDialogFullscreen");
-            
-            await OnFrameAdded(Camera.Id, VideoChunkUtilities.GetDefaultFrame(_configuration));
-            
-            CameraFramesManagerService.FrameProcessed += OnFrameAdded;
-        }
-    }
-
-    private async Task OnFrameAdded(Guid cameraId, byte[] frame)
-    {
-        if (cameraId != Camera.Id) return;
-
-        try
-        {
-            using var stream = new MemoryStream(frame);
-            using var streamRef = new DotNetStreamReference(stream);
-
-            await JS.InvokeVoidAsync("drawFrame", $"fullscreen-{cameraId}", streamRef);
-        }
-        catch (TaskCanceledException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
         }
     }
 
@@ -79,6 +54,8 @@
     {
         MudDialog?.Close();
     }
+
+    private string GetStreamUrl() => $"/api/cameras/{Camera.Id}/stream";
 
     private string GetCameraDisplayName()
     {
@@ -88,8 +65,17 @@
         return $"{Camera.Id}";
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        CameraFramesManagerService.FrameProcessed -= OnFrameAdded;
+        if (!_hasRenderedInteractively)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("stopCameraStreamById", $"fullscreen-{Camera.Id}");
+        }
+        catch (JSDisconnectedException) { }
+        catch (TaskCanceledException) { }
+        catch (InvalidOperationException) { }
     }
 }

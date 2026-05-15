@@ -1,12 +1,10 @@
 ﻿@page "/"
-@implements IDisposable
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 
 @inject ICameraService _cameraService
-@inject ICameraFramesManagerService _cameraFramesManagerService
-@inject IJSRuntime JS
-@inject IConfiguration _configuration
 @inject IDialogService _dialogService
+@inject IJSRuntime _js
 
 <PageTitle>Dashboard - BlazorCam Portal</PageTitle>
 
@@ -61,7 +59,11 @@ else
                     </MudCardHeader>
                     <MudCardContent Class="pa-0">
                         <div class="camera-container">
-                            <canvas id="@camera.Id" width="1280" height="720" class="camera-canvas"></canvas>
+                            <img id="@camera.Id"
+                                 src="@GetStreamUrl(camera.Id)"
+                                 alt="@GetCameraDisplayName(camera)"
+                                 class="camera-stream"
+                                 draggable="false" />
                             <div class="camera-overlay">
                                 <MudIconButton Icon="@Icons.Material.Filled.Fullscreen" 
                                              Color="Color.Primary" 
@@ -88,26 +90,18 @@ else
 @code {
     private List<CameraDisplayModel> cameras = new();
     private int connectedCameras = 0;
-    private Task _initialLoadTask = Task.CompletedTask;
+    private bool _hasRenderedInteractively;
 
     protected override async Task OnInitializedAsync()
     {
-        _initialLoadTask = LoadCamerasAsync();
-        await _initialLoadTask;
+        await LoadCamerasAsync();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
-        {   
-            await _initialLoadTask;
-
-            foreach (var camera in cameras)
-            {
-                await OnFrameAdded(camera.Id, VideoChunkUtilities.GetDefaultFrame(_configuration));
-            }
-
-            _cameraFramesManagerService.FrameProcessed += OnFrameAdded;
+        {
+            _hasRenderedInteractively = true;
         }
     }
 
@@ -115,34 +109,13 @@ else
     {
         cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.PairStatus.Paired);
         connectedCameras = cameras.Count;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task OnFrameAdded(Guid cameraId, byte[] frame)
-    {
-        try
-        {
-            using var stream = new MemoryStream(frame);
-            using var streamRef = new DotNetStreamReference(stream);
-
-            await JS.InvokeVoidAsync("drawFrame", cameraId.ToString(), streamRef);
-        }
-        catch (TaskCanceledException)
-        {
-            // No action needed, the task was canceled because the component is being disposed
-        }
-        catch (ObjectDisposedException)
-        {
-            // No action needed, the stream was disposed because the component is being disposed
-        }
     }
 
     private async Task OpenFullScreen(CameraDisplayModel camera)
     {
         var parameters = new DialogParameters
         {
-            ["Camera"] = camera,
-            ["CameraFramesManagerService"] = _cameraFramesManagerService
+            ["Camera"] = camera
         };
 
         var options = new DialogOptions()
@@ -157,10 +130,7 @@ else
         await _dialogService.ShowAsync<FullscreenCameraDialog>("", parameters, options);
     }
 
-    public void Dispose()
-    {
-        _cameraFramesManagerService.FrameProcessed -= OnFrameAdded;
-    }
+    private string GetStreamUrl(Guid cameraId) => $"/api/cameras/{cameraId}/stream";
 
     private string GetCameraDisplayName(CameraDisplayModel camera)
     {
@@ -168,5 +138,19 @@ else
             return camera.Name;
 
         return $"{camera.Id}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_hasRenderedInteractively)
+            return;
+
+        try
+        {
+            await _js.InvokeVoidAsync("stopCameraStreams", ".camera-stream");
+        }
+        catch (JSDisconnectedException) { }
+        catch (TaskCanceledException) { }
+        catch (InvalidOperationException) { }
     }
 }

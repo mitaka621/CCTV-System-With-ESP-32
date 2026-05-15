@@ -23,5 +23,9 @@ namespace CamPortal.Contracts.Abstractions.Services
         Channel<byte[]> GetOrCreateProcessedFramesCameraChannel(Guid cameraId);
 
         void PublishProcessedFrame(Guid cameraId, byte[] frame);
+
+        ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId);
+
+        void UnsubscribeViewer(Guid cameraId, Guid viewerId);
     }
 }
