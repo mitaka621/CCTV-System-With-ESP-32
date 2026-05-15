@@ -9,16 +9,12 @@ namespace CamPortal.Core.BackgroundServices
     {
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly ILogger<RawFrameProcessorService> _logger;
-        private readonly int _numberOfBufferFramesInChannel;
 
         public RawFrameProcessorService(
             ICameraFramesManagerService cameraFramesManagerService,
             ILogger<RawFrameProcessorService> logger,
             IConfiguration configuration)
         {
-            _numberOfBufferFramesInChannel = int.Parse(configuration.GetSection("TCPServerConfig")["NumberOfBufferRawFrames"]
-                ?? throw new InvalidOperationException("NumberOfBufferRawFrames configuration is missing"));
-
             _cameraFramesManagerService = cameraFramesManagerService;
             _logger = logger;
         }
@@ -30,11 +26,6 @@ namespace CamPortal.Core.BackgroundServices
                 try
                 {
                     var rawFramesReader = _cameraFramesManagerService.RawFramesChannelReader;
-
-                    if (rawFramesReader.Count >= _numberOfBufferFramesInChannel)
-                    {
-                        _logger.LogCritical("The number of raw frames sent for processing has reached the buffer limit. This will result in frame drops.");
-                    }
 
                     var (cameraId, frame) = await rawFramesReader.ReadAsync(stoppingToken);
 

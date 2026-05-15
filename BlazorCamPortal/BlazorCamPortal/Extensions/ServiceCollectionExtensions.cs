@@ -14,12 +14,12 @@ namespace CamPortal.Extensions
             services.AddMudServices();
 
             services.AddScoped<ICameraService, CameraService>();
-            services.AddScoped<IDeviceAuthenticatorService, DeviceAuthenticatorService>();
             services.AddScoped<IDevicePairHttpService, DevicePairHttpService>();
             services.AddScoped<HttpClient>();
             services.AddScoped<IVideoReplayService, VideoReplayService>();
             services.AddScoped<IVideoChunkRepository, VideoChunkRepository>();
 
+            services.AddSingleton<IDeviceAuthenticatorService, DeviceAuthenticatorService>();
             services.AddSingleton<IScanCoordinatorService, ScanCoordinatorService>();
             services.AddSingleton<ICameraFramesManagerService, CameraFramesManagerService>();
             services.AddSingleton<IActiveCameraConnections, ActiveCameraConnections>();

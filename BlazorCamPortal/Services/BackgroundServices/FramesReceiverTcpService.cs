@@ -15,6 +15,7 @@ namespace CamPortal.Core.BackgroundServices
         private readonly IServiceProvider _serviceProvider;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly IActiveCameraConnections _activeCameraConnections;
+        private readonly IDeviceAuthenticatorService _deviceAuthenticatorService;
 
         private readonly int _port;
 
@@ -23,12 +24,14 @@ namespace CamPortal.Core.BackgroundServices
             IConfiguration configuration,
             IServiceProvider serviceProvider,
             ICameraFramesManagerService cameraFramesManagerService,
-            IActiveCameraConnections activeCameraConnections)
+            IActiveCameraConnections activeCameraConnections,
+            IDeviceAuthenticatorService deviceAuthenticatorService)
 
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _cameraFramesManagerService = cameraFramesManagerService;
+            _deviceAuthenticatorService = deviceAuthenticatorService;
             _activeCameraConnections = activeCameraConnections;
 
             _port = int.Parse(configuration.GetSection("TCPServerConfig")["Port"] ?? throw new ArgumentNullException("TCP server port not configured"));
@@ -117,7 +120,7 @@ namespace CamPortal.Core.BackgroundServices
                     int totalRead = 0;
                     while (totalRead < totalLen)
                     {
-                        int read = await stream.ReadAsync(frameData, totalRead, totalLen - totalRead, ct);
+                        int read = await stream.ReadAsync(frameData, totalRead, totalLen - totalRead, timeoutCts.Token);
                         if (read == 0) break;
                         totalRead += read;
                     }
@@ -130,10 +133,8 @@ namespace CamPortal.Core.BackgroundServices
 
                     var mac = BitConverter.ToString(frameData.AsSpan(0, 6).ToArray()).Replace("-", ":");
 
-
                     using var frameScope = _serviceProvider.CreateScope();
                     var cameraService = frameScope.ServiceProvider.GetRequiredService<ICameraService>();
-                    var deviceAuthenticatorService = frameScope.ServiceProvider.GetRequiredService<IDeviceAuthenticatorService>();
 
                     if (!sessionInitialized)
                     {
@@ -166,7 +167,7 @@ namespace CamPortal.Core.BackgroundServices
                     var tag = frameData.AsSpan(18, 16);
                     var ciphertext = frameData.AsSpan(34);
 
-                    var frameBuffer = deviceAuthenticatorService.DecryptAesGcm(ciphertext, key, iv, tag);
+                    var frameBuffer = _deviceAuthenticatorService.DecryptAesGcm(ciphertext, key, iv, tag);
 
                     _cameraFramesManagerService.AddFrame(cameraId, frameBuffer);
                 }
@@ -182,6 +183,7 @@ namespace CamPortal.Core.BackgroundServices
                 if (cameraId != default)
                 {
                     _activeCameraConnections.Unregister(cameraId);
+                    _cameraFramesManagerService.CloseProcessedFramesCameraChannel(cameraId);
                 }
 
                 client.Close();

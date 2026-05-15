@@ -18,8 +18,9 @@ namespace CamPortal.Core.Services
         private readonly ILogger<ICameraFramesManagerService> _logger;
         private readonly ConcurrentDictionary<Guid, Channel<byte[]>> _processedFramesCameraChannels = new();
         private readonly byte[] _defaultFrame;
-        private Channel<(Guid, byte[])> _rawFramesChannel;
+        private readonly Font _stampFont = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
 
+        private readonly Channel<(Guid, byte[])> _rawFramesChannel;
         private int _highWaterMark = 0;
         private DateTime _lastSaturationLogUtc = default;
 
@@ -29,7 +30,7 @@ namespace CamPortal.Core.Services
 
         public ChannelReader<(Guid, byte[])> RawFramesChannelReader => _rawFramesChannel.Reader;
 
-        public CameraFramesManagerService(IConfiguration configuration, IServiceProvider serviceProvider, ILogger<ICameraFramesManagerService> logger)
+        public CameraFramesManagerService(IConfiguration configuration, ILogger<ICameraFramesManagerService> logger)
         {
             _numberOfBufferFramesInChannel = int.Parse(configuration.GetSection("TCPServerConfig")["NumberOfBufferRawFrames"]
                 ?? throw new InvalidOperationException("NumberOfBufferRawFrames configuration is missing"));
@@ -38,17 +39,15 @@ namespace CamPortal.Core.Services
                 new BoundedChannelOptions(_numberOfBufferFramesInChannel)
                 {
                     FullMode = BoundedChannelFullMode.DropOldest,
-                    SingleReader = true,
-                    SingleWriter = false
                 });
 
             _defaultFrame = VideoChunkUtilities.GetDefaultFrame(configuration);
             _logger = logger;
         }
 
-        public async Task InitializeAsync(ICameraService _cameraService)
+        public async Task InitializeAsync(ICameraService cameraService)
         {
-            var cameras = await _cameraService.GetAllCamerasAsync(PairStatus.Paired);
+            var cameras = await cameraService.GetAllCamerasAsync(PairStatus.Paired);
 
             cameras.ForEach(camera =>
             {
@@ -121,9 +120,7 @@ namespace CamPortal.Core.Services
 
             string text = $"<{DateTime.Now:yyyy-MM-dd HH:mm:ss}>";
 
-            var font = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
-
-            image.Mutate(ctx => ctx.DrawText(text, font, Color.White, new PointF(image.Width - 320, image.Height - 50)));
+            image.Mutate(ctx => ctx.DrawText(text, _stampFont, Color.White, new PointF(image.Width - 320, image.Height - 50)));
 
             using var ms = new MemoryStream();
 

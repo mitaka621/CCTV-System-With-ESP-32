@@ -129,9 +129,11 @@ else
         }
         catch (TaskCanceledException)
         {
+            // No action needed, the task was canceled because the component is being disposed
         }
         catch (ObjectDisposedException)
         {
+            // No action needed, the stream was disposed because the component is being disposed
         }
     }
 
