@@ -33,20 +33,23 @@ string caCert = "ca.crt";
 string serverKey = "server.key";
 string serverCsr = "server.csr";
 string serverCert = "server.crt";
+string serverExt = "server.ext";
 string pfxFile = "server.pfx";
 
 string password = GenerateRandomPassword(16);
 
+WriteServerExtensionsFile(serverExt, localIP);
+
 Console.WriteLine("Generating CA key and certificate...");
 RunOpenSsl($"genrsa -out {caKey} 2048");
-RunOpenSsl($"req -new -x509 -days 365 -key {caKey} -out {caCert} -subj \"/CN=MyLocalCA\"");
+RunOpenSsl($"req -new -x509 -sha256 -days 3650 -key {caKey} -out {caCert} -subj \"/CN=MyLocalCA\"");
 
 Console.WriteLine("Generating server key and CSR...");
 RunOpenSsl($"genrsa -out {serverKey} 2048");
-RunOpenSsl($"req -new -key {serverKey} -out {serverCsr} -subj \"/CN={localIP}\"");
+RunOpenSsl($"req -new -sha256 -key {serverKey} -out {serverCsr} -subj \"/CN=localhost\"");
 
 Console.WriteLine("Signing server certificate with CA...");
-RunOpenSsl($"x509 -req -in {serverCsr} -CA {caCert} -CAkey {caKey} -CAcreateserial -out {serverCert} -days 365");
+RunOpenSsl($"x509 -req -sha256 -in {serverCsr} -CA {caCert} -CAkey {caKey} -CAcreateserial -out {serverCert} -days 825 -extfile {serverExt}");
 
 Console.WriteLine("Exporting server certificate and key to PFX...");
 RunOpenSsl($"pkcs12 -export -out {pfxFile} -inkey {serverKey} -in {serverCert} -certfile {caCert} -password pass:{password}");
@@ -143,6 +146,24 @@ void RunOpenSsl(string arguments)
 
     if (process.ExitCode != 0)
         throw new Exception($"OpenSSL command failed: {arguments}");
+}
+
+void WriteServerExtensionsFile(string path, string localIp)
+{
+    var contents =
+        "basicConstraints=CA:FALSE\n" +
+        "keyUsage=digitalSignature,keyEncipherment\n" +
+        "extendedKeyUsage=serverAuth\n" +
+        "subjectAltName=@alt_names\n" +
+        "\n" +
+        "[alt_names]\n" +
+        "DNS.1=localhost\n" +
+        $"DNS.2={localIp}\n" +
+        "IP.1=127.0.0.1\n" +
+        "IP.2=::1\n" +
+        $"IP.3={localIp}\n";
+
+    File.WriteAllText(path, contents);
 }
 
 string GenerateRandomPassword(int length)
