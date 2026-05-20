@@ -1,5 +1,4 @@
 ﻿using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,7 +40,7 @@ namespace CamPortal.Core.BackgroundServices
         {
             var listener = new TcpListener(IPAddress.Any, _port);
             listener.Start();
-            _logger.LogInformation($"TCP server started on port {_port}");
+            _logger.LogInformation("TCP server started on port {Port}", _port);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -68,23 +67,23 @@ namespace CamPortal.Core.BackgroundServices
         private async Task HandleClientFramesAsync(TcpClient client, CancellationToken ct)
         {
             var remote = client.Client.RemoteEndPoint;
-            _logger.LogInformation($"Client connected: {remote}");
+            _logger.LogInformation("Client connected: {RemoteEndpoint}", remote);
 
             var remoteEndPoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remoteIp = remoteEndPoint?.Address.MapToIPv4().ToString();
 
             using (var cameraServiceScope = _serviceProvider.CreateScope())
             {
-                var cameraService = cameraServiceScope.ServiceProvider.GetRequiredService<ICameraService>();
+                var cameraService = cameraServiceScope.ServiceProvider.GetRequiredService<IDeviceService>();
 
-                if (!await cameraService.DoesCameraExistWithStatusAsync(remoteIp ?? string.Empty, PairStatus.Paired))
-                {
-                    _logger.LogError($"Unauthorized connection: {remote}");
+                //if (!await cameraService.DoesCameraExistWithStatusAsync(remoteIp ?? string.Empty, DevicePairStatus.Paired))
+                //{
+                //    _logger.LogError("Unauthorized connection: {RemoteEndpoint}", remote);
 
-                    client.Close();
+                //    client.Close();
 
-                    return;
-                }
+                //    return;
+                //}
             }
 
             Guid cameraId = default;
@@ -112,7 +111,7 @@ namespace CamPortal.Core.BackgroundServices
                     int totalLen = (sizeBuf[0] << 24) | (sizeBuf[1] << 16) | (sizeBuf[2] << 8) | sizeBuf[3];
                     if (totalLen <= 0 || totalLen > 10_000_000)
                     {
-                        _logger.LogWarning($"Invalid frame length: {totalLen}");
+                        _logger.LogWarning("Invalid frame length: {Length}", totalLen);
                         break;
                     }
 
@@ -134,13 +133,13 @@ namespace CamPortal.Core.BackgroundServices
                     var mac = BitConverter.ToString(frameData.AsSpan(0, 6).ToArray()).Replace("-", ":");
 
                     using var frameScope = _serviceProvider.CreateScope();
-                    var cameraService = frameScope.ServiceProvider.GetRequiredService<ICameraService>();
+                    var cameraService = frameScope.ServiceProvider.GetRequiredService<IDeviceService>();
 
                     if (!sessionInitialized)
                     {
-                        (key, expiresOn) = await cameraService.GetSessionTokenAsByteArrayAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
+                        //(key, expiresOn) = await cameraService.GetSessionTokenAsByteArrayAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
 
-                        cameraId = await cameraService.GetCameraIdAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
+                        //cameraId = await cameraService.GetCameraIdAsync(remoteIp ?? string.Empty, mac ?? string.Empty);
 
                         ct = _activeCameraConnections.Register(cameraId, ct);
 
@@ -149,16 +148,16 @@ namespace CamPortal.Core.BackgroundServices
 
                     if (key == null || key.Length != 32)
                     {
-                        _logger.LogWarning($"Invalid session key for {remote}.");
+                        _logger.LogWarning("Invalid session key for {RemoteEndpoint}", remote);
 
                         break;
                     }
 
-                    if (expiresOn < DateTime.Now)
+                    if (expiresOn < DateTime.UtcNow)
                     {
-                        _logger.LogWarning($"Session expired for {remote}.");
+                        _logger.LogWarning("Session expired for {RemoteEndpoint}", remote);
 
-                        await cameraService.UpdateCameraStatusAsync(mac ?? string.Empty, PairStatus.SessionTokenExpired);
+                        //await cameraService.UpdateCameraStatusAsync(mac ?? string.Empty, DevicePairStatus.SessionTokenExpired);
 
                         break;
                     }
@@ -172,11 +171,11 @@ namespace CamPortal.Core.BackgroundServices
                     _cameraFramesManagerService.AddFrame(cameraId, frameBuffer);
                 }
 
-                _logger.LogWarning($"Client disconnected {remote}");
+                _logger.LogWarning("Client disconnected {RemoteEndpoint}", remote);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error handling client {remote}");
+                _logger.LogError(ex, "Error handling client {RemoteEndpoint}", remote);
             }
             finally
             {
@@ -187,7 +186,7 @@ namespace CamPortal.Core.BackgroundServices
                 }
 
                 client.Close();
-                _logger.LogInformation($"Client {remote} disconnected");
+                _logger.LogInformation("Client {RemoteEndpoint} disconnected", remote);
             }
         }
     }

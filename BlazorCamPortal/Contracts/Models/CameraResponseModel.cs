@@ -1,6 +1,6 @@
 ﻿namespace CamPortal.Contracts.Models
 {
-    public class CameraResponseModel : CreateCameraModel
+    public class CameraResponseModel : PreprovisionDeviceModel
     {
         public required string Hmac { get; set; }
 

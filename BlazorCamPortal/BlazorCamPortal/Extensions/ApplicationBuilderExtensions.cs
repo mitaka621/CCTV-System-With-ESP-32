@@ -25,7 +25,7 @@ namespace CamPortal.Extensions
 
             var service = scope.ServiceProvider.GetRequiredService<ICameraFramesManagerService>();
 
-            var cameraService = scope.ServiceProvider.GetRequiredService<ICameraService>();
+            var cameraService = scope.ServiceProvider.GetRequiredService<IDeviceService>();
 
             await service.InitializeAsync(cameraService);
 

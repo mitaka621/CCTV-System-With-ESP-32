@@ -1,4 +1,4 @@
-﻿using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
@@ -49,9 +49,9 @@ namespace CamPortal.Core.Services
             _logger = logger;
         }
 
-        public async Task InitializeAsync(ICameraService cameraService)
+        public async Task InitializeAsync(IDeviceService cameraService)
         {
-            var cameras = await cameraService.GetAllCamerasAsync(PairStatus.Paired);
+            var cameras = await cameraService.GetAllCamerasAsync(DevicePairStatus.Paired);
 
             cameras.ForEach(camera =>
             {
@@ -85,7 +85,10 @@ namespace CamPortal.Core.Services
                 if ((now - _lastSaturationLogUtc).TotalSeconds >= 5)
                 {
                     _lastSaturationLogUtc = now;
-                    _logger.LogCritical($"Raw frame channel near capacity: {depth}/{_numberOfBufferFramesInChannel}");
+                    _logger.LogCritical(
+                        "Raw frame channel near capacity: {Depth}/{Capacity}",
+                        depth,
+                        _numberOfBufferFramesInChannel);
                 }
             }
         }
@@ -122,7 +125,7 @@ namespace CamPortal.Core.Services
         {
             using var image = Image.Load(frame);
 
-            string text = $"<{DateTime.Now:yyyy-MM-dd HH:mm:ss}>";
+            string text = $"<{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}>";
 
             image.Mutate(ctx => ctx.DrawText(text, _stampFont, Color.White, new PointF(image.Width - 320, image.Height - 50)));
 
@@ -159,7 +162,7 @@ namespace CamPortal.Core.Services
                     _ = Task.Run(async () =>
                     {
                         try { await localHandler(cameraId, frame); }
-                        catch (Exception ex) { _logger.LogError(ex, $"Frame handler failed for {cameraId}"); }
+                        catch (Exception ex) { _logger.LogError(ex, "Frame handler failed for camera {CameraId}", cameraId); }
                     });
                 }
             }

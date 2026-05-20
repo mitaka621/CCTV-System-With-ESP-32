@@ -186,7 +186,10 @@ namespace CamPortal.Core.Services
             ffmpeg.WaitForExit();
 
             if (ffmpeg.ExitCode != 0)
-                _logger.LogError($"Failed to generate placeholder chunks. FFmpeg exited with code {ffmpeg.ExitCode}. Error: {stderr}");
+                _logger.LogError(
+                    "Failed to generate placeholder chunks. FFmpeg exited with code {ExitCode}. Error: {Error}",
+                    ffmpeg.ExitCode,
+                    stderr);
         }
 
         public async Task<(DateTime, DateTime)> GetMinAndMaxDateTimeOfAvailableVideoChunksAsync()

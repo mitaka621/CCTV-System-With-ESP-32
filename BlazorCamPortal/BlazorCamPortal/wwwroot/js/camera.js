@@ -1,4 +1,4 @@
-﻿window.stopCameraStreams = (selector) => {
+window.stopCameraStreams = (selector) => {
   const images = document.querySelectorAll(selector);
   images.forEach((img) => {
     img.removeAttribute("src");

@@ -14,7 +14,7 @@ namespace CamPortal.Core.BackgroundServices
     {
         private readonly ICameraFramesManagerService _framesManager;
         private readonly ILogger<VideoEncoderService> _logger;
-        private readonly ICameraService _cameraService;
+        private readonly IDeviceService _cameraService;
         private readonly IVideoReplayService _videoChunkService;
 
         private readonly byte[] _placeholderFrame;
@@ -36,7 +36,7 @@ namespace CamPortal.Core.BackgroundServices
 
             _cameraService = serviceProvider.CreateScope()
                 .ServiceProvider
-                .GetRequiredService<ICameraService>();
+                .GetRequiredService<IDeviceService>();
 
             _videoChunkService = serviceProvider.CreateScope()
                 .ServiceProvider
@@ -83,9 +83,9 @@ namespace CamPortal.Core.BackgroundServices
         private async Task EncodeCameraFramesAsync(Guid cameraId, CancellationToken stoppingToken)
         {
             var framesChannel = _framesManager.GetOrCreateProcessedFramesCameraChannel(cameraId);
-            DateTime segmentStartTime = DateTime.Now;
+            DateTime segmentStartTime = DateTime.UtcNow;
 
-            string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.Now.ToString("yyyy-MM-dd"));
+            string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.UtcNow.ToString("yyyy-MM-dd"));
             Directory.CreateDirectory(outputDir);
 
             string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
@@ -114,7 +114,7 @@ namespace CamPortal.Core.BackgroundServices
 
         private string RenameProducedChunkFromFFMPEG(string filename, DateTime dateCreated, string outputDir, Guid cameraId)
         {
-            var segmentEndTime = DateTime.Now;
+            var segmentEndTime = DateTime.UtcNow;
 
             string newFileName = Path.Combine(
                 outputDir,
@@ -126,11 +126,14 @@ namespace CamPortal.Core.BackgroundServices
                 if (File.Exists(newFileName)) File.Delete(newFileName);
 
                 File.Move(filename, newFileName);
-                _logger.LogInformation($"Renamed: {filename} -> {newFileName}");
+                _logger.LogInformation(
+                    "Renamed video chunk {OldFileName} -> {NewFileName}",
+                    filename,
+                    newFileName);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed to rename {filename}: {ex.Message}");
+                _logger.LogError(ex, "Failed to rename {FileName}", filename);
             }
 
             return newFileName;
@@ -162,7 +165,7 @@ namespace CamPortal.Core.BackgroundServices
                             {
                                 CameraId = cameraId,
                                 ChunkStartTime = lastFileStartTime.Value,
-                                ChunkEndTime = DateTime.Now,
+                                ChunkEndTime = DateTime.UtcNow,
                                 FileName = fileName,
                                 SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                             };
@@ -171,7 +174,7 @@ namespace CamPortal.Core.BackgroundServices
                         }
 
                         lastFileName = currentFile;
-                        lastFileStartTime = DateTime.Now;
+                        lastFileStartTime = DateTime.UtcNow;
                     }
                 }
 
@@ -275,7 +278,9 @@ namespace CamPortal.Core.BackgroundServices
 
             _cameraEncodersCancelationSources.Remove(cameraId);
 
-            _logger.LogInformation($"Channel closed for camera {cameraId}. Cancelling video encoding task.");
+            _logger.LogInformation(
+                "Channel closed for camera {CameraId}. Cancelling video encoding task.",
+                cameraId);
         }
 
         private Process CreateNewFfmpegProccess(string filePath)

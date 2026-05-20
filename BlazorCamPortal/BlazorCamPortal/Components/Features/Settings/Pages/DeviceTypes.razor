@@ -1,0 +1,229 @@
+@page "/system/settings/deviceTypes"
+@rendermode InteractiveServer
+
+@using CamPortal.Components.Features.Settings.Dialogs
+
+@inject IDeviceTypeService _deviceTypeService
+@inject IDialogService _dialogService
+@inject ISnackbar _snackbar
+
+<PageTitle>Device Types - BlazorCam Portal</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mr-2" />
+            Device Types
+        </MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="ShowAddDialogAsync">
+            Add Device Type
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-8">
+            <MudProgressCircular Indeterminate="true" />
+        </MudStack>
+    }
+    else if (_deviceTypes.Count == 0)
+    {
+        <MudPaper Elevation="2" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Outlined.DevicesOther"
+                     Size="Size.Large"
+                     Color="Color.Secondary"
+                     Class="mb-4" />
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Device Types Yet</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                Use the button above to add your first device type.
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="device-types-scroll-area">
+            <Virtualize Items="_deviceTypeRows"
+                        Context="row"
+                        ItemSize="_rowHeightPx"
+                        OverscanCount="2">
+                <ItemContent>
+                    <MudGrid Class="mb-2" Spacing="3">
+                        @foreach (var deviceType in row)
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3" @key="deviceType.Id">
+                                <MudCard Elevation="6" Class="device-type-card">
+                                    <MudCardMedia Image="@deviceType.IconUrl"
+                                                  Height="140"
+                                                  Style="background-color: var(--mud-palette-surface); object-fit: contain;" />
+
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.h6" Class="mb-1">@deviceType.Name</MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="@GetCategoryColor(deviceType.DeviceVariant)"
+                                                 Icon="@GetCategoryIcon(deviceType.DeviceVariant)">
+                                            @deviceType.DeviceVariant
+                                        </MudChip>
+                                    </MudCardContent>
+
+                                    <MudCardActions Class="d-flex justify-end">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Color="Color.Default"
+                                                       Size="Size.Small"
+                                                       OnClick="() => EditDeviceTypeAsync(deviceType)" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Color="Color.Error"
+                                                       Size="Size.Small"
+                                                       OnClick="() => ShowDeleteDialogAsync(deviceType)" />
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </ItemContent>
+                <Placeholder>
+                    <MudGrid Class="mb-2" Spacing="3">
+                        @for (var i = 0; i < _rowChunkSize; i++)
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="@($"{_rowHeightPx - 24}px")" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </Placeholder>
+            </Virtualize>
+        </div>
+    }
+</MudContainer>
+
+<style>
+    .device-types-scroll-area {
+        height: calc(100vh - 220px);
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+</style>
+
+@code {
+    private const int _rowChunkSize = 4;
+    private const float _rowHeightPx = 320f;
+
+    private bool _isLoading = true;
+    private List<DeviceTypeDisplayModel> _deviceTypes = new();
+    private List<List<DeviceTypeDisplayModel>> _deviceTypeRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDeviceTypesAsync();
+    }
+
+    private async Task LoadDeviceTypesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _deviceTypes = await _deviceTypeService.GetAllDeviceTypesAsync();
+            RebuildRows();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void RebuildRows()
+    {
+        _deviceTypeRows = _deviceTypes
+            .Chunk(_rowChunkSize)
+            .Select(chunk => chunk.ToList())
+            .ToList();
+    }
+
+    private async Task ShowAddDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+        };
+
+        var dialog = await _dialogService.ShowAsync<AddDeviceTypeDialog>("Add Device Type", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is true)
+        {
+            await LoadDeviceTypesAsync();
+        }
+    }
+
+    private async Task ShowDeleteDialogAsync(DeviceTypeDisplayModel deviceType)
+    {
+        var result = await _dialogService.ShowMessageBox(
+            "Confirm Delete",
+            (MarkupString)$"Are you sure you want to delete <b>{deviceType.Name}</b>?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            await DeleteDeviceTypeAsync(deviceType);
+        }
+    }
+
+    private async Task DeleteDeviceTypeAsync(DeviceTypeDisplayModel deviceType)
+    {
+        try
+        {
+            var deleted = await _deviceTypeService.DeleteDeviceTypeAsync(deviceType.Id);
+            if (deleted)
+            {
+                _deviceTypes.RemoveAll(x => x.Id == deviceType.Id);
+                RebuildRows();
+                _snackbar.Add($"Device type '{deviceType.Name}' deleted.", Severity.Success);
+                StateHasChanged();
+            }
+            else
+            {
+                _snackbar.Add("Device type was not found.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Task EditDeviceTypeAsync(DeviceTypeDisplayModel deviceType)
+    {
+        _snackbar.Add("Editing device types is not implemented yet.", Severity.Info);
+        return Task.CompletedTask;
+    }
+
+    private Color GetCategoryColor(DeviceTypeCategories category)
+    {
+        return category switch
+        {
+            DeviceTypeCategories.Camera => Color.Primary,
+            DeviceTypeCategories.Sensor => Color.Info,
+            DeviceTypeCategories.Alarm => Color.Warning,
+            DeviceTypeCategories.BlindsOpener => Color.Secondary,
+            _ => Color.Default,
+        };
+    }
+
+    private string GetCategoryIcon(DeviceTypeCategories category)
+    {
+        return category switch
+        {
+            DeviceTypeCategories.Camera => Icons.Material.Filled.Videocam,
+            DeviceTypeCategories.Sensor => Icons.Material.Filled.Sensors,
+            DeviceTypeCategories.Alarm => Icons.Material.Filled.Notifications,
+            DeviceTypeCategories.BlindsOpener => Icons.Material.Filled.Blinds,
+            _ => Icons.Material.Filled.DeviceHub,
+        };
+    }
+}

@@ -1,0 +1,161 @@
+﻿@inject IDeviceTypeService _deviceTypeService
+
+<MudStack Spacing="3">
+    <MudStack Row="true" Spacing="6" Justify="Justify.Center">
+        <MudText Class="mt-1" Typo="Typo.h4">Select the Device Type</MudText>    
+        <MudSpacer />
+        <MudSpacer />
+        <MudSpacer />
+        <MudTextField @bind-Value="searchPhrase"
+                      Label="Search for device types"
+                      Variant="Variant.Filled"
+                      Clearable="true"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      AdornmentColor="Color.Primary"
+                      Immediate="true"
+                      DebounceInterval="200"
+                      OnDebounceIntervalElapsed="OnSearchAsync"/>
+    </MudStack>
+    <MudPaper Class="pa-4"
+              Outlined="true">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" />
+            <MudText>
+                If you are not seeing the device type that you want to add,
+                you can create a new device configuration from the settings.
+            </MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Settings"
+                       Color="Color.Secondary"
+                       Href="/system/settings/deviceTypes">
+                Go To Settings
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    <div class="device-type-picker-scroll">
+        <Virtualize Items="_deviceTypeRows"
+                    Context="row"
+                    ItemSize="220"
+                    OverscanCount="2">
+            <ItemContent>
+                <MudStack Row="true" Spacing="2" Class="mb-2">
+                @foreach (var deviceType in row)
+                {
+                    <MudPaper Class="pa-3" Elevation="6" Outlined="true" Width="400px">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Style="height:120px">
+                            <MudImage Src="@deviceType.IconUrl"
+                                        Alt="@deviceType.Name"
+                                        Height="120"
+                                        Width="120"
+                                        ObjectFit="ObjectFit.Cover" />
+                            <MudStack AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Style="height:100%">
+                                <MudText Style="max-width: 160px;">@deviceType.Name</MudText>
+                                <MudChip T="string"
+                                            Color="GetChipColor(deviceType.DeviceVariant)"
+                                            Variant="Variant.Outlined">
+                                    @deviceType.DeviceVariant
+                                </MudChip>
+
+                            </MudStack>
+                            <MudSpacer />
+                            <MudFab Color="@(model.DeviceTypeId == deviceType.Id ? Color.Success : Color.Primary)"
+                                    StartIcon="@Icons.Material.Filled.Check"
+                                    OnClick="() => SelectDeviceType(deviceType.Id, deviceType.DeviceVariant)" />
+                        </MudStack>
+                    </MudPaper>             
+                }
+                </MudStack>
+            </ItemContent>
+            <Placeholder>
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle"
+                             Height="220px"
+                             Class="ma-2" />
+            </Placeholder>
+        </Virtualize>
+    </div>
+</MudStack>
+
+@code {
+    private const int _itemsPerRow = 3;
+    [Parameter, EditorRequired]
+    public PreprovisionDeviceModel model { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback ModelChanged { get; set; }
+
+    public string searchPhrase { get; set; } = string.Empty;
+
+    private List<DeviceTypeDisplayModel> _deviceTypes = new();
+
+    private List<List<DeviceTypeDisplayModel>> _deviceTypeRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _deviceTypes = await _deviceTypeService.GetAllDeviceTypesAsync();
+        BuildRows();
+    }
+
+    private async Task OnSearchAsync(string value)
+    {
+        _deviceTypes = await _deviceTypeService.GetDevicesByNameAsync(value);
+
+        BuildRows();
+    }
+
+    private async Task SelectDeviceType(Guid deviceTypeId, DeviceTypeCategories variant)
+    {
+        if (model.DeviceTypeId!=deviceTypeId)
+        {
+            model.DeviceTypeId = deviceTypeId;
+            model.IsQRSupported = await _deviceTypeService.DoesDeviceSupportQRCodeHandshakeAsync(deviceTypeId);
+        }
+        else
+        {
+            model.DeviceTypeId = default;
+            model.IsQRSupported = false;
+        }    
+
+        await ModelChanged.InvokeAsync();
+    }
+
+    private Color GetChipColor(DeviceTypeCategories category)
+    {
+        if ((int)category%2==0)
+        {
+            return Color.Success;
+        }
+
+        if ((int)category % 3 == 0)
+        {
+            return Color.Error;
+        }
+
+        if ((int)category % 5 == 0)
+        {
+            return Color.Warning;
+        }
+
+        if ((int)category % 7 == 0)
+        {
+            return Color.Dark;
+        }
+
+        if ((int)category % 11 == 0)
+        {
+            return Color.Dark;
+        }
+
+        return Color.Primary;
+    }
+
+    private void BuildRows()
+    {
+        _deviceTypeRows = _deviceTypes
+            .Chunk(_itemsPerRow)
+            .Select(chunk => chunk.ToList())
+            .ToList();
+    }
+}

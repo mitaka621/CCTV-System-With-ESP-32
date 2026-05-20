@@ -1,0 +1,68 @@
+﻿@using CamPortal.Contracts.Dtos.LocalNetworkDtos
+
+<MudDataGrid T="LocalNetworkInfoDto" 
+             Items="@_localNetworkInfos"
+             Hideable="true"
+             SelectedItem="@model.LocalNetworkInfo">
+    <ToolBarContent>
+        <MudText Typo="Typo.h4">Select the local network interface to which the device will connect to. </MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString"
+                    Placeholder="Search"
+                    Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search"
+                    IconSize="Size.Medium"
+                    Class="mt-0"
+                    DebounceInterval="200"
+                      OnDebounceIntervalElapsed="SearchForNetwork" />
+    </ToolBarContent>
+    <Columns>
+        <TemplateColumn T="LocalNetworkInfoDto"
+                        Sortable="false"
+                        Filterable="false"
+                        HeaderStyle="width: 56px;">
+            <CellTemplate>
+                <MudCheckBox T="bool"
+                             Color="@(model.LocalNetworkInfo == context.Item?Color.Success:Color.Primary)"
+                             Value="@(model.LocalNetworkInfo == context.Item)"
+                             ValueChanged="@((bool _) => OnRowSelected(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.LocalIp" Title="Local Ip" Sortable="false" Filterable="false" />
+        <PropertyColumn Property="x => x.Gateway" Title="Gateway" />
+        <PropertyColumn Property="x => x.SubnetMask" Title="Subnet Mask" />
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="LocalNetworkInfoDto" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    private List<LocalNetworkInfoDto> _localNetworkInfos = new();
+    private string _searchString = string.Empty;
+
+    [Parameter, EditorRequired]
+    public PreprovisionDeviceModel model { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback ModelChanged { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _localNetworkInfos = NetworkUtilities.GetLocalNetworkInfo();
+    }
+
+    private async Task OnRowSelected(LocalNetworkInfoDto selected)
+    {
+        model.LocalNetworkInfo = model.LocalNetworkInfo == selected ? default : selected;
+        await ModelChanged.InvokeAsync();
+    }
+
+    private void SearchForNetwork(string input)
+    {
+        _localNetworkInfos = NetworkUtilities
+            .GetLocalNetworkInfo()
+            .Where(x => x.LocalIp.ToString().Contains(input) || (x.Gateway!=null && x.Gateway.ToString().Contains(input)) || x.SubnetMask.ToString().Contains(input))
+            .ToList();
+    }
+}

@@ -1,5 +1,5 @@
 ﻿@implements IDisposable
-@inject ICameraService _cameraService
+@inject IDeviceService _cameraService
 @inject IVideoReplayService _videoReplayService
 
 <MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
@@ -77,7 +77,7 @@
 
     private async Task RefreshActiveCameras()
     {
-        activeCameras = await _cameraService.GetTotalCamerasAsync(PairStatus.Paired);
+        activeCameras = await _cameraService.GetTotalCamerasAsync(DevicePairStatus.Paired);
         await InvokeAsync(StateHasChanged);
     }
 

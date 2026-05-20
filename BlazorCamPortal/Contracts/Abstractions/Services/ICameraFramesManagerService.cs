@@ -1,4 +1,4 @@
-﻿using System.Threading.Channels;
+using System.Threading.Channels;
 
 namespace CamPortal.Contracts.Abstractions.Services
 {
@@ -16,7 +16,7 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         void CloseProcessedFramesCameraChannel(Guid cameraId);
 
-        Task InitializeAsync(ICameraService _cameraService);
+        Task InitializeAsync(IDeviceService _cameraService);
 
         byte[] StampFrame(byte[] frame);
 

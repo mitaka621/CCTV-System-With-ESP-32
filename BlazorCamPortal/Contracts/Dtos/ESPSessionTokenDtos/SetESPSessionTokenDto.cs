@@ -12,6 +12,6 @@ namespace CamPortal.Contracts.Dtos.ESPSessionTokenDtos
 
         public DateTime ExpirationDate { get; set; }
 
-        public required PairStatus[] AllowedStatuses { get; set; }
+        public required DevicePairStatus[] AllowedStatuses { get; set; }
     }
 }

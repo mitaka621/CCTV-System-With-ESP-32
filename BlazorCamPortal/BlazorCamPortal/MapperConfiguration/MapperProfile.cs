@@ -1,5 +1,7 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CamPortal.Contracts.Dtos.CameraDtos;
+using CamPortal.Contracts.Dtos.DeviceTypeDtos;
+using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Contracts.Models;
 using CamPortal.Infrastructure.Data.Entities;
@@ -10,28 +12,44 @@ namespace CamPortal.MapperConfiguration
     {
         public MapperProfile()
         {
-            CreateMap<Camera, CameraDto>()
+            CreateMap<Device, DeviceDto>()
                 .ReverseMap();
 
-            CreateMap<Camera, CreateCameraDto>()
+            CreateMap<Device, CreateDeviceDto>()
                 .ReverseMap();
 
-            CreateMap<CameraDisplayModel, CameraDto>()
+            CreateMap<CameraDisplayModel, DeviceDto>()
                 .ReverseMap();
 
-            CreateMap<CameraResponseModel, CreateCameraDto>()
+            CreateMap<CameraResponseModel, CreateDeviceDto>()
                 .ReverseMap();
 
             CreateMap<VideoChunk, CreateVideoChunkDto>()
                 .ReverseMap();
 
-            CreateMap<NameAndIdWithStatusDto, Camera>()
+            CreateMap<NameAndIdWithStatusDto, Device>()
                 .ReverseMap();
 
             CreateMap<NameAndIdWithStatusDto, NameAndIdWithStatusModel>()
                 .ReverseMap();
 
             CreateMap<VideoChunkShortInfoDto, VideoChunk>()
+                .ReverseMap();
+
+            CreateMap<DeviceType, DeviceTypeDto>()
+                .ReverseMap();
+
+            CreateMap<DeviceType, CreateDeviceTypeDto>()
+                .ReverseMap();
+
+            CreateMap<DeviceTypeDto, DeviceTypeDisplayModel>()
+                .ForMember(dest => dest.IconUrl, opt => opt.Ignore())
+                .ReverseMap();
+
+            CreateMap<CreatePreprovisionAttemptDto, PreprovisionAttempt>()
+                .ReverseMap();
+
+            CreateMap<PreprovisionAttemptDto, PreprovisionAttempt>()
                 .ReverseMap();
         }
     }

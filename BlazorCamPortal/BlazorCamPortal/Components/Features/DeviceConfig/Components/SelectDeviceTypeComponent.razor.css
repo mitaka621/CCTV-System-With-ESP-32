@@ -1,0 +1,4 @@
+﻿.device-type-picker-scroll {
+    height: 33vh; /* up to 60vh, but shrinks for less content */
+    overflow-y: auto;
+}

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Infrastructure.Data;
@@ -36,17 +36,17 @@ namespace CamPortal.Infrastructure.Repositories
 
             var result = await db.VideoChunks
                 .AsNoTracking()
-                .Where(x => cameraId.Contains(x.CameraId))
+                .Where(x => cameraId.Contains(x.DeviceId))
                 .Where(x => x.ChunkStartTime < endDate && x.ChunkEndTime > startDate)
-                .GroupBy(x => x.CameraId)
+                .GroupBy(x => x.DeviceId)
                 .Select(g => new
                 {
-                    CameraId = g.Key,
+                    DeviceId = g.Key,
                     Chunks = g.OrderBy(c => c.ChunkStartTime)
                         .Select(c => _mapper.Map<VideoChunkShortInfoDto>(c))
                         .ToList()
                 })
-                .ToDictionaryAsync(g => g.CameraId, g => g.Chunks);
+                .ToDictionaryAsync(g => g.DeviceId, g => g.Chunks);
 
             return result;
         }

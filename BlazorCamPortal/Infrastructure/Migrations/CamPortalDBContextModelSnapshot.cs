@@ -22,7 +22,7 @@ namespace CamPortal.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Camera", b =>
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -31,13 +31,23 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Ipv4Address")
+                    b.Property<Guid>("DeviceTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Fingerprint")
                         .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Ipv4Address")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("MacAddress")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -47,6 +57,11 @@ namespace CamPortal.Infrastructure.Migrations
 
                     b.Property<int>("PairStatus")
                         .HasColumnType("int");
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("SessionToken")
                         .HasMaxLength(2000)
@@ -60,9 +75,85 @@ namespace CamPortal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Ipv4Address");
+                    b.HasIndex("DeviceTypeId");
 
-                    b.ToTable("Cameras");
+                    b.HasIndex("PairStatus");
+
+                    b.ToTable("Devices");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.DeviceType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DeviceVariant")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IconName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("IconUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DeviceTypes");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.PreprovisionAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClaimedFromIpv4")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExpectedNetworkIpv4")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ExpectedSubnetMask")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PreprovisionStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RemainingAttempts")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "PreprovisionStatus");
+
+                    b.ToTable("PreprovisionAttempts");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
@@ -71,14 +162,14 @@ namespace CamPortal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("CameraId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("ChunkEndTime")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("ChunkStartTime")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -90,20 +181,47 @@ namespace CamPortal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CameraId");
+                    b.HasIndex("DeviceId");
 
                     b.ToTable("VideoChunks");
                 });
 
-            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
                 {
-                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Camera", "Camera")
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.DeviceType", "DeviceType")
                         .WithMany()
-                        .HasForeignKey("CameraId")
+                        .HasForeignKey("DeviceTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Camera");
+                    b.Navigation("DeviceType");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.PreprovisionAttempt", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Device")
+                        .WithMany("PreprovisionAttempts")
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
+                {
+                    b.Navigation("PreprovisionAttempts");
                 });
 #pragma warning restore 612, 618
         }

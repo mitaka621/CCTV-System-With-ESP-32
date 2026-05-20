@@ -1,0 +1,149 @@
+﻿@using CamPortal.Components.Features.DeviceConfig.Components
+@inject IDeviceTypeService _deviceTypeService
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Align="Align.Center" Typo="Typo.h4">Add Device</MudText>
+        <MudTimeline 
+            TimelineOrientation="TimelineOrientation.Horizontal" 
+            TimelinePosition="TimelinePosition.Top"
+            Class="mb-13">
+            <MudTimelineItem Color="GetActiveColor(0)" Variant="Variant.Outlined" Size="Size.Medium">
+                <ItemContent>
+                    <MudAlert Severity="GetActiveSeverity(0)">Select the device type</MudAlert>
+                </ItemContent>
+                <ItemDot>
+                    <MudText>1</MudText>
+                </ItemDot>
+            </MudTimelineItem>
+            <MudTimelineItem Color="GetActiveColor(1)" Variant="Variant.Outlined" Size="Size.Medium">
+                <ItemContent>
+                    <MudAlert Severity="GetActiveSeverity(1)">Select your server's network adapter</MudAlert>
+                </ItemContent>
+                <ItemDot>
+                    <MudText>2</MudText>
+                </ItemDot>
+            </MudTimelineItem>
+            <MudTimelineItem Color="GetActiveColor(2)" Variant="Variant.Outlined" Size="Size.Medium">
+                <ItemContent>
+                    <MudAlert Severity="GetActiveSeverity(2)">Enter your WIFI credentials</MudAlert>
+                </ItemContent>
+                <ItemDot>
+                    <MudText>3</MudText>
+                </ItemDot>
+            </MudTimelineItem>
+            <MudTimelineItem Color="GetActiveColor(3)" Variant="Variant.Outlined" Size="Size.Medium">
+                <ItemContent>
+                    <MudAlert Severity="GetActiveSeverity(3)">Upload the credentials to the device</MudAlert>
+                </ItemContent>
+                <ItemDot>
+                    <MudText>4</MudText>
+                </ItemDot>
+            </MudTimelineItem>
+            <MudTimelineItem Color="GetActiveColor(4)" Variant="Variant.Outlined" Size="Size.Medium">
+                <ItemContent>
+                    <MudAlert Severity="GetActiveSeverity(4)">Wait for handshake and save the device.</MudAlert>
+                </ItemContent>
+                <ItemDot>
+                    <MudText>5</MudText>
+                </ItemDot>
+            </MudTimelineItem>
+        </MudTimeline>
+        @switch (currentStep)
+        {
+            case 0:
+                <SelectDeviceTypeComponent model="model" ModelChanged="StateHasChanged" />
+                break;
+            case 1:
+                <SelectNetworkComponent model="model" ModelChanged="StateHasChanged" />
+                break;
+            case 2:
+                <EnterWifiCredentials model="model" ModelChanged="StateHasChanged" />
+                break;
+            case 3:
+                <UploadCredentialsComponent model="model" ModelChanged="StateHasChanged"></UploadCredentialsComponent>
+                break;
+            default: break;
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep == 3)">Cancel</MudButton>
+        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@(currentStep == 0 || currentStep == 3)">Back</MudButton>
+        <MudButton OnClick="Next" Color="Color.Success" Disabled="!IsCurrentStepCompleted()">Next</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private int currentStep = 0;
+    private const int maxStep = 4;
+
+    public PreprovisionDeviceModel model { get; set; } = new();
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private Color GetActiveColor(int step)
+    {
+        if (step == currentStep  )
+        {
+            if (IsCurrentStepCompleted())
+            {
+                return Color.Success;
+            }
+
+            return Color.Info;
+        }
+
+        return step < currentStep ? Color.Success : Color.Error;
+    }
+
+    private Severity GetActiveSeverity(int step)
+    {
+        if (step == currentStep)
+        {
+            if (IsCurrentStepCompleted())
+            {
+                return Severity.Success;
+            }
+
+            return Severity.Info;
+        }
+
+        return step < currentStep ? Severity.Success : Severity.Error;
+    }
+
+    private void Back()
+    {
+        if (currentStep > 0)
+        {
+            currentStep--;
+        }
+    }
+
+    private void Next()
+    {
+        if (currentStep <= maxStep)
+        {
+            currentStep++;
+        }
+    }
+
+    private bool IsCurrentStepCompleted()
+    {
+        return currentStep switch
+        {
+            0 => model.DeviceTypeId != default,
+            1 => model.LocalNetworkInfo != default,
+            2 => !string.IsNullOrEmpty(model.WifiSSID) && !string.IsNullOrEmpty(model.WifiPassword),
+            3 => model.IsHandshakeCompleted,
+            // 4 => model.DeviceConnected,
+            _ => false
+        };
+    }
+}

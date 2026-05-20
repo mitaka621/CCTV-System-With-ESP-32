@@ -1,0 +1,163 @@
+@inject IDeviceTypeService _deviceTypeService
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="_model" ValidationDelay="0">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name"
+                              Label="Name"
+                              Variant="Variant.Outlined"
+                              For="@(() => _model.Name)"
+                              Immediate="true"
+                              Disabled="_isSubmitting" />
+
+                <MudSelect T="DeviceTypeCategories"
+                           Label="Category"
+                           Variant="Variant.Outlined"
+                           @bind-Value="_model.DeviceVariant"
+                           For="@(() => _model.DeviceVariant)"
+                           Disabled="_isSubmitting">
+                    @foreach (var category in Enum.GetValues<DeviceTypeCategories>())
+                    {
+                        <MudSelectItem Value="@category">@category</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <div>
+                    <MudFileUpload T="IBrowserFile"
+                                   Accept=".svg,image/svg+xml"
+                                   FilesChanged="OnFileChanged"
+                                   MaximumFileCount="1"
+                                   Disabled="_isSubmitting">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.UploadFile"
+                                       FullWidth="true"
+                                       Disabled="_isSubmitting">
+                                @(_model.IconFile is null ? "Upload SVG Icon" : _model.IconFile.Name)
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                    @if (!string.IsNullOrEmpty(_iconError))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_iconError</MudText>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(_submitError))
+                {
+                    <MudAlert Severity="Severity.Error" NoIcon="true">@_submitError</MudAlert>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSubmitting">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="_isSubmitting">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <text>Creating...</text>
+            }
+            else
+            {
+                <text>Create</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private MudForm _form = default!;
+    private readonly CreateDeviceTypeModel _model = new();
+    private string? _iconError;
+    private string? _submitError;
+    private bool _isSubmitting;
+
+    private const long _maxIconSizeBytes = 256 * 1024;
+    private const string _allowedExtension = ".svg";
+    private const string _allowedContentType = "image/svg+xml";
+
+    private void OnFileChanged(IBrowserFile? file)
+    {
+        _iconError = null;
+        _submitError = null;
+
+        if (file is null)
+        {
+            _model.IconFile = null;
+            return;
+        }
+
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (extension != _allowedExtension)
+        {
+            _iconError = "Only .svg files are allowed.";
+            _model.IconFile = null;
+            return;
+        }
+
+        if (!string.Equals(file.ContentType, _allowedContentType, StringComparison.OrdinalIgnoreCase))
+        {
+            _iconError = "File must be of type image/svg+xml.";
+            _model.IconFile = null;
+            return;
+        }
+
+        if (file.Size > _maxIconSizeBytes)
+        {
+            _iconError = $"File must be smaller than {_maxIconSizeBytes / 1024} KB.";
+            _model.IconFile = null;
+            return;
+        }
+
+        _model.IconFile = file;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitError = null;
+
+        await _form.Validate();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        if (await _deviceTypeService.DoesDeviceTypeExistByNameAsync(_model.Name))
+        {
+            _submitError = $"A device type named '{_model.Name}' already exists.";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            await _deviceTypeService.CreateDeviceTypeAsync(_model, CancellationToken.None);
+            _snackbar.Add($"Device type '{_model.Name}' created.", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _submitError = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

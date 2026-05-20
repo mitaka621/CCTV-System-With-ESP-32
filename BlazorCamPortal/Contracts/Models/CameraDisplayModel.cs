@@ -12,7 +12,7 @@ namespace CamPortal.Contracts.Models
 
         public required string MacAddress { get; set; }
 
-        public PairStatus PairStatus { get; set; }
+        public DevicePairStatus PairStatus { get; set; }
 
         public DateTime CreatedAt { get; set; }
 

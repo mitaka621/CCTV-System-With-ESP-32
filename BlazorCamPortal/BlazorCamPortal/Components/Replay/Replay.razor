@@ -5,7 +5,7 @@
 @using Microsoft.JSInterop
 @inject IJSRuntime _js
 @inject IDialogService _dialogService
-@inject ICameraService _cameraService
+@inject IDeviceService _cameraService
 @inject IVideoReplayService _videoReplayService
 
 <PageTitle>Replay - BlazorCam Portal</PageTitle>
@@ -270,7 +270,7 @@ else
         (minDateTime, maxDateTime) = await _videoReplayService.GetMinAndMaxDateTimeOfAvailableVideoChunksAsync();
         allCamerasNameAndId = await _cameraService.GetAllCameraNameAndIdAsync();
 
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         var defaultEnd = now <= maxDateTime ? now : maxDateTime;
         var defaultStart = defaultEnd.AddMinutes(-30);
         if (defaultStart < minDateTime)

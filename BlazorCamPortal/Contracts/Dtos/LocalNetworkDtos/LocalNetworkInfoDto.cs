@@ -1,13 +1,9 @@
-﻿using System.Net;
-
-namespace CamPortal.Contracts.Dtos.LocalNetworkDtos
+﻿namespace CamPortal.Contracts.Dtos.LocalNetworkDtos
 {
-    public class LocalNetworkInfoDto
+    public sealed record LocalNetworkInfoDto
     {
-        public required IPAddress LocalIp { get; set; }
-
-        public required IPAddress SubnetMask { get; set; }
-
-        public required IPAddress Gateway { get; set; }
+        public required string LocalIp { get; init; }
+        public string? Gateway { get; init; }
+        public required string SubnetMask { get; init; }
     }
 }

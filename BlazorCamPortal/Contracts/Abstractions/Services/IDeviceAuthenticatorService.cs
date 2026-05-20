@@ -1,15 +1,25 @@
-﻿namespace CamPortal.Contracts.Abstractions.Services
+﻿using CamPortal.Contracts.Dtos.DeviceDtos;
+
+namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface IDeviceAuthenticatorService
     {
-        public string GenerateChallenge();
-
-        public bool ValidateDeviceResponse(string challenge, string deviceResponse);
-
-        string ComputeHmac(string challenge);
-
         string GenerateSessionToken(int keySizeInBits = 256);
 
         byte[] DecryptAesGcm(Span<byte> ciphertext, Span<byte> key, Span<byte> iv, Span<byte> tag);
+
+        DeviceKeyPairDto GenerateKeyPair();
+
+        string GenerateNonceBase64();
+
+        byte[] ComputeBindingHash(
+            Guid deviceId,
+            string publicKeyFingerprintHex,
+            string nonceBase64);
+
+        bool VerifySignature(
+            string publicKeySpkiBase64,
+            byte[] bindingHash,
+            string signatureBase64);
     }
 }

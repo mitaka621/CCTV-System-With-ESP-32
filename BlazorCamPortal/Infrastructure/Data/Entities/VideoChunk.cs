@@ -19,10 +19,10 @@ namespace CamPortal.Infrastructure.Data.Entities
         public DateTime ChunkEndTime { get; set; }
 
         [Required]
-        public Guid CameraId { get; set; }
+        public Guid DeviceId { get; set; }
 
-        [ForeignKey(nameof(CameraId))]
-        public required Camera Camera { get; set; }
+        [ForeignKey(nameof(DeviceId))]
+        public required Device Device { get; set; }
 
         [Required]
         public double SizeInMB { get; set; }
