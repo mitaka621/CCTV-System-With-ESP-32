@@ -68,8 +68,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep == 3)">Cancel</MudButton>
-        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@(currentStep == 0 || currentStep == 3)">Back</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep > 3)">Cancel</MudButton>
+        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@(currentStep == 0 || currentStep > 3)">Back</MudButton>
         <MudButton OnClick="Next" Color="Color.Success" Disabled="!IsCurrentStepCompleted()">Next</MudButton>
     </DialogActions>
 </MudDialog>

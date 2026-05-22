@@ -2,7 +2,6 @@ using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Models;
 
 namespace CamPortal.Core.Services
@@ -104,13 +103,6 @@ namespace CamPortal.Core.Services
                     return model;
                 })
                 .ToList();
-        }
-
-        public async Task<bool> DoesDeviceSupportQRCodeHandshakeAsync(Guid deviceId)
-        {
-            var category = await _deviceTypeRepository.GetDeviceCategoryAsync(deviceId);
-
-            return category == DeviceTypeCategories.Camera;
         }
     }
 }

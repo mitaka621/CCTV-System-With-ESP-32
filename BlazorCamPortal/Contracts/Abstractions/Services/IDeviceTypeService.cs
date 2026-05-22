@@ -13,7 +13,5 @@ namespace CamPortal.Contracts.Abstractions.Services
         Task<bool> DoesDeviceTypeExistByNameAsync(string name);
 
         Task<List<DeviceTypeDisplayModel>> GetDevicesByNameAsync(string name);
-
-        Task<bool> DoesDeviceSupportQRCodeHandshakeAsync(Guid deviceId);
     }
 }

@@ -6,8 +6,6 @@ namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface IDevicePreProvisionService
     {
-        public event Action<Guid>? SuccessfulVerification;
-
         Task<PreprovisionDetailsDto?> StartPreprovisioningAsync(PreprovisionDeviceModel model);
 
         Task<PreprovisionDetailsDto?> StartPreprovisioningForExistingDeviceAsync(Guid deviceId, PreprovisionDeviceModel model);

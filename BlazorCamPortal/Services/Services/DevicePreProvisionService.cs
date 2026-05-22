@@ -11,7 +11,9 @@ using CamPortal.Contracts.Models;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Buffers.Text;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace CamPortal.Core.Services
@@ -26,10 +28,10 @@ namespace CamPortal.Core.Services
         private readonly ILogger<DevicePreProvisionService> _logger;
         private readonly IDeviceTypeService _deviceTypeService;
         private readonly IUnitOfWorkFactory _unitOfWorkFactory;
+        private readonly IPreprovisionNotifier _preprovisionNotifier;
 
         private readonly int _preprovisionAttemptExpirationMinutes;
-
-        public event Action<Guid>? SuccessfulVerification;
+        private readonly string _deviceProvisioningUrl;
 
         public DevicePreProvisionService(
             IDeviceAuthenticatorService deviceAuthenticatorService,
@@ -40,6 +42,7 @@ namespace CamPortal.Core.Services
             ILogger<DevicePreProvisionService> logger,
             IDeviceTypeService deviceTypeService,
             IUnitOfWorkFactory unitOfWorkFactory,
+            IPreprovisionNotifier preprovisionNotifier,
             IConfiguration configuration)
         {
             _deviceAuthenticatorService = deviceAuthenticatorService;
@@ -50,7 +53,18 @@ namespace CamPortal.Core.Services
             _logger = logger;
             _deviceTypeService = deviceTypeService;
             _unitOfWorkFactory = unitOfWorkFactory;
+            _preprovisionNotifier = preprovisionNotifier;
             _preprovisionAttemptExpirationMinutes = int.Parse(configuration.GetSection("Preprovisioning")["AttemptExpirationMinutes"] ?? throw new ArgumentNullException("Video encoder timeout not configured"));
+            _deviceProvisioningUrl = configuration.GetSection("Preprovisioning")["DeviceProvisioningUrl"] ?? throw new ArgumentNullException("Preprovisioning:DeviceProvisioningUrl not configured");
+        }
+
+        private string BuildQrPayloadUrl(PreprovisionDetailsDto details)
+        {
+            var json = JsonSerializer.Serialize(details);
+            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            var base64Url = Base64Url.EncodeToString(jsonBytes);
+            var separator = _deviceProvisioningUrl.Contains('?') ? "&" : "?";
+            return $"{_deviceProvisioningUrl}{separator}d={base64Url}";
         }
 
         public async Task<PreprovisionDetailsDto?> StartPreprovisioningAsync(PreprovisionDeviceModel model)
@@ -103,10 +117,7 @@ namespace CamPortal.Core.Services
                 Nonce = nonce
             };
 
-            if (await _deviceTypeService.DoesDeviceSupportQRCodeHandshakeAsync(model.DeviceTypeId))
-            {
-                resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(JsonSerializer.Serialize(resultDto));
-            }
+            resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(BuildQrPayloadUrl(resultDto));
 
             return resultDto;
         }
@@ -172,10 +183,7 @@ namespace CamPortal.Core.Services
                 Nonce = nonce
             };
 
-            if (await _deviceTypeService.DoesDeviceSupportQRCodeHandshakeAsync(model.DeviceTypeId))
-            {
-                resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(JsonSerializer.Serialize(resultDto));
-            }
+            resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(BuildQrPayloadUrl(resultDto));
 
             return resultDto;
         }
@@ -236,7 +244,7 @@ namespace CamPortal.Core.Services
 
             if (isValid)
             {
-                SuccessfulVerification?.Invoke(model.DeviceId);
+                _preprovisionNotifier.NotifySuccessfulVerification(model.DeviceId);
             }
             else
             {

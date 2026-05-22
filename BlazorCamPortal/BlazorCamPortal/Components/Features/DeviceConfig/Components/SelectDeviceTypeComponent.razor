@@ -110,12 +110,10 @@
         if (model.DeviceTypeId!=deviceTypeId)
         {
             model.DeviceTypeId = deviceTypeId;
-            model.IsQRSupported = await _deviceTypeService.DoesDeviceSupportQRCodeHandshakeAsync(deviceTypeId);
         }
         else
         {
             model.DeviceTypeId = default;
-            model.IsQRSupported = false;
         }    
 
         await ModelChanged.InvokeAsync();

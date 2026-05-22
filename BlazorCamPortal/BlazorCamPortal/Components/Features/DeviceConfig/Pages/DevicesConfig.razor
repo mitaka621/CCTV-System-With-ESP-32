@@ -173,6 +173,12 @@ else
     </MudGrid>
 }
 
+<style>
+    .blurry-background {
+        backdrop-filter: blur(10px);
+    }
+</style>
+
 @code {
 	bool isScanning;
 	List<CameraDisplayModel> cameraDisplayModels = new();
@@ -193,6 +199,7 @@ else
             Position = DialogPosition.TopCenter,
             BackdropClick = false,
             BackgroundClass = "blurry-background"
+
         };
 
         var dialog = await _dialogService.ShowAsync<AddDeviceDialog>(null,options);

@@ -9,8 +9,6 @@ namespace CamPortal.Contracts.Models
 
         public Guid PreprovisionId { get; set; }
 
-        public bool IsQRSupported { get; set; }
-
         [Required]
         [StringLength(60, MinimumLength = 1, ErrorMessage = "Minimum length 1")]
         public string WifiSSID { get; set; } = null!;
