@@ -19,6 +19,7 @@ namespace CamPortal.Core.Services
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly IActiveCameraConnections _activeCameraConnections;
         private readonly IDeviceTypeRepository _deviceTypeRepository;
+        private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
 
         private readonly int _sessionTokenDurationInMinutes;
 
@@ -29,7 +30,8 @@ namespace CamPortal.Core.Services
             IConfiguration configuration,
             ICameraFramesManagerService cameraFramesManagerService,
             IActiveCameraConnections activeCameraConnections,
-            IDeviceTypeRepository deviceTypeRepository)
+            IDeviceTypeRepository deviceTypeRepository,
+            ICameraConfigurationRepository cameraConfigurationRepository)
         {
             _deviceRepository = cameraRepository;
             _mapper = mapper;
@@ -37,6 +39,7 @@ namespace CamPortal.Core.Services
             _cameraFramesManagerService = cameraFramesManagerService;
             _activeCameraConnections = activeCameraConnections;
             _deviceTypeRepository = deviceTypeRepository;
+            _cameraConfigurationRepository = cameraConfigurationRepository;
 
             _sessionTokenDurationInMinutes = int.Parse(configuration
                 .GetSection("ESPCamera")["SessionTokenDurationInMinutes"]
@@ -46,7 +49,23 @@ namespace CamPortal.Core.Services
 
         public async Task<Guid> CreateDeviceAsync(CreateDeviceDto dto, IUnitOfWork? uow = null)
         {
-            return await _deviceRepository.CreateDeviceAsync(_mapper.Map<CreateDeviceDto>(dto), uow);
+            var deviceCategory = await _deviceTypeRepository.GetDeviceCategoryAsync(dto.DeviceTypeId);
+
+            var deviceId = await _deviceRepository.CreateDeviceAsync(_mapper.Map<CreateDeviceDto>(dto), uow);
+
+            switch (deviceCategory)
+            {
+                case DeviceTypeCategories.Camera:
+                    await _cameraConfigurationRepository.AddDefaultCameraConfigurationToDeviceAsync(deviceId, uow);
+                    break;
+                case DeviceTypeCategories.Sensor:
+                case DeviceTypeCategories.Alarm:
+                case DeviceTypeCategories.BlindsOpener:
+                default:
+                    break;
+            }
+
+            return deviceId;
         }
         public async Task<bool> UpdateDeviceAsync(UpdateDeviceDto dto, IUnitOfWork? uow = null)
         {

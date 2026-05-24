@@ -15,6 +15,8 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<PreprovisionAttempt> PreprovisionAttempts { get; set; }
 
+        public DbSet<CameraConfiguration> CameraConfigurations { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             //DeviceTypes.Add(new DeviceType

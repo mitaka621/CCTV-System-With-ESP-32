@@ -27,11 +27,11 @@ namespace CamPortal.Core.BackgroundServices
                 {
                     var rawFramesReader = _cameraFramesManagerService.RawFramesChannelReader;
 
-                    var (cameraId, frame) = await rawFramesReader.ReadAsync(stoppingToken);
+                    var (device, frame) = await rawFramesReader.ReadAsync(stoppingToken);
 
-                    var stampedFrame = _cameraFramesManagerService.StampFrame(frame);
+                    var stampedFrame = _cameraFramesManagerService.StampFrame(frame, device);
 
-                    _cameraFramesManagerService.PublishProcessedFrame(cameraId, stampedFrame);
+                    _cameraFramesManagerService.PublishProcessedFrame(device.Id, stampedFrame);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
                 catch (Exception ex) { _logger.LogError(ex, "Error processing raw camera frames"); }

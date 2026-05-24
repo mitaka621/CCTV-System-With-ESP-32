@@ -1,4 +1,4 @@
-﻿@using CamPortal.Components.Features.DeviceConfig.Components
+@using CamPortal.Components.Features.DeviceConfig.Components
 @inject IDeviceTypeService _deviceTypeService
 @inject ISnackbar _snackbar
 
@@ -43,7 +43,7 @@
             </MudTimelineItem>
             <MudTimelineItem Color="GetActiveColor(4)" Variant="Variant.Outlined" Size="Size.Medium">
                 <ItemContent>
-                    <MudAlert Severity="GetActiveSeverity(4)">Wait for handshake and save the device.</MudAlert>
+                    <MudAlert Severity="GetActiveSeverity(4)">Configure device's settings</MudAlert>
                 </ItemContent>
                 <ItemDot>
                     <MudText>5</MudText>
@@ -53,24 +53,34 @@
         @switch (currentStep)
         {
             case 0:
-                <SelectDeviceTypeComponent model="model" ModelChanged="StateHasChanged" />
+                <SelectDeviceTypeComponent model="model.PreprovisionRequest" ModelChanged="StateHasChanged" />
                 break;
             case 1:
-                <SelectNetworkComponent model="model" ModelChanged="StateHasChanged" />
+                <SelectNetworkComponent model="model.PreprovisionRequest" ModelChanged="StateHasChanged" />
                 break;
             case 2:
-                <EnterWifiCredentials model="model" ModelChanged="StateHasChanged" />
+                <EnterWifiCredentialsComponent model="model.PreprovisionRequest" ModelChanged="StateHasChanged" />
                 break;
             case 3:
-                <UploadCredentialsComponent model="model" ModelChanged="StateHasChanged"></UploadCredentialsComponent>
+                <UploadCredentialsComponent model="model" ModelChanged="StateHasChanged" />
+                break;
+            case 4:
+                <ConfigureDeviceComponent model="model" ModelChanged="StateHasChanged" />
                 break;
             default: break;
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep > 3)">Cancel</MudButton>
-        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@(currentStep == 0 || currentStep > 3)">Back</MudButton>
-        <MudButton OnClick="Next" Color="Color.Success" Disabled="!IsCurrentStepCompleted()">Next</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep == maxStep)">Cancel</MudButton>
+        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@(currentStep == 0 || currentStep == maxStep)">Back</MudButton>
+        @if (currentStep == maxStep)
+        {
+            <MudButton OnClick="Finish" Color="Color.Success" Variant="Variant.Filled">Finish</MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Next" Color="Color.Success" Disabled="!IsCurrentStepCompleted()">Next</MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -81,7 +91,7 @@
     private int currentStep = 0;
     private const int maxStep = 4;
 
-    public PreprovisionDeviceModel model { get; set; } = new();
+    public AddDeviceWizardStateModel model { get; set; } = new();
 
     private void Cancel()
     {
@@ -128,21 +138,26 @@
 
     private void Next()
     {
-        if (currentStep <= maxStep)
+        if (currentStep < maxStep)
         {
             currentStep++;
         }
+    }
+
+    private void Finish()
+    {
+        MudDialog?.Close(DialogResult.Ok(model.PairedDeviceId));
     }
 
     private bool IsCurrentStepCompleted()
     {
         return currentStep switch
         {
-            0 => model.DeviceTypeId != default,
-            1 => model.LocalNetworkInfo != default,
-            2 => !string.IsNullOrEmpty(model.WifiSSID) && !string.IsNullOrEmpty(model.WifiPassword),
+            0 => model.PreprovisionRequest.DeviceTypeId != default,
+            1 => model.PreprovisionRequest.LocalNetworkInfo != default,
+            2 => !string.IsNullOrEmpty(model.PreprovisionRequest.WifiSSID) && !string.IsNullOrEmpty(model.PreprovisionRequest.WifiPassword),
             3 => model.IsHandshakeCompleted,
-            // 4 => model.DeviceConnected,
+            4 => true,
             _ => false
         };
     }

@@ -22,6 +22,40 @@ namespace CamPortal.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.CameraConfiguration", b =>
+                {
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("Brightness")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Contrast")
+                        .HasColumnType("real");
+
+                    b.Property<int>("FlipMode")
+                        .HasColumnType("int");
+
+                    b.Property<float>("FrameRotation")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SharpenFactor")
+                        .HasColumnType("real");
+
+                    b.Property<float>("ZoomFactor")
+                        .HasColumnType("real");
+
+                    b.Property<int>("ZoomStartX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ZoomStartY")
+                        .HasColumnType("int");
+
+                    b.HasKey("DeviceId");
+
+                    b.ToTable("CameraConfigurations");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
                 {
                     b.Property<Guid>("Id")
@@ -182,6 +216,17 @@ namespace CamPortal.Infrastructure.Migrations
                     b.ToTable("VideoChunks");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.CameraConfiguration", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Device")
+                        .WithOne("CameraConfiguration")
+                        .HasForeignKey("CamPortal.Infrastructure.Data.Entities.CameraConfiguration", "DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
                 {
                     b.HasOne("CamPortal.Infrastructure.Data.Entities.DeviceType", "DeviceType")
@@ -217,6 +262,8 @@ namespace CamPortal.Infrastructure.Migrations
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
                 {
+                    b.Navigation("CameraConfiguration");
+
                     b.Navigation("PreprovisionAttempts");
                 });
 #pragma warning restore 612, 618

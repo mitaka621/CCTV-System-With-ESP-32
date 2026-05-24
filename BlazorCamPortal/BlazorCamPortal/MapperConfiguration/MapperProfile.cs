@@ -1,4 +1,5 @@
 using AutoMapper;
+using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
 using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
@@ -50,6 +51,9 @@ namespace CamPortal.MapperConfiguration
                 .ReverseMap();
 
             CreateMap<PreprovisionAttemptDto, PreprovisionAttempt>()
+                .ReverseMap();
+
+            CreateMap<CameraStreamingConfigurationDto, CameraConfigurationModel>()
                 .ReverseMap();
         }
     }

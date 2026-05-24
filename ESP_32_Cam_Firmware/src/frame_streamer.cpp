@@ -1,38 +1,103 @@
 #include "frame_streamer.h"
 #include "config.h"
-#include "wifi_manager.h"
 #include "secrets.h"
+#include "secure_session.h"
 #include "camera_pins.h"
-#include <WiFi.h>
 #include <esp_camera.h>
-#include <esp_system.h>
-#include <mbedtls/gcm.h>
 
 namespace frame_streamer
 {
-  static WiFiClient _client;
-  static String _serverIp;
-  static uint8_t _sessionKey[32];
-  static size_t _sessionKeyLen = 0;
-  static uint8_t *_encryptionBuffer = nullptr;
-  static unsigned long _lastConnectAttemptMs = 0;
-
-  static bool encryptAesGcm(uint8_t *input, size_t inputLen,
-                            uint8_t *output, uint8_t *iv, uint8_t *tag,
-                            const uint8_t *key)
+  struct StreamStats
   {
-    mbedtls_gcm_context gcm;
-    mbedtls_gcm_init(&gcm);
-    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, 256);
+    uint32_t frameCount;
+    uint32_t failedSends;
+    uint32_t captureFailures;
+    uint32_t captureReady;
+    uint64_t captureUsTotal;
+    uint64_t encryptUsTotal;
+    uint64_t sendUsTotal;
+    uint32_t captureUsMax;
+    uint32_t encryptUsMax;
+    uint32_t sendUsMax;
+    uint64_t frameBytesTotal;
+    uint32_t frameBytesMax;
+    unsigned long windowStartMs;
+  };
 
-    int ret = mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT,
-                                        inputLen,
-                                        iv, 12,
-                                        NULL, 0,
-                                        input, output,
-                                        16, tag);
-    mbedtls_gcm_free(&gcm);
-    return ret == 0;
+  static StreamStats _stats = {};
+
+  static void resetStats(unsigned long now)
+  {
+    _stats.frameCount = 0;
+    _stats.failedSends = 0;
+    _stats.captureFailures = 0;
+    _stats.captureReady = 0;
+    _stats.captureUsTotal = 0;
+    _stats.encryptUsTotal = 0;
+    _stats.sendUsTotal = 0;
+    _stats.captureUsMax = 0;
+    _stats.encryptUsMax = 0;
+    _stats.sendUsMax = 0;
+    _stats.frameBytesTotal = 0;
+    _stats.frameBytesMax = 0;
+    _stats.windowStartMs = now;
+  }
+
+  static void maybeLogStats()
+  {
+    if (!DEBUG_ON)
+      return;
+
+    unsigned long now = millis();
+    if (_stats.windowStartMs == 0)
+    {
+      _stats.windowStartMs = now;
+      return;
+    }
+    if ((now - _stats.windowStartMs) < STREAM_STATS_LOG_INTERVAL_MS)
+      return;
+
+    if (_stats.frameCount == 0)
+    {
+      char buf[160];
+      snprintf(buf, sizeof(buf),
+               "[STREAM] no frames sent in last %lums | capture failures %u | fb_count %d",
+               (unsigned long)(now - _stats.windowStartMs),
+               _stats.captureFailures,
+               STREAM_CAMERA_FB_COUNT);
+      DEBUG_PRINT(buf);
+      resetStats(now);
+      return;
+    }
+
+    float elapsedSec = (now - _stats.windowStartMs) / 1000.0f;
+    float fps = _stats.frameCount / elapsedSec;
+    uint32_t avgCaptureMs = (uint32_t)((_stats.captureUsTotal / _stats.frameCount) / 1000ULL);
+    uint32_t avgEncryptMs = (uint32_t)((_stats.encryptUsTotal / _stats.frameCount) / 1000ULL);
+    uint32_t avgSendMs = (uint32_t)((_stats.sendUsTotal / _stats.frameCount) / 1000ULL);
+    uint32_t maxCaptureMs = _stats.captureUsMax / 1000;
+    uint32_t maxEncryptMs = _stats.encryptUsMax / 1000;
+    uint32_t maxSendMs = _stats.sendUsMax / 1000;
+    uint32_t avgKB = (uint32_t)((_stats.frameBytesTotal / _stats.frameCount) / 1024ULL);
+    uint32_t maxKB = _stats.frameBytesMax / 1024;
+    float bufReadyPct = 100.0f * _stats.captureReady / _stats.frameCount;
+
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+             "[STREAM] %.1f FPS | cap %u/%ums | enc %u/%ums | send %u/%ums | %uKB avg %uKB max | fb %d cap, bufReady %.0f%% | frames %u failed %u capFail %u",
+             fps,
+             avgCaptureMs, maxCaptureMs,
+             avgEncryptMs, maxEncryptMs,
+             avgSendMs, maxSendMs,
+             avgKB, maxKB,
+             STREAM_CAMERA_FB_COUNT,
+             bufReadyPct,
+             _stats.frameCount,
+             _stats.failedSends,
+             _stats.captureFailures);
+    DEBUG_PRINT(buf);
+
+    resetStats(now);
   }
 
   bool beginCamera()
@@ -62,11 +127,11 @@ namespace frame_streamer
     config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 20000000;
+    config.xclk_freq_hz = 30000000;
     config.pixel_format = PIXFORMAT_JPEG;
     config.frame_size = FRAMESIZE_FHD;
     config.jpeg_quality = 12;
-    config.fb_count = 3;
+    config.fb_count = STREAM_CAMERA_FB_COUNT;
     config.fb_location = CAMERA_FB_IN_PSRAM;
     config.grab_mode = CAMERA_GRAB_LATEST;
 
@@ -94,142 +159,71 @@ namespace frame_streamer
       sensor->set_dcw(sensor, 1);
     }
 
-    if (_encryptionBuffer == nullptr)
-    {
-      _encryptionBuffer = (uint8_t *)heap_caps_malloc(ENCRYPTION_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
-      if (_encryptionBuffer == nullptr)
-      {
-        DEBUG_PRINT("Failed to allocate encryption buffer in PSRAM");
-        return false;
-      }
-    }
-
     return true;
   }
 
-  void setServerIp(const String &serverIp)
+  bool startSession(const DeviceCredentials &creds)
   {
-    _serverIp = serverIp;
+    return secure_session::begin(creds, ServerTcpPort);
   }
 
-  void setSessionKey(const uint8_t *key, size_t keyLen)
+  bool isSessionActive()
   {
-    if (keyLen != 32)
-    {
-      _sessionKeyLen = 0;
-      return;
-    }
-    memcpy(_sessionKey, key, 32);
-    _sessionKeyLen = 32;
+    return secure_session::isActive();
   }
 
-  bool hasSessionKey()
+  void endSession()
   {
-    return _sessionKeyLen == 32;
-  }
-
-  static bool ensureConnected()
-  {
-    if (_client.connected())
-    {
-      return true;
-    }
-    if (_serverIp.length() == 0)
-    {
-      return false;
-    }
-    unsigned long now = millis();
-    if (now - _lastConnectAttemptMs < STREAM_RETRY_DELAY_MS)
-    {
-      return false;
-    }
-    _lastConnectAttemptMs = now;
-
-    DEBUG_PRINT("TCP connecting to " + _serverIp + ":" + String(ServerTcpPort));
-    if (!_client.connect(_serverIp.c_str(), ServerTcpPort))
-    {
-      DEBUG_PRINT("TCP connect failed");
-      return false;
-    }
-    _client.setNoDelay(true);
-    DEBUG_PRINT("TCP connected");
-    return true;
-  }
-
-  static bool sendFrame(camera_fb_t *fb)
-  {
-    if (_encryptionBuffer == nullptr || !hasSessionKey())
-    {
-      return false;
-    }
-    if (fb->len > ENCRYPTION_BUFFER_SIZE)
-    {
-      DEBUG_PRINT("Frame too large: " + String(fb->len));
-      return false;
-    }
-
-    uint8_t mac[6];
-    WiFi.macAddress(mac);
-
-    uint8_t iv[12];
-    esp_fill_random(iv, sizeof(iv));
-
-    uint8_t tag[16];
-
-    if (!encryptAesGcm(fb->buf, fb->len, _encryptionBuffer, iv, tag, _sessionKey))
-    {
-      return false;
-    }
-
-    uint32_t totalLen = 6 + sizeof(iv) + sizeof(tag) + fb->len;
-    uint8_t header[4 + sizeof(mac) + sizeof(iv) + sizeof(tag)];
-    header[0] = (uint8_t)(totalLen >> 24);
-    header[1] = (uint8_t)(totalLen >> 16);
-    header[2] = (uint8_t)(totalLen >> 8);
-    header[3] = (uint8_t)(totalLen);
-    memcpy(header + 4, mac, sizeof(mac));
-    memcpy(header + 4 + sizeof(mac), iv, sizeof(iv));
-    memcpy(header + 4 + sizeof(mac) + sizeof(iv), tag, sizeof(tag));
-
-    if (_client.write(header, sizeof(header)) != sizeof(header))
-    {
-      return false;
-    }
-    if (_client.write(_encryptionBuffer, fb->len) != fb->len)
-    {
-      return false;
-    }
-    return true;
+    secure_session::end();
   }
 
   void tick()
   {
-    if (!hasSessionKey())
+    if (!secure_session::isActive())
     {
       delay(50);
       return;
     }
 
-    if (!ensureConnected())
-    {
-      delay(50);
-      return;
-    }
-
+    unsigned long captureStartUs = micros();
     camera_fb_t *fb = esp_camera_fb_get();
+    uint32_t captureUs = (uint32_t)(micros() - captureStartUs);
+
     if (fb == nullptr)
     {
       DEBUG_PRINT("Camera capture failed");
+      _stats.captureFailures++;
+      maybeLogStats();
       delay(20);
       return;
     }
 
-    if (!sendFrame(fb))
+    secure_session::FrameTiming timing = {};
+    bool sendOk = secure_session::sendFrame(fb->buf, fb->len, &timing);
+    if (!sendOk)
     {
-      DEBUG_PRINT("Frame send failed; will retry on next tick");
-      _client.stop();
+      DEBUG_PRINT("Secure frame send failed");
+      _stats.failedSends++;
     }
 
+    _stats.frameCount++;
+    if (captureUs < STREAM_CAPTURE_READY_THRESHOLD_US)
+      _stats.captureReady++;
+    _stats.captureUsTotal += captureUs;
+    if (captureUs > _stats.captureUsMax)
+      _stats.captureUsMax = captureUs;
+    _stats.encryptUsTotal += timing.encryptUs;
+    if (timing.encryptUs > _stats.encryptUsMax)
+      _stats.encryptUsMax = timing.encryptUs;
+    _stats.sendUsTotal += timing.sendUs;
+    if (timing.sendUs > _stats.sendUsMax)
+      _stats.sendUsMax = timing.sendUs;
+    _stats.frameBytesTotal += fb->len;
+    if (fb->len > _stats.frameBytesMax)
+      _stats.frameBytesMax = (uint32_t)fb->len;
+
     esp_camera_fb_return(fb);
+
+    maybeLogStats();
   }
 }

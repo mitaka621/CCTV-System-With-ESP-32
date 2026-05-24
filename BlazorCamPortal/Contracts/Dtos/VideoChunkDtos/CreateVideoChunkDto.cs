@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Dtos.VideoChunkDtos
+namespace CamPortal.Contracts.Dtos.VideoChunkDtos
 {
     public class CreateVideoChunkDto
     {
@@ -8,7 +8,7 @@
 
         public DateTime ChunkEndTime { get; set; }
 
-        public Guid CameraId { get; set; }
+        public Guid DeviceId { get; set; }
 
         public double SizeInMB { get; set; }
     }

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.CameraDtos;
@@ -234,6 +234,37 @@ namespace CamPortal.Infrastructure.Repositories
                 .Include(x => x.PreprovisionAttempts)
                 .Where(x => x.Id == deviceId && x.PairStatus == status)
                 .Select(x => _mapper.Map<DeviceDto>(x))
+                .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+        public async Task<DeviceStreamingHandshakeDto?> GetDeviceForStreamingHandshakeAsync(Guid deviceId)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            var result = await db.Devices
+                .AsNoTracking()
+                .Where(x => x.Id == deviceId)
+                .Select(x => new DeviceStreamingHandshakeDto
+                {
+                    Id = x.Id,
+                    PairStatus = x.PairStatus,
+                    PublicKey = x.PublicKey,
+                    DeviceVariant = x.DeviceType!.DeviceVariant,
+                    DeviceName = x.Name,
+                    CameraStreamingConfiguration = new()
+                    {
+                        Brightness = x.CameraConfiguration!.Brightness,
+                        Contrast = x.CameraConfiguration.Contrast,
+                        FlipMode = x.CameraConfiguration.FlipMode,
+                        FrameRotation = x.CameraConfiguration.FrameRotation,
+                        SharpenFactor = x.CameraConfiguration.SharpenFactor,
+                        ZoomFactor = x.CameraConfiguration.ZoomFactor,
+                        ZoomStartX = x.CameraConfiguration.ZoomStartX,
+                        ZoomStartY = x.CameraConfiguration.ZoomStartY
+                    }
+                })
                 .FirstOrDefaultAsync();
 
             return result;

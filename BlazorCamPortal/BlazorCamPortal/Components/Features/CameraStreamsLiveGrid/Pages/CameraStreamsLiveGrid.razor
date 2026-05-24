@@ -1,9 +1,9 @@
 ﻿@page "/"
 @rendermode InteractiveServer
-@implements IAsyncDisposable
+@using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
 
+@implements IAsyncDisposable
 @inject IDeviceService _cameraService
-@inject IDialogService _dialogService
 @inject IJSRuntime _js
 
 <PageTitle>Dashboard - BlazorCam Portal</PageTitle>
@@ -58,20 +58,7 @@ else
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent Class="pa-0">
-                        <div class="camera-container">
-                            <img id="@camera.Id"
-                                 src="@GetStreamUrl(camera.Id)"
-                                 alt="@GetCameraDisplayName(camera)"
-                                 class="camera-stream"
-                                 draggable="false" />
-                            <div class="camera-overlay">
-                                <MudIconButton Icon="@Icons.Material.Filled.Fullscreen" 
-                                             Color="Color.Primary" 
-                                             Size="Size.Large"
-                                             Class="fullscreen-btn"
-                                             OnClick="() => OpenFullScreen(camera)" />
-                            </div>
-                        </div>
+                        <CameraStreamComponent CameraId="camera.Id"/>         
                     </MudCardContent>
                     <MudCardActions>
                         <MudButton StartIcon="@Icons.Material.Filled.PhotoCamera" Color="Color.Secondary" Size="Size.Small">
@@ -111,34 +98,13 @@ else
         connectedCameras = cameras.Count;
     }
 
-    private async Task OpenFullScreen(CameraDisplayModel camera)
-    {
-        var parameters = new DialogParameters
-        {
-            ["Camera"] = camera
-        };
-
-        var options = new DialogOptions()
-        {
-            MaxWidth = MaxWidth.False,
-            FullWidth = true,
-            CloseButton = false,
-            NoHeader = true,
-            CloseOnEscapeKey = true
-        };
-
-        await _dialogService.ShowAsync<FullscreenCameraDialog>("", parameters, options);
-    }
-
-    private string GetStreamUrl(Guid cameraId) => $"/api/cameras/{cameraId}/stream";
-
     private string GetCameraDisplayName(CameraDisplayModel camera)
     {
         if (!string.IsNullOrEmpty(camera.Name))
             return camera.Name;
 
         return $"{camera.Id}";
-    }
+    } 
 
     public async ValueTask DisposeAsync()
     {

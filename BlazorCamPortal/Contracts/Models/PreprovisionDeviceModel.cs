@@ -7,8 +7,6 @@ namespace CamPortal.Contracts.Models
     {
         public Guid DeviceTypeId { get; set; }
 
-        public Guid PreprovisionId { get; set; }
-
         [Required]
         [StringLength(60, MinimumLength = 1, ErrorMessage = "Minimum length 1")]
         public string WifiSSID { get; set; } = null!;
@@ -18,7 +16,5 @@ namespace CamPortal.Contracts.Models
         public string WifiPassword { get; set; } = null!;
 
         public LocalNetworkInfoDto? LocalNetworkInfo { get; set; } = null!;
-
-        public bool IsHandshakeCompleted { get; set; }
     }
 }

@@ -170,13 +170,15 @@ namespace CamPortal.Infrastructure.Migrations
                 table: "Cameras",
                 column: "Ipv4Address");
 
+            migrationBuilder.Sql("DELETE FROM [VideoChunks];");
+
             migrationBuilder.AddForeignKey(
                 name: "FK_VideoChunks_Cameras_CameraId",
                 table: "VideoChunks",
                 column: "CameraId",
                 principalTable: "Cameras",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.NoAction);
         }
     }
 }

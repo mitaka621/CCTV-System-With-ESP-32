@@ -1,0 +1,251 @@
+@using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
+@using CamPortal.Contracts.Dtos.CameraConfigurationDtos
+@using CamPortal.Contracts.Enums
+@using SixLabors.ImageSharp.Processing;
+
+@inject IConfiguration _configuration
+@inject ICameraConfigurationService _cameraConfigurationService
+@inject ICameraFramesManagerService _cameraFramesManager
+@inject IDeviceService _deviceService
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
+
+<div class="configure-wrapper">
+    <MudOverlay Visible="_isApplying"
+                Absolute="true"
+                DarkBackground="false"
+                Style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10;">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </MudOverlay>
+
+    <MudGrid Spacing="4">
+        <MudItem xs="12" md="7">
+            <MudStack Spacing="2" Class="camera-stack">
+                <MudStack Spacing="2" Row="true">
+                    <div style="width:90px; height:350px; position:relative">
+                        <MudSlider T="int"
+                                   @bind-Value="_verticalSliderRawValue"
+                                   @bind-Value:after="RecalculateVerticalSliderValue"
+                                   Immediate="false"
+                                   Disabled="@(MaxZoomStartY == 0)"
+                                   Vertical="true"
+                                   Min="0"
+                                   Max="@MaxZoomStartY"
+                                   ValueLabel="true"
+                                   Color="Color.Error"
+                                   Style="position:absolute;top: 0;left: -1rem;width: 340px;">
+                            <MudText>Vertical Crop Position</MudText>
+                        </MudSlider>
+                    </div>          
+                    <div class="camera-stream-wrapper">
+                        <CameraStreamComponent CameraId="model.PairedDeviceId!.Value"></CameraStreamComponent>
+                    </div>
+
+                    <MudStack Class="zoom-controls" Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center">
+                        <MudIconButton Icon="@Icons.Material.Filled.ZoomIn" Color="Color.Error" Size="Size.Medium" OnClick="ZoomIn" />
+                        <MudText Typo="Typo.caption">@($"{_cameraConfigurationDto.ZoomFactor:F1}x")</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.ZoomOut" Color="Color.Error" Size="Size.Medium" OnClick="ZoomOut" />
+                    </MudStack>
+                </MudStack>
+                <MudSlider T="int"
+                            @bind-Value="_cameraConfigurationDto.ZoomStartX"
+                            @bind-Value:after="OnConfigurationChanged"
+                            Immediate="false"
+                            Disabled="@(MaxZoomStartX == 0)"
+                            Min="0"
+                            Max="@MaxZoomStartX"
+                            ValueLabel="true"
+                            Color="Color.Error"
+                            Style="width: 80%;margin: 0 auto 0.3rem auto;">
+                    <MudText>Horizontal Crop Position</MudText>
+                </MudSlider>
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12" md="5">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_cameraConfigurationDto.CameraName"
+                              @bind-Value:after="OnConfigurationChanged"
+                              Immediate="false"
+                              Label="Camera Name"
+                              Variant="Variant.Outlined"
+                              For="()=>_cameraConfigurationDto.CameraName" />
+
+                <div class="slider-row">
+                    <MudText Typo="Typo.body2" Class="slider-label">Brightness</MudText>
+                    <MudSlider T="float"
+                               @bind-Value="_cameraConfigurationDto.Brightness"
+                               @bind-Value:after="OnConfigurationChanged"
+                               Immediate="false"
+                               Min="0f" Max="2f" Step="0.05f"
+                               ValueLabel="true"
+                               Color="Color.Error" />
+                </div>
+
+                <div class="slider-row">
+                    <MudText Typo="Typo.body2" Class="slider-label">Contrast</MudText>
+                    <MudSlider T="float"
+                               @bind-Value="_cameraConfigurationDto.Contrast"
+                               @bind-Value:after="OnConfigurationChanged"
+                               Immediate="false"
+                               Min="0f" Max="2f" Step="0.05f"
+                               ValueLabel="true"
+                               Color="Color.Error" />
+                </div>
+
+                <div class="slider-row">
+                    <MudText Typo="Typo.body2" Class="slider-label">Frame Rotation</MudText>
+                    <MudSlider T="float"
+                               @bind-Value="_cameraConfigurationDto.FrameRotation"
+                               @bind-Value:after="OnConfigurationChanged"
+                               Immediate="false"
+                               Min="-180f" Max="180f" Step="1f"
+                               ValueLabel="true"
+                               Color="Color.Error" />
+                </div>
+
+                <div class="slider-row">
+                    <MudText Typo="Typo.body2" Class="slider-label">Sharpen Factor</MudText>
+                    <MudSlider T="float"
+                               @bind-Value="_cameraConfigurationDto.SharpenFactor"
+                               @bind-Value:after="OnConfigurationChanged"
+                               Immediate="false"
+                               Min="0f" Max="2f" Step="0.05f"
+                               ValueLabel="true"
+                               Color="Color.Error" />
+                </div>
+
+                <MudSelect T="FlipMode"
+                           Label="Flip Mode"
+                           Variant="Variant.Outlined"
+                           @bind-Value="_cameraConfigurationDto.FlipMode"
+                           @bind-Value:after="OnConfigurationChanged"
+                           For="@(() => _cameraConfigurationDto.FlipMode)">
+                    @foreach (var mode in Enum.GetValues<FlipMode>())
+                    {
+                        <MudSelectItem Value="@mode">@mode</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public AddDeviceWizardStateModel model { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback ModelChanged { get; set; }
+
+    private int _cameraFeedWidth;
+    private int _cameraFeedHeight;
+    private bool _isApplying;
+    private int _verticalSliderRawValue;
+
+    private CameraConfigurationModel _cameraConfigurationDto = new()
+    {
+        CameraName = string.Empty
+    };
+
+    private int MaxZoomStartX => Math.Max(0, _cameraFeedWidth - (int)(_cameraFeedWidth / _cameraConfigurationDto.ZoomFactor));
+    private int MaxZoomStartY => Math.Max(0, _cameraFeedHeight - (int)(_cameraFeedHeight / _cameraConfigurationDto.ZoomFactor));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (model.PairedDeviceId == null)
+        {
+            throw new ArgumentNullException(nameof(model.PairedDeviceId), "PairedDeviceId cannot be null when configuring the device.");
+        }
+
+        _cameraFeedWidth = _configuration.GetValue<int>("ESPCamera:ResolutionWidth");
+        _cameraFeedHeight = _configuration.GetValue<int>("ESPCamera:ResolutionHeight");
+
+        _cameraConfigurationDto.DeviceId = model.PairedDeviceId!.Value;
+
+        var totalCameras = await _deviceService.GetTotalCamerasAsync();
+        _cameraConfigurationDto.CameraName = $"Camera {totalCameras + 1}";
+
+        await _cameraConfigurationService.UpdateCameraConfigurationAsync(
+            _cameraConfigurationDto.DeviceId,
+            _cameraConfigurationDto);
+
+        _verticalSliderRawValue = MaxZoomStartY;
+    }
+
+    private async Task RecalculateVerticalSliderValue()
+    {
+        _cameraConfigurationDto.ZoomStartY = MaxZoomStartY - _verticalSliderRawValue;
+
+        await OnConfigurationChanged();
+    }
+
+    private async Task OnConfigurationChanged()
+    {
+        _isApplying = true;
+        StateHasChanged();
+
+        var isUpdateSuccessful = await _cameraConfigurationService.UpdateCameraConfigurationAsync(
+            _cameraConfigurationDto.DeviceId,
+            _cameraConfigurationDto);
+
+        if (!isUpdateSuccessful)
+        {
+            _isApplying = false;
+            StateHasChanged();
+        }
+
+        _cameraFramesManager.FrameProcessed += OnFrameProcessed;
+    }
+
+    private Task OnFrameProcessed(Guid cameraId, byte[] frame)
+    {
+        _cameraFramesManager.FrameProcessed -= OnFrameProcessed;
+
+        if (cameraId != _cameraConfigurationDto.DeviceId || !_isApplying)
+        {
+            return Task.CompletedTask;
+        }
+
+        _isApplying = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ZoomIn()
+    {
+        if (_cameraConfigurationDto.ZoomFactor >= 2)
+        {
+            _cameraConfigurationDto.ZoomFactor = 2;
+            return;
+        }
+
+        _cameraConfigurationDto.ZoomFactor = MathF.Min(2f, _cameraConfigurationDto.ZoomFactor + 0.2f);
+        ClampZoomOffsets();
+        await OnConfigurationChanged();
+    }
+
+    private async Task ZoomOut()
+    {
+        if (_cameraConfigurationDto.ZoomFactor <= 1)
+        {
+            _cameraConfigurationDto.ZoomFactor = 1;
+            return;
+        }
+
+        _cameraConfigurationDto.ZoomFactor = MathF.Max(1f, _cameraConfigurationDto.ZoomFactor - 0.2f);
+        ClampZoomOffsets();
+        await OnConfigurationChanged();
+    }
+
+    private void ClampZoomOffsets()
+    {
+        _cameraConfigurationDto.ZoomStartX = Math.Clamp(_cameraConfigurationDto.ZoomStartX, 0, MaxZoomStartX);
+        _cameraConfigurationDto.ZoomStartY = Math.Clamp(_cameraConfigurationDto.ZoomStartY, 0, MaxZoomStartY);
+    }
+
+    public void Dispose()
+    {
+        _cameraFramesManager.FrameProcessed -= OnFrameProcessed;
+    }
+}

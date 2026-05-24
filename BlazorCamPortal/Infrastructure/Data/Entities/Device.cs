@@ -45,5 +45,7 @@ namespace CamPortal.Infrastructure.Data.Entities
         public required string Fingerprint { get; set; }
 
         public List<PreprovisionAttempt> PreprovisionAttempts { get; set; } = new();
+
+        public CameraConfiguration? CameraConfiguration { get; set; }
     }
 }

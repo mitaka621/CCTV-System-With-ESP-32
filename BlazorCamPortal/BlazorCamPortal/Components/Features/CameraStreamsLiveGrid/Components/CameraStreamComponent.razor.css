@@ -1,0 +1,39 @@
+﻿.camera-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #000;
+    aspect-ratio: 16 / 9;
+}
+
+.camera-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.fullscreen-btn {
+    background: rgba(255,255,255,0.1) !important;
+    backdrop-filter: blur(10px);
+}
+
+.camera-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.camera-container:hover .camera-overlay {
+    opacity: 1;
+}

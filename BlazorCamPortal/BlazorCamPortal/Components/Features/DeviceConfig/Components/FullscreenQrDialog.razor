@@ -1,0 +1,54 @@
+@inject IJSRuntime _js
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        <div class="fullscreen-qr">
+            <div class="fullscreen-qr-header">
+                @if (!string.IsNullOrWhiteSpace(QrPayloadUrl))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                   Color="Color.Primary"
+                                   Size="Size.Medium"
+                                   Class="header-button copy-button"
+                                   OnClick="CopyUrlAsync"
+                                   Title="Copy provisioning URL" />
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Color="Color.Error"
+                               Size="Size.Medium"
+                               Class="header-button close-button"
+                               OnClick="Close" />
+            </div>
+            <div class="fullscreen-qr-container" @onclick="Close">
+                <img src="@QrCode"
+                     alt="Provisioning QR"
+                     class="fullscreen-qr-image"
+                     draggable="false"
+                     @onclick:stopPropagation="true" />
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public string QrCode { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? QrPayloadUrl { get; set; }
+
+    private void Close() => MudDialog?.Close();
+
+    private async Task CopyUrlAsync()
+    {
+        if (string.IsNullOrWhiteSpace(QrPayloadUrl))
+            return;
+
+        await _js.InvokeVoidAsync("navigator.clipboard.writeText", QrPayloadUrl);
+        _snackbar.Add("Provisioning URL copied to clipboard", Severity.Success);
+    }
+}

@@ -6,6 +6,11 @@ body {
   overflow-x: hidden;
 }
 
+html:has(.mud-overlay),
+body:has(.mud-overlay) {
+  overflow: hidden !important;
+}
+
 :root {
   --mud-palette-primary: #776be7;
   --mud-palette-secondary: #ff6ec7;

@@ -1,10 +1,11 @@
+using CamPortal.Contracts.Dtos.DeviceDtos;
 using System.Threading.Channels;
 
 namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface ICameraFramesManagerService
     {
-        ChannelReader<(Guid, byte[])> RawFramesChannelReader { get; }
+        ChannelReader<(DeviceStreamingHandshakeDto, byte[])> RawFramesChannelReader { get; }
 
         public event Func<Guid, byte[], Task>? FrameProcessed;
 
@@ -12,13 +13,13 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         public event Action<Guid>? ChannelClosed;
 
-        void AddFrame(Guid cameraId, byte[] frame);
+        void AddFrame(DeviceStreamingHandshakeDto device, byte[] frame);
 
         void CloseProcessedFramesCameraChannel(Guid cameraId);
 
         Task InitializeAsync(IDeviceService _cameraService);
 
-        byte[] StampFrame(byte[] frame);
+        byte[] StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera);
 
         Channel<byte[]> GetOrCreateProcessedFramesCameraChannel(Guid cameraId);
 

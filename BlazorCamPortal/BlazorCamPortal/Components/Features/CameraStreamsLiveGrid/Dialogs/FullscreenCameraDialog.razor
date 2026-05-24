@@ -7,12 +7,9 @@
     <DialogContent>
         <div class="fullscreen-camera">
             <div class="fullscreen-header">
-                <MudText Typo="Typo.h5" Color="Color.Surface">
-                    @GetCameraDisplayName()
-                </MudText>
                 <div class="fullscreen-controls">
                     <MudIconButton Icon="@Icons.Material.Filled.Close" 
-                                   Color="Color.Surface" 
+                                   Color="Color.Error" 
                                    Size="Size.Medium"
                                    Class="close-button"
                                    OnClick="CloseDialog" />
@@ -20,15 +17,11 @@
             </div>
             
             <div class="fullscreen-video-container">
-                <img id="fullscreen-@Camera.Id"
-                     src="@GetStreamUrl()"
-                     alt="@GetCameraDisplayName()"
+                <img id="@FullscreenElementId"
                      class="fullscreen-stream"
                      draggable="false" />
             </div>
-            
-
-        </div>
+         </div>
     </DialogContent>
 </MudDialog>
 
@@ -37,9 +30,10 @@
     public IMudDialogInstance? MudDialog { get; set; }
 
     [Parameter] 
-    public CameraDisplayModel Camera { get; set; } = default!;
+    public Guid CameraId { get; set; } = default!;
 
     private bool _hasRenderedInteractively;
+    private string FullscreenElementId => $"fullscreen-{CameraId}";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -47,6 +41,7 @@
         {
             _hasRenderedInteractively = true;
             await JS.InvokeVoidAsync("forceDialogFullscreen");
+            await JS.InvokeVoidAsync("startCameraStream", FullscreenElementId, GetStreamUrl());
         }
     }
 
@@ -55,15 +50,7 @@
         MudDialog?.Close();
     }
 
-    private string GetStreamUrl() => $"/api/cameras/{Camera.Id}/stream";
-
-    private string GetCameraDisplayName()
-    {
-        if (!string.IsNullOrEmpty(Camera.Name))
-            return Camera.Name;
-        
-        return $"{Camera.Id}";
-    }
+    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream";
 
     public async ValueTask DisposeAsync()
     {
@@ -72,7 +59,7 @@
 
         try
         {
-            await JS.InvokeVoidAsync("stopCameraStreamById", $"fullscreen-{Camera.Id}");
+            await JS.InvokeVoidAsync("stopCameraStreamById", FullscreenElementId);
         }
         catch (JSDisconnectedException) { }
         catch (TaskCanceledException) { }

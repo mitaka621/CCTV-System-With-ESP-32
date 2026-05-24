@@ -21,14 +21,6 @@ namespace CamPortal.Core.Services
             return cts.Token;
         }
 
-        public void Unregister(Guid cameraId)
-        {
-            if (_byCameraId.TryRemove(cameraId, out var cts))
-            {
-                cts.Dispose();
-            }
-        }
-
         public bool TryDisconnect(Guid cameraId)
         {
             if (_byCameraId.TryRemove(cameraId, out var cts))

@@ -23,6 +23,8 @@ namespace CamPortal.Extensions
             services.AddScoped<IDeviceTypeService, DeviceTypeService>();
             services.AddScoped<IDeviceTypeRepository, DeviceTypeRepository>();
             services.AddScoped<IDevicePreProvisionService, DevicePreProvisionService>();
+            services.AddScoped<ICameraConfigurationRepository, CameraConfigurationRepository>();
+            services.AddScoped<ICameraConfigurationService, CameraConfigurationService>();
 
             services.AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
             services.AddSingleton<IDeviceTypeIconStorageService, DeviceTypeIconStorageService>();
@@ -31,6 +33,7 @@ namespace CamPortal.Extensions
             services.AddSingleton<IActiveCameraConnections, ActiveCameraConnections>();
             services.AddSingleton<IPreprovisionAttemptRepository, PreprovisionAttemptRepository>();
             services.AddSingleton<IPreprovisionNotifier, PreprovisionNotifier>();
+            services.AddSingleton<IServerIdentityService, ServerIdentityService>();
 
             services.AddHostedService<FramesReceiverTcpService>();
             services.AddHostedService<VideoEncoderService>();

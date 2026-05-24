@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
@@ -29,6 +29,7 @@ namespace CamPortal.Core.Services
         private readonly IDeviceTypeService _deviceTypeService;
         private readonly IUnitOfWorkFactory _unitOfWorkFactory;
         private readonly IPreprovisionNotifier _preprovisionNotifier;
+        private readonly IServerIdentityService _serverIdentityService;
 
         private readonly int _preprovisionAttemptExpirationMinutes;
         private readonly string _deviceProvisioningUrl;
@@ -43,6 +44,7 @@ namespace CamPortal.Core.Services
             IDeviceTypeService deviceTypeService,
             IUnitOfWorkFactory unitOfWorkFactory,
             IPreprovisionNotifier preprovisionNotifier,
+            IServerIdentityService serverIdentityService,
             IConfiguration configuration)
         {
             _deviceAuthenticatorService = deviceAuthenticatorService;
@@ -54,6 +56,7 @@ namespace CamPortal.Core.Services
             _deviceTypeService = deviceTypeService;
             _unitOfWorkFactory = unitOfWorkFactory;
             _preprovisionNotifier = preprovisionNotifier;
+            _serverIdentityService = serverIdentityService;
             _preprovisionAttemptExpirationMinutes = int.Parse(configuration.GetSection("Preprovisioning")["AttemptExpirationMinutes"] ?? throw new ArgumentNullException("Video encoder timeout not configured"));
             _deviceProvisioningUrl = configuration.GetSection("Preprovisioning")["DeviceProvisioningUrl"] ?? throw new ArgumentNullException("Preprovisioning:DeviceProvisioningUrl not configured");
         }
@@ -114,10 +117,12 @@ namespace CamPortal.Core.Services
                 ServerIp = model.LocalNetworkInfo.LocalIp.ToString(),
                 WifiPassword = model.WifiPassword,
                 WifiSSID = model.WifiSSID,
-                Nonce = nonce
+                Nonce = nonce,
+                ServerIdentityPublicKey = _serverIdentityService.PublicKeySpkiBase64
             };
 
-            resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(BuildQrPayloadUrl(resultDto));
+            resultDto.QrPayloadUrl = BuildQrPayloadUrl(resultDto);
+            resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(resultDto.QrPayloadUrl);
 
             return resultDto;
         }
@@ -180,10 +185,12 @@ namespace CamPortal.Core.Services
                 ServerIp = model.LocalNetworkInfo.LocalIp.ToString(),
                 WifiPassword = model.WifiPassword,
                 WifiSSID = model.WifiSSID,
-                Nonce = nonce
+                Nonce = nonce,
+                ServerIdentityPublicKey = _serverIdentityService.PublicKeySpkiBase64
             };
 
-            resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(BuildQrPayloadUrl(resultDto));
+            resultDto.QrPayloadUrl = BuildQrPayloadUrl(resultDto);
+            resultDto.QRCode = QrCodeHelper.GenerateQrCodeBase64(resultDto.QrPayloadUrl);
 
             return resultDto;
         }

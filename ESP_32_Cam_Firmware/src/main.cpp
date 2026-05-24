@@ -30,6 +30,7 @@ static unsigned long _resetButtonPressStart = 0;
 static bool _resetButtonHeld = false;
 
 static unsigned long _preprovisionRetryAt = 0;
+static unsigned long _sessionRetryAt = 0;
 
 static void handleResetButton()
 {
@@ -233,7 +234,7 @@ static void doInitStreamingCamera()
     ESP.restart();
     return;
   }
-  frame_streamer::setServerIp(_creds.serverIp);
+  _sessionRetryAt = 0;
   enterState(STATE_STREAMING);
 }
 
@@ -241,9 +242,27 @@ static void doStreaming()
 {
   if (!wifi_manager::isConnected())
   {
+    frame_streamer::endSession();
     enterState(STATE_NETWORK_RECOVERY);
     return;
   }
+
+  if (!frame_streamer::isSessionActive())
+  {
+    if (_sessionRetryAt != 0 && millis() < _sessionRetryAt)
+    {
+      delay(50);
+      return;
+    }
+    if (!frame_streamer::startSession(_creds))
+    {
+      DEBUG_PRINT("Secure session start failed; backing off");
+      _sessionRetryAt = millis() + STREAM_RETRY_DELAY_MS;
+      return;
+    }
+    _sessionRetryAt = 0;
+  }
+
   frame_streamer::tick();
 }
 

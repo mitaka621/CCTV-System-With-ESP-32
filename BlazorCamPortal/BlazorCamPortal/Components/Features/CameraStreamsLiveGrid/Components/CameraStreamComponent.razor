@@ -1,0 +1,75 @@
+@inject IDialogService _dialogService
+@inject IJSRuntime _js
+@implements IAsyncDisposable
+@using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
+
+<div class="camera-container">
+    <img id="@_elementId"
+         class="camera-stream"
+         draggable="false" />
+    <div class="camera-overlay">
+        <MudIconButton Icon="@Icons.Material.Filled.Fullscreen"
+                        Color="Color.Primary"
+                        Size="Size.Large"
+                        Class="fullscreen-btn"
+                        OnClick="() => OpenFullScreen()" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid CameraId { get; set; }
+
+    private string _elementId = string.Empty;
+    private bool _streamStarted;
+
+    protected override void OnParametersSet()
+    {
+        _elementId = $"cam-{CameraId}";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _streamStarted)
+            return;
+
+        _streamStarted = true;
+        await _js.InvokeVoidAsync("startCameraStream", _elementId, GetStreamUrl());
+    }
+
+    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream";
+
+    private async Task OpenFullScreen()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CameraId"] = CameraId
+        };
+
+        var options = new DialogOptions()
+        {
+            MaxWidth = MaxWidth.False,
+            FullWidth = true,
+            CloseButton = false,
+            NoHeader = true,
+            CloseOnEscapeKey = true,
+            FullScreen = true
+        };
+
+        await _dialogService.ShowAsync<FullscreenCameraDialog>("", parameters, options);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_streamStarted)
+            return;
+
+        try
+        {
+            await _js.InvokeVoidAsync("stopCameraStreamById", _elementId);
+        }
+        catch (JSDisconnectedException) { }
+        catch (TaskCanceledException) { }
+        catch (InvalidOperationException) { }
+    }
+}

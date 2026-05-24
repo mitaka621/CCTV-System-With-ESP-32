@@ -10,6 +10,7 @@ struct DeviceCredentials
   String privateKey;
   String nonce;
   String serverIp;
+  String serverIdentityPubKey;
 };
 
 namespace secret_store

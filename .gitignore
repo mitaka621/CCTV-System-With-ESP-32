@@ -130,3 +130,5 @@ obj/**/staticwebassets.runtime.json
 /ESP32MockClient/.vs
 
 /ESP32MockClient/ESP32MockClient/footage/*.mp4
+/BlazorCamPortal/BlazorCamPortal/data
+/BlazorCamPortal/BlazorCamPortal/device-type-icons

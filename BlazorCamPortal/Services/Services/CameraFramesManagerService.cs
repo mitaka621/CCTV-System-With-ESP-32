@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +25,7 @@ namespace CamPortal.Core.Services
         private readonly byte[] _defaultFrame;
         private readonly Font _stampFont = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
 
-        private readonly Channel<(Guid, byte[])> _rawFramesChannel;
+        private readonly Channel<(DeviceStreamingHandshakeDto, byte[])> _rawFramesChannel;
         private int _highWaterMark = 0;
         private DateTime _lastSaturationLogUtc = default;
 
@@ -32,14 +33,14 @@ namespace CamPortal.Core.Services
         public event Action<Guid>? ChannelClosed;
         public event Action<Guid>? ChannelOpened;
 
-        public ChannelReader<(Guid, byte[])> RawFramesChannelReader => _rawFramesChannel.Reader;
+        public ChannelReader<(DeviceStreamingHandshakeDto, byte[])> RawFramesChannelReader => _rawFramesChannel.Reader;
 
         public CameraFramesManagerService(IConfiguration configuration, ILogger<ICameraFramesManagerService> logger)
         {
             _numberOfBufferFramesInChannel = int.Parse(configuration.GetSection("TCPServerConfig")["NumberOfBufferRawFrames"]
                 ?? throw new InvalidOperationException("NumberOfBufferRawFrames configuration is missing"));
 
-            _rawFramesChannel = Channel.CreateBounded<(Guid, byte[])>(
+            _rawFramesChannel = Channel.CreateBounded<(DeviceStreamingHandshakeDto, byte[])>(
                 new BoundedChannelOptions(_numberOfBufferFramesInChannel)
                 {
                     FullMode = BoundedChannelFullMode.DropOldest,
@@ -60,14 +61,14 @@ namespace CamPortal.Core.Services
             });
         }
 
-        public void AddFrame(Guid cameraId, byte[] frame)
+        public void AddFrame(DeviceStreamingHandshakeDto device, byte[] frame)
         {
-            if (cameraId == Guid.Empty)
-                throw new ArgumentException("Camera ID cannot be empty", nameof(cameraId));
+            if (device.Id == Guid.Empty)
+                throw new ArgumentException("Camera ID cannot be empty", nameof(device.Id));
             if (frame == null || frame.Length == 0)
                 throw new ArgumentException("Frame data cannot be null or empty", nameof(frame));
 
-            _rawFramesChannel.Writer.TryWrite((cameraId, frame));
+            _rawFramesChannel.Writer.TryWrite((device, frame));
 
             int depth = _rawFramesChannel.Reader.Count;
 
@@ -121,13 +122,50 @@ namespace CamPortal.Core.Services
             return _processedFramesCameraChannels[cameraId];
         }
 
-        public byte[] StampFrame(byte[] frame)
+        public byte[] StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera)
         {
             using var image = Image.Load(frame);
 
-            string text = $"<{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}>";
+            string text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+            var cameraName = camera.DeviceName ?? $"<No Name Set, Device id {camera.Id}>";
 
-            image.Mutate(ctx => ctx.DrawText(text, _stampFont, Color.White, new PointF(image.Width - 320, image.Height - 50)));
+            var cameraConfig = camera.CameraStreamingConfiguration;
+
+            image.Mutate(ctx =>
+            {
+                if (cameraConfig.FrameRotation != 0)
+                {
+                    ctx.Rotate(cameraConfig.FrameRotation);
+                }
+
+                var currentSize = ctx.GetCurrentSize();
+
+                if (cameraConfig.ZoomFactor > 1)
+                {
+                    var cropWidth = Math.Clamp((int)(currentSize.Width / cameraConfig.ZoomFactor), 1, currentSize.Width);
+                    var cropHeight = Math.Clamp((int)(currentSize.Height / cameraConfig.ZoomFactor), 1, currentSize.Height);
+                    var startX = Math.Clamp(cameraConfig.ZoomStartX, 0, currentSize.Width - cropWidth);
+                    var startY = Math.Clamp(cameraConfig.ZoomStartY, 0, currentSize.Height - cropHeight);
+                    ctx.Crop(new Rectangle(startX, startY, cropWidth, cropHeight));
+                    currentSize = ctx.GetCurrentSize();
+                }
+
+                ctx.Brightness(cameraConfig.Brightness);
+                ctx.Contrast(cameraConfig.Contrast);
+
+                if (cameraConfig.FlipMode != FlipMode.None)
+                {
+                    ctx.Flip(cameraConfig.FlipMode);
+                }
+
+                if (cameraConfig.SharpenFactor > 0)
+                {
+                    ctx.GaussianSharpen(cameraConfig.SharpenFactor);
+                }
+
+                ctx.DrawText(text, _stampFont, Color.White, new PointF(currentSize.Width - 320, currentSize.Height - 50));
+                ctx.DrawText(cameraName, _stampFont, Color.White, new PointF(10, currentSize.Height - 50));
+            });
 
             using var ms = new MemoryStream();
 

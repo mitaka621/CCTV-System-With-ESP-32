@@ -12,6 +12,21 @@ window.stopCameraStreamById = (elementId) => {
   }
 };
 
+window.startCameraStream = (elementId, url) => {
+  const apply = () => {
+    const img = document.getElementById(elementId);
+    if (img) {
+      img.src = url;
+    }
+  };
+
+  if (document.readyState === "complete") {
+    setTimeout(apply, 0);
+  } else {
+    window.addEventListener("load", () => setTimeout(apply, 0), { once: true });
+  }
+};
+
 (() => {
   const stopAll = () => window.stopCameraStreams(".camera-stream, .fullscreen-stream");
   window.addEventListener("pagehide", stopAll);

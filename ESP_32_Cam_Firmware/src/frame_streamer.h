@@ -1,16 +1,17 @@
 #pragma once
 
+#include "secret_store.h"
 #include <Arduino.h>
 
 namespace frame_streamer
 {
   bool beginCamera();
 
-  void setServerIp(const String &serverIp);
+  bool startSession(const DeviceCredentials &creds);
 
-  void setSessionKey(const uint8_t *key, size_t keyLen);
+  bool isSessionActive();
 
-  bool hasSessionKey();
+  void endSession();
 
   void tick();
 }

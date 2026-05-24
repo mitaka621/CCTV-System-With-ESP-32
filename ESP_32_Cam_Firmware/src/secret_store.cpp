@@ -27,10 +27,12 @@ namespace secret_store
     out.privateKey = PRIVATE_KEY;
     out.nonce = NONCE;
     out.serverIp = SERVER_IP;
+    out.serverIdentityPubKey = SERVER_IDENTITY_PUBKEY;
     return out.wifiSsid.length() > 0 &&
            out.deviceId.length() > 0 &&
            out.privateKey.length() > 0 &&
-           out.serverIp.length() > 0;
+           out.serverIp.length() > 0 &&
+           out.serverIdentityPubKey.length() > 0;
 #else
     (void)out;
     return false;
@@ -50,11 +52,13 @@ namespace secret_store
     out.privateKey = _prefs.getString("privateKey", "");
     out.nonce = _prefs.getString("nonce", "");
     out.serverIp = _prefs.getString("serverIp", "");
+    out.serverIdentityPubKey = _prefs.getString("srvIdPubKey", "");
 
     return out.wifiSsid.length() > 0 &&
            out.deviceId.length() > 0 &&
            out.privateKey.length() > 0 &&
-           out.serverIp.length() > 0;
+           out.serverIp.length() > 0 &&
+           out.serverIdentityPubKey.length() > 0;
   }
 
   bool saveToNvs(const DeviceCredentials &creds)
@@ -69,6 +73,7 @@ namespace secret_store
     _prefs.putString("privateKey", creds.privateKey);
     _prefs.putString("nonce", creds.nonce);
     _prefs.putString("serverIp", creds.serverIp);
+    _prefs.putString("srvIdPubKey", creds.serverIdentityPubKey);
     return true;
   }
 

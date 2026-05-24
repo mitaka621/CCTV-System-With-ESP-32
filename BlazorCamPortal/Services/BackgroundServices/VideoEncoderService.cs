@@ -1,4 +1,4 @@
-﻿using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
@@ -163,7 +163,7 @@ namespace CamPortal.Core.BackgroundServices
 
                             lastFileDto = new CreateVideoChunkDto
                             {
-                                CameraId = cameraId,
+                                DeviceId = cameraId,
                                 ChunkStartTime = lastFileStartTime.Value,
                                 ChunkEndTime = DateTime.UtcNow,
                                 FileName = fileName,

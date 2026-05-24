@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace CamPortal.Contracts.Dtos.PreprovisionAttemptDtos
 {
@@ -7,6 +7,9 @@ namespace CamPortal.Contracts.Dtos.PreprovisionAttemptDtos
         [JsonIgnore]
         public string? QRCode { get; set; }
 
+        [JsonIgnore]
+        public string? QrPayloadUrl { get; set; }
+
         public string WifiSSID { get; set; } = null!;
 
         public string WifiPassword { get; set; } = null!;
@@ -14,6 +17,8 @@ namespace CamPortal.Contracts.Dtos.PreprovisionAttemptDtos
         public string PrivateKey { get; set; } = null!;
 
         public string ServerIp { get; set; } = null!;
+
+        public string ServerIdentityPublicKey { get; set; } = null!;
 
         public Guid DeviceId { get; set; }
 

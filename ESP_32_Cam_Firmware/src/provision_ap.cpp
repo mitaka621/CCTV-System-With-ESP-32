@@ -258,12 +258,14 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     out.privateKey = doc["PrivateKey"].as<String>();
     out.nonce = doc["Nonce"].as<String>();
     out.serverIp = doc["ServerIp"].as<String>();
+    out.serverIdentityPubKey = doc["ServerIdentityPublicKey"].as<String>();
 
     return out.wifiSsid.length() > 0 &&
            out.deviceId.length() > 0 &&
            out.privateKey.length() > 0 &&
            out.nonce.length() > 0 &&
-           out.serverIp.length() > 0;
+           out.serverIp.length() > 0 &&
+           out.serverIdentityPubKey.length() > 0;
   }
 
   static void handleProvision()
