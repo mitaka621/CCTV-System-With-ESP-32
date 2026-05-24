@@ -1,5 +1,6 @@
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
+using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ namespace CamPortal.Core.BackgroundServices
         private readonly int _videoChunksSizeInS;
         private readonly int _timeoutInS;
         private readonly string _footagePath;
+        private readonly VideoHardwareEncoder _activeEncoder;
 
         private readonly Dictionary<Guid, CancellationTokenSource> _cameraEncodersCancelationSources = new();
 
@@ -61,6 +63,25 @@ namespace CamPortal.Core.BackgroundServices
 
             _footagePath = configuration.GetSection("VideoEncoderConfig")["VideoChunksFolder"]
                 ?? throw new ArgumentNullException("VideoChunksFolder not configured");
+
+            var requestedEncoder = ParseConfiguredEncoder(configuration);
+            _activeEncoder = VideoChunkUtilities.ResolveHardwareEncoder(requestedEncoder, _logger);
+        }
+
+        private static VideoHardwareEncoder ParseConfiguredEncoder(IConfiguration configuration)
+        {
+            var raw = configuration.GetSection("VideoEncoderConfig")["HardwareEncoder"];
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return VideoHardwareEncoder.Auto;
+            }
+
+            if (Enum.TryParse<VideoHardwareEncoder>(raw, ignoreCase: true, out var parsed))
+            {
+                return parsed;
+            }
+
+            return VideoHardwareEncoder.Auto;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -290,15 +311,7 @@ namespace CamPortal.Core.BackgroundServices
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = VideoChunkUtilities.GetFfmpegPath(),
-                    Arguments =
-                        $"-f mjpeg -framerate {_encodedVideoOutputFps} -i pipe:0 " +
-                        "-map 0:v:0 -an " +
-                        "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
-                        $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
-                        $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
-                        "-b:v 1500k -maxrate 2000k -bufsize 4000k " +
-                        $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts " +
-                        $"{filePath}",
+                    Arguments = BuildFfmpegArguments(filePath),
                     RedirectStandardInput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -308,6 +321,35 @@ namespace CamPortal.Core.BackgroundServices
             };
 
             return ffmpeg;
+        }
+
+        private string BuildFfmpegArguments(string filePath)
+        {
+            int fps = _encodedVideoOutputFps;
+            int gop = fps * _videoChunksSizeInS;
+
+            string inputSection =
+                $"-f mjpeg -framerate {fps} -i pipe:0 -map 0:v:0 -an ";
+
+            string codecSection = _activeEncoder switch
+            {
+                VideoHardwareEncoder.Nvidia =>
+                    $"-c:v h264_nvenc -preset p4 -tune ll -rc cbr -no-scenecut 1 -g {gop} -keyint_min {gop} ",
+                VideoHardwareEncoder.Intel =>
+                    $"-c:v h264_qsv -preset veryfast -look_ahead 0 -g {gop} ",
+                VideoHardwareEncoder.Amd =>
+                    $"-c:v h264_amf -quality balanced -rc cbr -g {gop} ",
+                _ =>
+                    $"-c:v libx264 -preset veryfast -tune zerolatency -sc_threshold 0 -threads 2 -g {gop} -keyint_min {gop} "
+            };
+
+            string rateSection =
+                $"-pix_fmt yuv420p -r {fps} -b:v 1500k -maxrate 2000k -bufsize 4000k ";
+
+            string outputSection =
+                $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts {filePath}";
+
+            return inputSection + codecSection + rateSection + outputSection;
         }
 
         public override void Dispose()

@@ -29,25 +29,20 @@ namespace CamPortal.Core.Services
             _cameraResolutionWidth = configuration.GetValue<int>("ESPCamera:ResolutionWidth");
         }
 
-        public async Task<bool> UpdateCameraConfigurationAsync(Guid deviceId, CameraConfigurationModel model)
+        public async Task<bool> UpdateCameraConfigurationAsync(CameraConfigurationModel model)
         {
             if (!ValidateModel(model) || model.ZoomStartX > _cameraResolutionWidth || model.ZoomStartY > _cameraResolutionHeight)
             {
                 return false;
             }
 
-            var cameraNameUpdate = await _deviceRepository.SetDeviceNameAsync(deviceId, model.CameraName);
+            _activeCameraConnectionsService.TryDisconnect(model.DeviceId);
 
-            var cameraConfigUpdate = await _cameraConfigurationRepository.UpdateDeviceConfigurationAsync(deviceId, _mapper.Map<CameraStreamingConfigurationDto>(model));
+            var cameraNameUpdate = await _deviceRepository.SetDeviceNameAsync(model.DeviceId, model.CameraName);
 
-            var isUpdateSuccessful = cameraNameUpdate && cameraConfigUpdate;
+            var cameraConfigUpdate = await _cameraConfigurationRepository.UpdateDeviceConfigurationAsync(model.DeviceId, _mapper.Map<CameraStreamingConfigurationDto>(model));
 
-            if (isUpdateSuccessful)
-            {
-                _activeCameraConnectionsService.TryDisconnect(deviceId);
-            }
-
-            return isUpdateSuccessful;
+            return cameraNameUpdate && cameraConfigUpdate;
         }
 
         public bool ValidateModel<T>(T model)

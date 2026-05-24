@@ -4,6 +4,6 @@ namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface ICameraConfigurationService
     {
-        Task<bool> UpdateCameraConfigurationAsync(Guid deviceId, CameraConfigurationModel dto);
+        Task<bool> UpdateCameraConfigurationAsync(CameraConfigurationModel dto);
     }
 }

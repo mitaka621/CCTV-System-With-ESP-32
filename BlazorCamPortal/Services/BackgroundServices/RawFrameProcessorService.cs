@@ -10,6 +10,8 @@ namespace CamPortal.Core.BackgroundServices
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly ILogger<RawFrameProcessorService> _logger;
 
+        private readonly int _numberOfWorkers;
+
         public RawFrameProcessorService(
             ICameraFramesManagerService cameraFramesManagerService,
             ILogger<RawFrameProcessorService> logger,
@@ -17,16 +19,27 @@ namespace CamPortal.Core.BackgroundServices
         {
             _cameraFramesManagerService = cameraFramesManagerService;
             _logger = logger;
+            _numberOfWorkers = Math.Max(1, Environment.ProcessorCount - 1);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            List<Task> workerTasks = new();
+            for (int i = 0; i < _numberOfWorkers; i++)
+            {
+                workerTasks.Add(StartWorkerLoopAsync(stoppingToken));
+            }
+
+            await Task.WhenAll(workerTasks);
+        }
+
+        private async Task StartWorkerLoopAsync(CancellationToken stoppingToken)
+        {
+            var rawFramesReader = _cameraFramesManagerService.RawFramesChannelReader;
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    var rawFramesReader = _cameraFramesManagerService.RawFramesChannelReader;
-
                     var (device, frame) = await rawFramesReader.ReadAsync(stoppingToken);
 
                     var stampedFrame = _cameraFramesManagerService.StampFrame(frame, device);

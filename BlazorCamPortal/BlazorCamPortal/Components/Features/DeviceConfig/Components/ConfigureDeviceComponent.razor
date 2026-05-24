@@ -15,7 +15,7 @@
     <MudOverlay Visible="_isApplying"
                 Absolute="true"
                 DarkBackground="false"
-                Style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10;">
+                Style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10; width:102%; left:-10px;">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
     </MudOverlay>
 
@@ -127,6 +127,9 @@
                         <MudSelectItem Value="@mode">@mode</MudSelectItem>
                     }
                 </MudSelect>
+                <MudButton Color="Color.Error" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CreateDefaultCameraConfiguration">
+                    Reset to Defaults
+                </MudButton>
             </MudStack>
         </MudItem>
     </MudGrid>
@@ -162,14 +165,7 @@
         _cameraFeedWidth = _configuration.GetValue<int>("ESPCamera:ResolutionWidth");
         _cameraFeedHeight = _configuration.GetValue<int>("ESPCamera:ResolutionHeight");
 
-        _cameraConfigurationDto.DeviceId = model.PairedDeviceId!.Value;
-
-        var totalCameras = await _deviceService.GetTotalCamerasAsync();
-        _cameraConfigurationDto.CameraName = $"Camera {totalCameras + 1}";
-
-        await _cameraConfigurationService.UpdateCameraConfigurationAsync(
-            _cameraConfigurationDto.DeviceId,
-            _cameraConfigurationDto);
+        await CreateDefaultCameraConfiguration();      
 
         _verticalSliderRawValue = MaxZoomStartY;
     }
@@ -186,9 +182,7 @@
         _isApplying = true;
         StateHasChanged();
 
-        var isUpdateSuccessful = await _cameraConfigurationService.UpdateCameraConfigurationAsync(
-            _cameraConfigurationDto.DeviceId,
-            _cameraConfigurationDto);
+        var isUpdateSuccessful = await _cameraConfigurationService.UpdateCameraConfigurationAsync(_cameraConfigurationDto);
 
         if (!isUpdateSuccessful)
         {
@@ -242,6 +236,19 @@
     {
         _cameraConfigurationDto.ZoomStartX = Math.Clamp(_cameraConfigurationDto.ZoomStartX, 0, MaxZoomStartX);
         _cameraConfigurationDto.ZoomStartY = Math.Clamp(_cameraConfigurationDto.ZoomStartY, 0, MaxZoomStartY);
+    }
+
+    private async Task CreateDefaultCameraConfiguration()
+    {
+        var totalCameras = await _deviceService.GetTotalCamerasAsync();
+
+        _cameraConfigurationDto = new CameraConfigurationModel()
+        {
+            DeviceId = model.PairedDeviceId!.Value,
+            CameraName = $"Camera {totalCameras + 1}",       
+        };
+
+        await _cameraConfigurationService.UpdateCameraConfigurationAsync(_cameraConfigurationDto);
     }
 
     public void Dispose()
