@@ -1,0 +1,21 @@
+@page "/access-denied"
+@rendermode InteractiveServer
+@layout AuthLayout
+@using CamPortal.Components.Layout
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Access denied - BlazorCam Portal</PageTitle>
+
+<MudPaper Elevation="6" Class="pa-8" Style="width: 100%; max-width: 480px;">
+    <MudStack AlignItems="AlignItems.Center" Spacing="3">
+        <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Large" Color="Color.Error" />
+        <MudText Typo="Typo.h5" Align="Align.Center">Access denied</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+            Your account does not have permission to view this page.
+        </MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Home">
+            Back to dashboard
+        </MudButton>
+    </MudStack>
+</MudPaper>

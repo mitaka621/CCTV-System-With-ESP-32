@@ -1,0 +1,87 @@
+@page "/account/settings"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize]
+
+<PageTitle>User Settings - BlazorCam Portal</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Color="Color.Primary" />
+            <MudText Typo="Typo.h4">User Settings</MudText>
+        </MudStack>
+
+        <AuthorizeView>
+            <Authorized>
+                <MudCard Elevation="4">
+                    <MudCardContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+                            <MudAvatar Color="Color.Primary"
+                                       Size="Size.Large"
+                                       Style="font-size: 1.5rem; font-weight: 600;">
+                                @GetInitial(context.User.Identity?.Name)
+                            </MudAvatar>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.h6">@context.User.Identity?.Name</MudText>
+                                <MudStack Row Spacing="1" Wrap="Wrap.Wrap" Class="mt-1">
+                                    @foreach (var role in GetRoles(context.User))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(role)">@role</MudChip>
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </Authorized>
+        </AuthorizeView>
+
+        <MudCard Elevation="4">
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Security</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Update your password. All your other active sessions will be signed out.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.LockReset"
+                               Href="/change-password"
+                               Style="align-self: flex-start;">
+                        Change password
+                    </MudButton>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private static string GetInitial(string? name)
+    {
+        return string.IsNullOrWhiteSpace(name)
+            ? "?"
+            : name.Trim()[..1].ToUpperInvariant();
+    }
+
+    private static IEnumerable<string> GetRoles(System.Security.Claims.ClaimsPrincipal user)
+    {
+        return user.Claims
+            .Where(c => c.Type == CustomClaimTypes.Role)
+            .Select(c => c.Value);
+    }
+
+    private static Color GetRoleColor(string roleName) => roleName switch
+    {
+        Roles.Admin => Color.Error,
+        Roles.User => Color.Info,
+        Roles.InfoDashboard => Color.Secondary,
+        _ => Color.Default,
+    };
+}

@@ -11,5 +11,17 @@ namespace CamPortal.Core.Utilities
                 .FirstOrDefault() as DisplayAttribute;
             return attribute?.Name ?? value.ToString();
         }
+
+        public static bool ValidateModel<T>(T model)
+        {
+            if (model == null)
+            {
+                return false;
+            }
+
+            var context = new ValidationContext(model);
+
+            return Validator.TryValidateObject(model, context, null, validateAllProperties: true);
+        }
     }
 }

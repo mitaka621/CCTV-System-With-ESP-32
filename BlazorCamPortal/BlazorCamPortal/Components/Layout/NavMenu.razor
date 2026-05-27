@@ -1,4 +1,6 @@
-﻿<div class="drawer-header" id="drawer-header">
+@using CamPortal.Contracts.Constants
+
+<div class="drawer-header" id="drawer-header">
     <div class="header-content">
         <MudIcon Icon="@Icons.Material.Filled.Videocam" Class="header-icon" Color="Color.Primary" />
         <MudText Typo="Typo.h6" Class="header-text" Color="Color.Primary" id="header-text">
@@ -8,80 +10,58 @@
 </div>
 
 <MudNavMenu Class="navigation-menu" id="navigation-menu">
-    <div class="nav-item-wrapper" id="nav-dashboard">
-        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
-            <span class="nav-text" id="text-dashboard">Dashboard</span>
-        </MudNavLink>
-    </div>
-    <div class="nav-item-wrapper" id="nav-cameras">
-        <MudNavLink Href="/camerasConfig" Icon="@Icons.Material.Filled.Settings">
-            <span class="nav-text" id="text-cameras">Configure Devices</span>
-        </MudNavLink>
-    </div>
-    <div class="nav-item-wrapper" id="nav-recordings">
-        <MudNavLink Href="/replay" Icon="@Icons.Material.Filled.VideoLibrary">
-            <span class="nav-text" id="text-recordings">Replay</span>
-        </MudNavLink>
-    </div>
-    <div class="nav-item-wrapper" id="nav-analytics">
-        <MudNavLink Href="/analytics" Icon="@Icons.Material.Filled.Analytics">
-            <span class="nav-text" id="text-analytics">Analytics</span>
-        </MudNavLink>
-    </div>
-    
-    <MudDivider Class="my-2" />
-    
-    <div class="nav-item-wrapper" id="nav-system">
-        <MudNavGroup Icon="@Icons.Material.Filled.Computer" Expanded="false">
-            <TitleContent>
-                <span class="nav-text" id="text-system">System</span>
-            </TitleContent>
-            <ChildContent>
-                <div class="nav-item-wrapper" id="nav-logs">
-                    <MudNavLink Href="/system/logs" Icon="@Icons.Material.Filled.Article">
-                        <span class="nav-text" id="text-logs">System Logs</span>
-                    </MudNavLink>
-                </div>
-                <div class="nav-item-wrapper" id="nav-status">
-                    <MudNavLink Href="/system/status" Icon="@Icons.Material.Filled.HealthAndSafety">
-                        <span class="nav-text" id="text-status">System Status</span>
-                    </MudNavLink>
-                </div>
-                <div class="nav-item-wrapper" id="nav-settings">
-                    <MudNavLink Href="/system/settings" Icon="@Icons.Material.Filled.Tune">
-                        <span class="nav-text" id="text-settings">Settings</span>
-                    </MudNavLink>
-                </div>
-            </ChildContent>
-        </MudNavGroup>
-    </div>
+    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.User}")">
+        <div class="nav-item-wrapper" id="nav-dashboard">
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+                <span class="nav-text" id="text-dashboard">Dashboard</span>
+            </MudNavLink>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.InfoDashboard}")">
+        <div class="nav-item-wrapper" id="nav-info-dashboard">
+            <MudNavLink Href="/info-dashboard" Icon="@Icons.Material.Filled.MonitorHeart">
+                <span class="nav-text" id="text-info-dashboard">Info Dashboard</span>
+            </MudNavLink>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@Roles.Admin">
+        <div class="nav-item-wrapper" id="nav-cameras">
+            <MudNavLink Href="/camerasConfig" Icon="@Icons.Material.Filled.Settings">
+                <span class="nav-text" id="text-cameras">Configure Devices</span>
+            </MudNavLink>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.User}")">
+        <div class="nav-item-wrapper" id="nav-recordings">
+            <MudNavLink Href="/replay" Icon="@Icons.Material.Filled.VideoLibrary">
+                <span class="nav-text" id="text-recordings">Replay</span>
+            </MudNavLink>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@Roles.Admin">
+        <MudDivider Class="my-2" />
+
+        <div class="nav-item-wrapper" id="nav-system">
+            <MudNavGroup Icon="@Icons.Material.Filled.Computer" Expanded="false">
+                <TitleContent>
+                    <span class="nav-text" id="text-system">System</span>
+                </TitleContent>
+                <ChildContent>
+                    <div class="nav-item-wrapper" id="nav-settings">
+                        <MudNavLink Href="/system/settings" Icon="@Icons.Material.Filled.Tune">
+                            <span class="nav-text" id="text-settings">Settings</span>
+                        </MudNavLink>
+                    </div>
+                </ChildContent>
+            </MudNavGroup>
+        </div>
+    </AuthorizeView>
 </MudNavMenu>
 
-<div class="drawer-footer" id="drawer-footer">
-    <MudPaper Class="ma-2 pa-2" Elevation="0">
-        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-            <MudText Typo="Typo.caption" Color="Color.Secondary" id="version-text">v1.0.0</MudText>
-            <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Secondary" />
-        </MudStack>
-    </MudPaper>
-</div>
-
-@code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-
-            await Task.Delay(100);
-            await InvokeAsync(() => {
-                _ = Task.Run(async () => {
-                    await Task.Delay(500);
-                    await InvokeAsync(StateHasChanged);
-                });
-            });
-        }
-    }
-}
 
 <style>
     .drawer-header {
@@ -158,14 +138,6 @@
         padding: 8px;
     }
     
-    .drawer-footer {
-        margin-top: auto;
-        border-top: 1px solid var(--mud-palette-divider);
-        height: 60px;
-        display: flex;
-        align-items: center;
-    }
-    
 
     .mud-nav-link {
         border-radius: 12px !important;
@@ -209,27 +181,6 @@
     }
     
 
-    .mud-drawer-mini .drawer-footer .mud-text {
-        display: none;
-    }
-    
-    .mud-drawer-mini:hover .drawer-footer .mud-text {
-        display: block;
-        animation: fadeInSlide 0.3s ease-in-out;
-    }
-    
-    .mud-drawer-mini .drawer-footer {
-        justify-content: center;
-        overflow: hidden;
-    }
-    
-    .mud-drawer-mini:hover .drawer-footer {
-        justify-content: space-between;
-        padding: 0 16px;
-        overflow: visible;
-    }
-    
-
     .mud-drawer-mini .mud-nav-menu * {
         white-space: nowrap;
         overflow: hidden;
@@ -244,4 +195,3 @@
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 </style>
-

@@ -1,26 +1,58 @@
-﻿@page "/system/settings"
+@page "/system/settings"
 @rendermode InteractiveServer
 
-<h3>Settings</h3>
+@using CamPortal.Contracts.Constants
+@using Microsoft.AspNetCore.Authorization
 
-<MudContainer MaxWidth="MaxWidth.Large">
-    <MudGrid Spacing="5" Justify="Justify.Center">
-        <MudItem>
-            <MudButton Href="/system/settings/deviceTypes">
-                <MudPaper Height="140px" Width="140px">
-                    <MudIcon Icon="@Icons.Material.Filled.Devices" Size="Size.Large" Color="Color.Primary" Class="mt-5 mb-2" />
-                    <MudText Typo="Typo.h6" Align="Align.Center" Class="mt-5">Device Types</MudText>
-                </MudPaper>
-            </MudButton>          
-        </MudItem>
-        <MudItem>
-            <MudPaper Height="140px" Width="140px" />
-        </MudItem>
-        <MudItem>
-            <MudPaper Height="140px" Width="140px" />
-        </MudItem>
-    </MudGrid>
+@attribute [Authorize(Roles = Roles.Admin)]
+
+<PageTitle>Settings - BlazorCam Portal</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Tune" Color="Color.Primary" />
+            <MudText Typo="Typo.h4">Settings</MudText>
+        </MudStack>
+
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="4">
+                    <MudCardContent>
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Devices" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.h6">Device Types</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                Manage the device categories used in the catalog.
+                            </MudText>
+                        </MudStack>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/deviceTypes">
+                            Open
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="4">
+                    <MudCardContent>
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.PeopleAlt" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.h6">Users</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                Add or remove users and edit their roles.
+                            </MudText>
+                        </MudStack>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/users">
+                            Open
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    </MudStack>
 </MudContainer>
-@code {
-
-}

@@ -1,7 +1,8 @@
-﻿using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
 using CamPortal.Contracts.Models;
 using CamPortal.Filters;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -9,6 +10,7 @@ namespace CamPortal.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous]
     [LocalNetworkOnly]
     [EnableRateLimiting("preprovision-per-ip")]
     public class PreprovisionController : ControllerBase

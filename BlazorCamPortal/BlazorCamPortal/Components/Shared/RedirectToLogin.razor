@@ -1,0 +1,28 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject NavigationManager _navigationManager
+
+<MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-8">
+    <MudProgressCircular Indeterminate="true" />
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Redirecting to sign in...</MudText>
+</MudStack>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var auth = await AuthStateTask;
+            if (auth.User.Identity?.IsAuthenticated == true)
+            {
+                _navigationManager.NavigateTo("/access-denied", forceLoad: true);
+                return;
+            }
+        }
+
+        var returnUrl = Uri.EscapeDataString(_navigationManager.ToBaseRelativePath(_navigationManager.Uri));
+        _navigationManager.NavigateTo($"/login?returnUrl=/{returnUrl}", forceLoad: true);
+    }
+}

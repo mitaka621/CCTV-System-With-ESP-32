@@ -1,8 +1,13 @@
 @page "/replay"
 @rendermode InteractiveServer
 @using CamPortal.Components.Replay
+@using CamPortal.Contracts.Constants
 @using CamPortal.Contracts.Dtos.VideoChunkDtos
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
+
+@attribute [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
+
 @inject IJSRuntime _js
 @inject IDialogService _dialogService
 @inject IDeviceService _cameraService

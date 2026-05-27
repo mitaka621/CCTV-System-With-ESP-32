@@ -1,10 +1,12 @@
-﻿using System.Net;
+using System.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CamPortal.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class VideoChunkController : ControllerBase
     {
         private readonly IWebHostEnvironment _env;

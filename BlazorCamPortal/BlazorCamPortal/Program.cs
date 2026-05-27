@@ -45,10 +45,13 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services.AddServices();
 builder.Services.AddRepositories();
 builder.Services.AddRateLimiterPolicy();
+builder.Services.AddAuth();
 
 var app = builder.Build();
 
 app.ApplyMigrations(app.Services);
+
+await app.SeedInitialAdminAsync();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -58,11 +61,23 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseRateLimiter();
+
+app.UseAuthentication();
+
+app.UseAuthorization();
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.MapControllers();
 

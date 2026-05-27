@@ -1,0 +1,110 @@
+@page "/login"
+@layout AuthLayout
+@using CamPortal.Components.Layout
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+
+<PageTitle>Login - BlazorCam Portal</PageTitle>
+
+<MudPaper Elevation="6" Class="pa-8" Style="width: 100%; max-width: 420px;">
+    <MudStack Spacing="4">
+        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h5" Align="Align.Center">BlazorCam Portal</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">Sign in to continue</MudText>
+        </MudStack>
+
+        @if (Error == "credentials")
+        {
+            <MudAlert Severity="Severity.Error">Invalid username or password.</MudAlert>
+        }
+        else if (Error == "expired")
+        {
+            <MudAlert Severity="Severity.Warning">Your session expired. Please sign in again.</MudAlert>
+        }
+        else if (Error == "invalid")
+        {
+            <MudAlert Severity="Severity.Error">Please provide a valid username and password.</MudAlert>
+        }
+        else if (Error == "failed")
+        {
+            <MudAlert Severity="Severity.Error">Something went wrong. Please try again.</MudAlert>
+        }
+
+        <form method="post" action="/api/auth/login" onsubmit="window.showSubmitOverlay()">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+            <MudStack Spacing="3">
+                <MudTextField T="string"
+                              Label="Username"
+                              Variant="Variant.Filled"
+                              Required="true"
+                              UserAttributes="@_userNameAttributes" />
+
+                <MudTextField T="string"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Filled"
+                              Required="true"
+                              UserAttributes="@_passwordAttributes" />
+
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large">
+                    Sign in
+                </MudButton>
+            </MudStack>
+        </form>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpContext is null)
+        {
+            return;
+        }
+
+        var mainAuth = await HttpContext.AuthenticateAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        if (mainAuth.Succeeded)
+        {
+            HttpContext.Response.Redirect("/");
+            return;
+        }
+
+        var pendingAuth = await HttpContext.AuthenticateAsync(
+            AuthSchemes.PasswordChangePending);
+
+        if (pendingAuth.Succeeded)
+        {
+            HttpContext.Response.Redirect("/change-password");
+            return;
+        }
+    }
+
+    private readonly Dictionary<string, object?> _userNameAttributes = new()
+    {
+        ["name"] = "UserName",
+        ["autocomplete"] = "username",
+        ["autofocus"] = true
+    };
+
+    private readonly Dictionary<string, object?> _passwordAttributes = new()
+    {
+        ["name"] = "Password",
+        ["autocomplete"] = "current-password"
+    };
+}

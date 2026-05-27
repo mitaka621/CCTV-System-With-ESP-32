@@ -1,0 +1,297 @@
+@page "/system/settings/users"
+@rendermode InteractiveServer
+
+@using CamPortal.Components.Features.Settings.Dialogs
+@using CamPortal.Contracts.Constants
+@using CamPortal.Contracts.Dtos.UserDtos
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize(Roles = Roles.Admin)]
+
+@inject IUserManagementService _userManagementService
+@inject IDialogService _dialogService
+@inject ISnackbar _snackbar
+@inject AuthenticationStateProvider _authenticationStateProvider
+
+<PageTitle>Users - BlazorCam Portal</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <PageLoader IsLoading="_isLoading" Message="Loading users...">
+        <MudDataGrid T="UserListItemDto"
+                     Items="_users"
+                     QuickFilter="_quickFilter"
+                     Hideable="true"
+                     Dense="true"
+                     Hover="true"
+                     Bordered="true"
+                     Striped="true"
+                     Filterable="false"
+                     SortMode="SortMode.Multiple"
+                     Groupable="false">
+            <ToolBarContent>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.PeopleAlt" Color="Color.Primary" />
+                    <MudText Typo="Typo.h4">Users</MudText>
+                </MudStack>
+                <MudSpacer />
+                <MudTextField @bind-Value="_searchString"
+                              Placeholder="Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Class="mt-0"
+                              DebounceInterval="200"
+                              Immediate="true" />
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           OnClick="ShowAddUserDialogAsync"
+                           Class="ml-2">
+                    Add user
+                </MudButton>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn Property="x => x.UserName" Title="Username" />
+                <PropertyColumn Property="x => x.Email" Title="Email" />
+                <TemplateColumn Title="Roles" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row Spacing="1" Wrap="Wrap.Wrap">
+                            @foreach (var role in context.Item.Roles)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(role.Name)">@role.Name</MudChip>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Status" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.IsFirstTimeSetup)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Awaiting password change</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions" Sortable="false" HeaderStyle="width: 120px;">
+                    <CellTemplate>
+                        <MudStack Row Spacing="1">
+                            <MudTooltip Text="@GetEditTooltip(context.Item)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               Disabled="@(!CanEdit(context.Item))"
+                                               OnClick="() => ShowEditRolesDialogAsync(context.Item)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@GetDeleteTooltip(context.Item)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               Disabled="@(!CanDelete(context.Item))"
+                                               OnClick="() => ShowDeleteDialogAsync(context.Item)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="UserListItemDto" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="pa-4">No users match the current filter.</MudText>
+            </NoRecordsContent>
+        </MudDataGrid>
+    </PageLoader>
+</MudContainer>
+
+@code {
+    private List<UserListItemDto> _users = new();
+    private bool _isLoading = true;
+    private string _searchString = string.Empty;
+    private Guid _currentUserId;
+
+    private Func<UserListItemDto, bool> _quickFilter => user =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+        {
+            return true;
+        }
+
+        var term = _searchString.Trim();
+
+        return user.UserName.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || user.Email.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || user.Roles.Any(r => r.Name.Contains(term, StringComparison.OrdinalIgnoreCase));
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        var idClaim = authState.User.FindFirst(CustomClaimTypes.Id)?.Value;
+
+        Guid.TryParse(idClaim, out _currentUserId);
+
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            _users = await _userManagementService.GetAllUsersAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ShowAddUserDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+        };
+
+        var dialog = await _dialogService.ShowAsync<AddUserDialog>("Add user", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is true)
+        {
+            await LoadUsersAsync();
+        }
+    }
+
+    private async Task ShowEditRolesDialogAsync(UserListItemDto user)
+    {
+        if (!CanEdit(user))
+        {
+            _snackbar.Add(GetEditTooltip(user), Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<EditUserRolesDialog>
+        {
+            { x => x.UserId, user.Id },
+            { x => x.UserName, user.UserName },
+            { x => x.InitialRoleIds, user.Roles.Select(r => r.Id).ToList() },
+            { x => x.CurrentUserId, _currentUserId }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+        };
+
+        var dialog = await _dialogService.ShowAsync<EditUserRolesDialog>($"Edit roles - {user.UserName}", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is true)
+        {
+            await LoadUsersAsync();
+        }
+    }
+
+    private async Task ShowDeleteDialogAsync(UserListItemDto user)
+    {
+        if (!CanDelete(user))
+        {
+            _snackbar.Add(GetDeleteTooltip(user), Severity.Warning);
+            return;
+        }
+
+        var result = await _dialogService.ShowMessageBox(
+            "Delete user",
+            (MarkupString)$"Are you sure you want to delete user <b>{user.UserName}</b>? They will be immediately signed out.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (result != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var deleteResult = await _userManagementService.DeleteUserAsync(user.Id, _currentUserId);
+
+            switch (deleteResult)
+            {
+                case DeleteUserResult.Success:
+                    _users.RemoveAll(u => u.Id == user.Id);
+                    _snackbar.Add($"User '{user.UserName}' deleted.", Severity.Success);
+                    break;
+                case DeleteUserResult.CannotDeleteSelf:
+                    _snackbar.Add("You cannot delete your own account.", Severity.Warning);
+                    break;
+                case DeleteUserResult.CannotDeleteLastAdmin:
+                    _snackbar.Add("Cannot delete the last administrator.", Severity.Warning);
+                    break;
+                case DeleteUserResult.UserNotFound:
+                    _snackbar.Add("User no longer exists.", Severity.Info);
+                    await LoadUsersAsync();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private bool IsAdmin(UserListItemDto user)
+        => user.Roles.Any(r => string.Equals(r.Name, Roles.Admin, StringComparison.Ordinal));
+
+    private bool IsLastAdmin(UserListItemDto user)
+        => IsAdmin(user) && _users.Count(IsAdmin) <= 1;
+
+    private bool IsSelf(UserListItemDto user)
+        => user.Id == _currentUserId;
+
+    private bool CanDelete(UserListItemDto user)
+        => !IsSelf(user) && !IsLastAdmin(user);
+
+    private bool CanEdit(UserListItemDto user)
+        => !IsSelf(user);
+
+    private string GetDeleteTooltip(UserListItemDto user)
+    {
+        if (IsSelf(user))
+        {
+            return "You cannot delete your own account.";
+        }
+
+        if (IsLastAdmin(user))
+        {
+            return "Cannot delete the last administrator.";
+        }
+
+        return "Delete";
+    }
+
+    private string GetEditTooltip(UserListItemDto user)
+    {
+        if (IsSelf(user))
+        {
+            return "You cannot edit your own roles.";
+        }
+
+        return "Edit roles";
+    }
+
+    private static Color GetRoleColor(string roleName) => roleName switch
+    {
+        Roles.Admin => Color.Error,
+        Roles.User => Color.Info,
+        Roles.InfoDashboard => Color.Secondary,
+        _ => Color.Default,
+    };
+}

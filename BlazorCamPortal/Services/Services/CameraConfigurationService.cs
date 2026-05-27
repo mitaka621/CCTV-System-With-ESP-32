@@ -3,8 +3,8 @@ using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Models;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
-using System.ComponentModel.DataAnnotations;
 
 namespace CamPortal.Core.Services
 {
@@ -31,7 +31,7 @@ namespace CamPortal.Core.Services
 
         public async Task<bool> UpdateCameraConfigurationAsync(CameraConfigurationModel model)
         {
-            if (!ValidateModel(model) || model.ZoomStartX > _cameraResolutionWidth || model.ZoomStartY > _cameraResolutionHeight)
+            if (!MiscUtilities.ValidateModel(model) || model.ZoomStartX > _cameraResolutionWidth || model.ZoomStartY > _cameraResolutionHeight)
             {
                 return false;
             }
@@ -43,18 +43,6 @@ namespace CamPortal.Core.Services
             var cameraConfigUpdate = await _cameraConfigurationRepository.UpdateDeviceConfigurationAsync(model.DeviceId, _mapper.Map<CameraStreamingConfigurationDto>(model));
 
             return cameraNameUpdate && cameraConfigUpdate;
-        }
-
-        public bool ValidateModel<T>(T model)
-        {
-            if (model == null)
-            {
-                return false;
-            }
-
-            var context = new ValidationContext(model);
-
-            return Validator.TryValidateObject(model, context, null, validateAllProperties: true);
         }
     }
 }

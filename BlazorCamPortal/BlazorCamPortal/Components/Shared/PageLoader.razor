@@ -1,0 +1,33 @@
+@if (IsLoading)
+{
+    <MudStack AlignItems="AlignItems.Center"
+              Justify="Justify.Center"
+              Spacing="3"
+              Class="page-loader-stack">
+        <MudProgressCircular Indeterminate="true"
+                             Size="Size.Large"
+                             Color="Color.Primary" />
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Message</MudText>
+        }
+    </MudStack>
+}
+else
+{
+    @ChildContent
+}
+
+<style>
+    .page-loader-stack {
+        min-height: 60vh;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+
+    [Parameter] public string? Message { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

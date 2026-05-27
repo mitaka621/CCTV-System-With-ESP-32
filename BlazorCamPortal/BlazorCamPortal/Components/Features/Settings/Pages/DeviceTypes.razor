@@ -2,6 +2,10 @@
 @rendermode InteractiveServer
 
 @using CamPortal.Components.Features.Settings.Dialogs
+@using CamPortal.Contracts.Constants
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize(Roles = Roles.Admin)]
 
 @inject IDeviceTypeService _deviceTypeService
 @inject IDialogService _dialogService
@@ -23,28 +27,23 @@
         </MudButton>
     </MudStack>
 
-    @if (_isLoading)
-    {
-        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-8">
-            <MudProgressCircular Indeterminate="true" />
-        </MudStack>
-    }
-    else if (_deviceTypes.Count == 0)
-    {
-        <MudPaper Elevation="2" Class="pa-8 text-center">
-            <MudIcon Icon="@Icons.Material.Outlined.DevicesOther"
-                     Size="Size.Large"
-                     Color="Color.Secondary"
-                     Class="mb-4" />
-            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Device Types Yet</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary">
-                Use the button above to add your first device type.
-            </MudText>
-        </MudPaper>
-    }
-    else
-    {
-        <div class="device-types-scroll-area">
+    <PageLoader IsLoading="_isLoading" Message="Loading device types...">
+        @if (_deviceTypes.Count == 0)
+        {
+            <MudPaper Elevation="2" Class="pa-8 text-center">
+                <MudIcon Icon="@Icons.Material.Outlined.DevicesOther"
+                         Size="Size.Large"
+                         Color="Color.Secondary"
+                         Class="mb-4" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Device Types Yet</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Use the button above to add your first device type.
+                </MudText>
+            </MudPaper>
+        }
+        else
+        {
+            <div class="device-types-scroll-area">
             <Virtualize Items="_deviceTypeRows"
                         Context="row"
                         ItemSize="_rowHeightPx"
@@ -96,7 +95,8 @@
                 </Placeholder>
             </Virtualize>
         </div>
-    }
+        }
+    </PageLoader>
 </MudContainer>
 
 <style>

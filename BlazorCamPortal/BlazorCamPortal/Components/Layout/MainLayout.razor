@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <MudThemeProvider Theme="_customTheme" IsDarkMode="true" />
 <MudPopoverProvider />
@@ -15,6 +15,7 @@
         <MudSpacer />
         <MudIconButton Icon="@Icons.Material.Filled.Brightness4" Color="Color.Inherit" Href="https://learn.microsoft.com/aspnet/core/" Target="_blank" />
         <MudIconButton Icon="@Icons.Material.Filled.Code" Color="Color.Inherit" />
+        <UserMenu />
     </MudAppBar>
     
     <MudDrawer Open="@_desktopDrawerOpen" 

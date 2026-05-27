@@ -38,9 +38,11 @@ namespace CamPortal.Infrastructure.Data.Entities
         [MaxLength(100)]
         public string? FirmwareVersion { get; set; }
 
+        [Required]
         [MaxLength(2000)]
         public required string PublicKey { get; set; }
 
+        [Required]
         [MaxLength(2000)]
         public required string Fingerprint { get; set; }
 

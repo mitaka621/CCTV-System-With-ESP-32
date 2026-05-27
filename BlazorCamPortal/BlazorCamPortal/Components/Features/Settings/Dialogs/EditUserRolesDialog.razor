@@ -1,0 +1,133 @@
+@using CamPortal.Contracts.Dtos.UserDtos
+
+@inject IUserManagementService _userManagementService
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body1">
+                Editing roles for <strong>@UserName</strong>
+            </MudText>
+
+            <MudSelect T="Guid"
+                       Label="Roles"
+                       Variant="Variant.Outlined"
+                       SelectedValues="_selectedRoleIds"
+                       SelectedValuesChanged="OnSelectedRolesChanged"
+                       MultiSelection="true"
+                       ToStringFunc="@GetRoleName"
+                       Disabled="_isSubmitting">
+                @foreach (var role in _availableRoles)
+                {
+                    <MudSelectItem T="Guid" Value="@role.Id">@role.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudAlert Severity="Severity.Info" Dense="true">
+                The user will be signed out and must log in again for changes to take effect.
+            </MudAlert>
+
+            @if (!string.IsNullOrEmpty(_submitError))
+            {
+                <MudAlert Severity="Severity.Error" NoIcon="true">@_submitError</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSubmitting">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="_isSubmitting || !_selectedRoleIds.Any()">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <text>Saving...</text>
+            }
+            else
+            {
+                <text>Save</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public Guid UserId { get; set; }
+
+    [Parameter] public string UserName { get; set; } = string.Empty;
+
+    [Parameter] public List<Guid> InitialRoleIds { get; set; } = new();
+
+    [Parameter] public Guid CurrentUserId { get; set; }
+
+    private List<RoleDto> _availableRoles = new();
+    private IEnumerable<Guid> _selectedRoleIds = Enumerable.Empty<Guid>();
+    private string? _submitError;
+    private bool _isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availableRoles = await _userManagementService.GetAllRolesAsync();
+        _selectedRoleIds = InitialRoleIds.ToList();
+    }
+
+    private void OnSelectedRolesChanged(IEnumerable<Guid> selected)
+    {
+        _selectedRoleIds = selected;
+    }
+
+    private string GetRoleName(Guid id)
+    {
+        return _availableRoles.FirstOrDefault(r => r.Id == id)?.Name ?? string.Empty;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitError = null;
+
+        if (!_selectedRoleIds.Any())
+        {
+            _submitError = "Select at least one role.";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var result = await _userManagementService.UpdateUserRolesAsync(UserId, _selectedRoleIds.ToList(), CurrentUserId);
+
+            switch (result)
+            {
+                case UpdateUserRolesResult.Success:
+                    _snackbar.Add($"Roles for '{UserName}' updated.", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(true));
+                    break;
+                case UpdateUserRolesResult.CannotEditSelf:
+                    _submitError = "You cannot edit your own roles.";
+                    break;
+                case UpdateUserRolesResult.UserNotFound:
+                    _submitError = "User no longer exists.";
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _submitError = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

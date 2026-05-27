@@ -1,7 +1,11 @@
-﻿@page "/camerasConfig"
+@page "/camerasConfig"
+@using CamPortal.Contracts.Constants
 @using CamPortal.Contracts.Enums
+@using Microsoft.AspNetCore.Authorization
 @using static MudBlazor.CategoryTypes
 @rendermode InteractiveServer
+
+@attribute [Authorize(Roles = Roles.Admin)]
 
 @inject IDeviceService _cameraService
 @inject IDialogService _dialogService
@@ -14,6 +18,7 @@
     Camera Configuration
 </MudText>
 
+<PageLoader IsLoading="_isLoading" Message="Loading cameras...">
 
 <MudPaper Elevation="4" Class="pa-6 mb-6" Style="position:relative">
     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
@@ -173,6 +178,8 @@ else
     </MudGrid>
 }
 
+</PageLoader>
+
 <style>
     .blurry-background {
         backdrop-filter: blur(10px);
@@ -181,12 +188,21 @@ else
 
 @code {
 	bool isScanning;
+	bool _isLoading = true;
 	List<CameraDisplayModel> cameraDisplayModels = new();
 	List<Guid>? foundDeviceIds;
 
 	protected override async Task OnInitializedAsync()
 	{
-		cameraDisplayModels=await _cameraService.GetAllCamerasAsync();
+		_isLoading = true;
+		try
+		{
+			cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
+		}
+		finally
+		{
+			_isLoading = false;
+		}
 	}
 
 	private async Task AddDevice()

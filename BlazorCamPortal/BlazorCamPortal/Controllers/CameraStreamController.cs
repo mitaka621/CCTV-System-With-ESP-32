@@ -1,11 +1,13 @@
 using System.Text;
 using CamPortal.Contracts.Abstractions.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CamPortal.Controllers
 {
     [Route("api/cameras")]
     [ApiController]
+    [Authorize]
     public class CameraStreamController : ControllerBase
     {
         private const string _multipartBoundary = "frame";

@@ -1,0 +1,142 @@
+@using CamPortal.Contracts.Dtos.UserDtos
+
+@inject IUserAuthService _userAuthService
+@inject IUserManagementService _userManagementService
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="_model" ValidationDelay="0">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.UserName"
+                              Label="Username"
+                              Variant="Variant.Outlined"
+                              For="@(() => _model.UserName)"
+                              Immediate="true"
+                              Disabled="_isSubmitting" />
+
+                <MudTextField @bind-Value="_model.Email"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              For="@(() => _model.Email)"
+                              Immediate="true"
+                              Disabled="_isSubmitting" />
+
+                <MudTextField @bind-Value="_model.Password"
+                              Label="Initial password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              For="@(() => _model.Password)"
+                              HelperText="User will be required to change this on first login."
+                              Immediate="true"
+                              Disabled="_isSubmitting" />
+
+                <MudSelect T="Guid"
+                           Label="Roles"
+                           Variant="Variant.Outlined"
+                           SelectedValues="_selectedRoleIds"
+                           SelectedValuesChanged="OnSelectedRolesChanged"
+                           MultiSelection="true"
+                           ToStringFunc="@GetRoleName"
+                           Required="true"
+                           RequiredError="At least one role must be selected."
+                           Disabled="_isSubmitting">
+                    @foreach (var role in _availableRoles)
+                    {
+                        <MudSelectItem T="Guid" Value="@role.Id">@role.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (!string.IsNullOrEmpty(_submitError))
+                {
+                    <MudAlert Severity="Severity.Error" NoIcon="true">@_submitError</MudAlert>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSubmitting">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="_isSubmitting">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <text>Creating...</text>
+            }
+            else
+            {
+                <text>Create</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private MudForm _form = default!;
+    private readonly CreateUserModel _model = new();
+    private List<RoleDto> _availableRoles = new();
+    private IEnumerable<Guid> _selectedRoleIds = Enumerable.Empty<Guid>();
+    private string? _submitError;
+    private bool _isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availableRoles = await _userManagementService.GetAllRolesAsync();
+    }
+
+    private void OnSelectedRolesChanged(IEnumerable<Guid> selected)
+    {
+        _selectedRoleIds = selected;
+        _model.RoleIds = selected.ToList();
+    }
+
+    private string GetRoleName(Guid id)
+    {
+        return _availableRoles.FirstOrDefault(r => r.Id == id)?.Name ?? string.Empty;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitError = null;
+
+        await _form.Validate();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var createdId = await _userAuthService.CreateUserAsync(_model);
+
+            if (createdId == null)
+            {
+                _submitError = "A user with this username or email already exists.";
+                return;
+            }
+
+            _snackbar.Add($"User '{_model.UserName}' created.", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _submitError = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

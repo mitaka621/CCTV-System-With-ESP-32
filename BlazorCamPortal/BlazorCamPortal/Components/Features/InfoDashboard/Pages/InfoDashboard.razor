@@ -1,0 +1,20 @@
+@page "/info-dashboard"
+@rendermode InteractiveServer
+@using CamPortal.Contracts.Constants
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = $"{Roles.Admin},{Roles.InfoDashboard}")]
+
+<PageTitle>Info Dashboard</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-4">
+    <MudStack Spacing="4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h4">Info Dashboard</MudText>
+        </MudStack>
+
+        <MudAlert Severity="Severity.Info">
+            This is a placeholder for the read-only info dashboard. Add your live status cards, sensors and controls here.
+        </MudAlert>
+    </MudStack>
+</MudContainer>

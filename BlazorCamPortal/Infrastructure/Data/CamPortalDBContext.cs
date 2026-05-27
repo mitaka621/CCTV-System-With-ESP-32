@@ -1,4 +1,4 @@
-﻿using CamPortal.Infrastructure.Data.Entities;
+using CamPortal.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace CamPortal.Infrastructure.Data
@@ -17,15 +17,31 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<CameraConfiguration> CameraConfigurations { get; set; }
 
+        public DbSet<User> Users { get; set; }
+
+        public DbSet<UserRole> UsersRoles { get; set; }
+
+        public DbSet<Role> Roles { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            //DeviceTypes.Add(new DeviceType
-            //{
-            //    DeviceVariant = DeviceTypeCategories.Camera,
-            //    IconUpdatedAt = DateTime.UtcNow,
-            //    Id = Guid.Parse("c9b5fb23-c75f-43c7-80d7-05a767d84207"),
-            //    IconName = "camera.png",
-            //});
+            modelBuilder.Entity<Role>().HasData(
+                new Role
+                {
+                    Id = Guid.Parse("b7acd488-f9d9-4026-8b59-3da8637b9e90"),
+                    Name = "Admin"
+                },
+                new Role
+                {
+                    Id = Guid.Parse("2686070a-a062-48c9-aafe-de74e5c65376"),
+                    Name = "User"
+                },
+                new Role
+                {
+                    Id = Guid.Parse("60ed5d3e-f4d6-456b-8748-47f9bf9c7c53"),
+                    Name = "InfoDashboard"
+                });
+
             base.OnModelCreating(modelBuilder);
         }
     }

@@ -19,7 +19,7 @@ namespace CamPortal.Core.BackgroundServices
         {
             _cameraFramesManagerService = cameraFramesManagerService;
             _logger = logger;
-            _numberOfWorkers = Math.Max(1, Environment.ProcessorCount - 1);
+            _numberOfWorkers = Math.Max(1, Environment.ProcessorCount / 2);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

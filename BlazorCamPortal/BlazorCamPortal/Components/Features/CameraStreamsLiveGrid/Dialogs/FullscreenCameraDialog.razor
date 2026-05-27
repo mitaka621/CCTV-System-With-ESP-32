@@ -17,6 +17,12 @@
             </div>
             
             <div class="fullscreen-video-container">
+                <div class="fullscreen-loading">
+                    <MudProgressCircular Indeterminate="true"
+                                         Color="Color.Primary"
+                                         Size="Size.Large" />
+                    <span class="fullscreen-loading-text">Connecting to stream...</span>
+                </div>
                 <img id="@FullscreenElementId"
                      class="fullscreen-stream"
                      draggable="false" />

@@ -1,12 +1,18 @@
-﻿@page "/"
+@page "/"
 @rendermode InteractiveServer
 @using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
+@using CamPortal.Contracts.Constants
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
 
 @implements IAsyncDisposable
 @inject IDeviceService _cameraService
 @inject IJSRuntime _js
 
 <PageTitle>Dashboard - BlazorCam Portal</PageTitle>
+
+<PageLoader IsLoading="_isLoading" Message="Loading dashboard...">
 
 <Dashboard></Dashboard>
 
@@ -73,11 +79,13 @@ else
     </MudGrid>
 }
 
+</PageLoader>
 
 @code {
     private List<CameraDisplayModel> cameras = new();
     private int connectedCameras = 0;
     private bool _hasRenderedInteractively;
+    private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,8 +102,17 @@ else
 
     private async Task LoadCamerasAsync()
     {
-        cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.DevicePairStatus.Paired);
-        connectedCameras = cameras.Count;
+        _isLoading = true;
+
+        try
+        {
+            cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.DevicePairStatus.Paired);
+            connectedCameras = cameras.Count;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private string GetCameraDisplayName(CameraDisplayModel camera)

@@ -4,6 +4,12 @@
 @using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
 
 <div class="camera-container">
+    <div class="camera-loading">
+        <MudProgressCircular Indeterminate="true"
+                             Color="Color.Primary"
+                             Size="Size.Medium" />
+        <span class="camera-loading-text">Connecting to stream...</span>
+    </div>
     <img id="@_elementId"
          class="camera-stream"
          draggable="false" />
