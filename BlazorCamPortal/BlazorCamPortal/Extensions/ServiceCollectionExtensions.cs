@@ -4,6 +4,7 @@ using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Constants;
 using CamPortal.Core.BackgroundServices;
+using CamPortal.Core.LoggerProviders.DatabaseLogger;
 using CamPortal.Core.Services;
 using CamPortal.Core.Utilities;
 using CamPortal.Infrastructure.Repositories;
@@ -11,6 +12,8 @@ using CamPortal.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using System.Threading.RateLimiting;
 
@@ -162,6 +165,17 @@ namespace CamPortal.Extensions
             services.AddScoped<AuthenticationStateProvider, RevalidatingAuthStateProvider>();
 
             return services;
+        }
+
+        public static ILoggingBuilder AddDatabaseLogging(this ILoggingBuilder logging)
+        {
+            logging.Services.TryAddSingleton<DatabaseLogQueue>();
+            logging.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<ILoggerProvider, DatabaseLoggerProvider>());
+            logging.Services.AddHostedService<LoggerDatabaseWriterService>();
+            logging.AddFilter<DatabaseLoggerProvider>(level => level >= LogLevel.Information);
+
+            return logging;
         }
     }
 }

@@ -47,6 +47,10 @@ builder.Services.AddRepositories();
 builder.Services.AddRateLimiterPolicy();
 builder.Services.AddAuth();
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDatabaseLogging();
+
 var app = builder.Build();
 
 app.ApplyMigrations(app.Services);

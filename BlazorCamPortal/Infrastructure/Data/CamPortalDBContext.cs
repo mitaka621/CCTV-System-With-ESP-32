@@ -23,6 +23,8 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<Role> Roles { get; set; }
 
+        public DbSet<LogMessage> LogMessages { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Role>().HasData(
