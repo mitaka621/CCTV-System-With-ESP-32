@@ -15,7 +15,7 @@ namespace secure_session
 
   bool isActive();
 
-  bool sendFrame(const uint8_t *data, size_t len, FrameTiming *timing = nullptr);
+  bool sendFrame(const uint8_t *data, size_t len, uint32_t width, uint32_t height, FrameTiming *timing = nullptr);
 
   void end();
 }

@@ -29,5 +29,7 @@ namespace CamPortal.Contracts.Abstractions.Services
         Task<List<PreprovisionDeviceModel>> GetCamerasByIdAsync(List<Guid> cameraIds);
 
         Task<int> GetTotalCamerasAsync(params List<DevicePairStatus> status);
+
+        Task<string?> GetDeviceNameAsync(Guid deviceId);
     }
 }

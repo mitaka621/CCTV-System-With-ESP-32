@@ -32,6 +32,7 @@ namespace secure_session
   static constexpr size_t GCM_IV_LEN = 12;
   static constexpr size_t SEQ_LEN = 8;
   static constexpr size_t ENC_POOL_SIZE = 2;
+  static constexpr size_t RESOLUTION_HEADER_LEN = 8;
 
   struct SessionState
   {
@@ -740,7 +741,7 @@ namespace secure_session
     return true;
   }
 
-  bool sendFrame(const uint8_t *data, size_t len, FrameTiming *timing)
+  bool sendFrame(const uint8_t *data, size_t len, uint32_t width, uint32_t height, FrameTiming *timing)
   {
     if (timing != nullptr)
     {
@@ -750,7 +751,7 @@ namespace secure_session
 
     if (!isActive()) return false;
     if (data == nullptr || len == 0) return false;
-    if (len > ENCRYPTION_BUFFER_SIZE) return false;
+    if (RESOLUTION_HEADER_LEN + len > ENCRYPTION_BUFFER_SIZE) return false;
     if (_freeSlots == nullptr || _readyFrames == nullptr) return false;
 
     size_t slot;
@@ -763,7 +764,13 @@ namespace secure_session
     EncryptedFrame f;
     f.buf = _encPool[slot];
     f.poolIdx = slot;
-    f.cipherLen = len;
+
+    size_t plainLen = RESOLUTION_HEADER_LEN + len;
+    f.cipherLen = plainLen;
+
+    writeBE32(f.buf, width);
+    writeBE32(f.buf + 4, height);
+    memcpy(f.buf + RESOLUTION_HEADER_LEN, data, len);
 
     _state.seq++;
     f.seq = _state.seq;
@@ -779,10 +786,10 @@ namespace secure_session
 
     unsigned long encryptStartUs = micros();
     int ret = esp_aes_gcm_crypt_and_tag(&_state.gcm, MBEDTLS_GCM_ENCRYPT,
-                                        len,
+                                        plainLen,
                                         iv, GCM_IV_LEN,
                                         aad, sizeof(aad),
-                                        data, f.buf,
+                                        f.buf, f.buf,
                                         GCM_TAG_LEN, f.tag);
     if (timing != nullptr)
     {

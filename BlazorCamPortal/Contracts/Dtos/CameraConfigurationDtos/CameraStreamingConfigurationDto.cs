@@ -1,4 +1,5 @@
-﻿using SixLabors.ImageSharp.Processing;
+﻿using CamPortal.Contracts.Enums;
+using SixLabors.ImageSharp.Processing;
 
 namespace CamPortal.Contracts.Dtos.CameraConfigurationDtos
 {
@@ -17,6 +18,8 @@ namespace CamPortal.Contracts.Dtos.CameraConfigurationDtos
         public float Contrast { get; set; } = 1;
 
         public FlipMode FlipMode { get; set; } = FlipMode.None;
+
+        public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
 
         public float SharpenFactor { get; set; } = 0;
     }

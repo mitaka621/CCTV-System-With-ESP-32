@@ -4,7 +4,7 @@
     {
         public PreprovisionDeviceModel PreprovisionRequest { get; set; } = new();
 
-        public bool IsHandshakeCompleted { get; set; }
+        public bool IsPaired { get; set; }
 
         public Guid? PairedDeviceId { get; set; }
     }

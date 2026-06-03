@@ -21,6 +21,11 @@ namespace CamPortal.Core.Services
             return cts.Token;
         }
 
+        public bool IsCameraActive(Guid cameraId)
+        {
+            return _byCameraId.ContainsKey(cameraId);
+        }
+
         public bool TryDisconnect(Guid cameraId)
         {
             if (_byCameraId.TryRemove(cameraId, out var cts))

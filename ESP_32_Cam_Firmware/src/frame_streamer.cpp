@@ -129,7 +129,7 @@ namespace frame_streamer
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 30000000;
     config.pixel_format = PIXFORMAT_JPEG;
-    config.frame_size = FRAMESIZE_FHD;
+    config.frame_size = FRAMESIZE_QXGA;
     config.jpeg_quality = 12;
     config.fb_count = STREAM_CAMERA_FB_COUNT;
     config.fb_location = CAMERA_FB_IN_PSRAM;
@@ -145,7 +145,7 @@ namespace frame_streamer
     sensor_t *sensor = esp_camera_sensor_get();
     if (sensor != nullptr)
     {
-      sensor->set_framesize(sensor, FRAMESIZE_FHD);
+      sensor->set_framesize(sensor, FRAMESIZE_QXGA);
       sensor->set_quality(sensor, 12);
       sensor->set_whitebal(sensor, 1);
       sensor->set_awb_gain(sensor, 1);
@@ -199,7 +199,7 @@ namespace frame_streamer
     }
 
     secure_session::FrameTiming timing = {};
-    bool sendOk = secure_session::sendFrame(fb->buf, fb->len, &timing);
+    bool sendOk = secure_session::sendFrame(fb->buf, fb->len, (uint32_t)fb->width, (uint32_t)fb->height, &timing);
     if (!sendOk)
     {
       DEBUG_PRINT("Secure frame send failed");

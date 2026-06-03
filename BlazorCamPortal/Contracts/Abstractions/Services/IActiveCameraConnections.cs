@@ -4,6 +4,8 @@
     {
         CancellationToken Register(Guid cameraId, CancellationToken linkedTo);
 
+        bool IsCameraActive(Guid cameraId);
+
         bool TryDisconnect(Guid cameraId);
     }
 }

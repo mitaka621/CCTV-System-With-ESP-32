@@ -156,6 +156,11 @@ namespace CamPortal.Core.Services
             return result;
         }
 
+        public async Task<string?> GetDeviceNameAsync(Guid deviceId)
+        {
+            return await _deviceRepository.GetDeviceNameAsync(deviceId);
+        }
+
         private void InvalidateCamera(Guid cameraId)
         {
             _cameraFramesManagerService.CloseProcessedFramesCameraChannel(cameraId);

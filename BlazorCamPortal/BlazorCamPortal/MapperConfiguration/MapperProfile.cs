@@ -55,6 +55,9 @@ namespace CamPortal.MapperConfiguration
 
             CreateMap<CameraStreamingConfigurationDto, CameraConfigurationModel>()
                 .ReverseMap();
+
+            CreateMap<CameraConfiguration, CameraStreamingConfigurationDto>()
+                .ReverseMap();
         }
     }
 }

@@ -1,3 +1,4 @@
+using CamPortal.Contracts.Enums;
 using MudBlazor;
 using SixLabors.ImageSharp.Processing;
 using System.ComponentModel.DataAnnotations;
@@ -32,6 +33,8 @@ namespace CamPortal.Contracts.Models
         public float Contrast { get; set; } = 1;
 
         public FlipMode FlipMode { get; set; } = FlipMode.None;
+
+        public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
 
         [Range(0, 2, ErrorMessage = "Sharpen factor must be between 0 and 2.")]
         public float SharpenFactor { get; set; } = 0;

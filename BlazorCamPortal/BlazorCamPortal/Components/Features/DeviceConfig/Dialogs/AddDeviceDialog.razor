@@ -35,7 +35,7 @@
             </MudTimelineItem>
             <MudTimelineItem Color="GetActiveColor(3)" Variant="Variant.Outlined" Size="Size.Medium">
                 <ItemContent>
-                    <MudAlert Severity="GetActiveSeverity(3)">Upload the credentials to the device</MudAlert>
+                    <MudAlert Severity="GetActiveSeverity(3)">Upload credentials to the device</MudAlert>
                 </ItemContent>
                 <ItemDot>
                     <MudText>4</MudText>
@@ -50,6 +50,7 @@
                 </ItemDot>
             </MudTimelineItem>
         </MudTimeline>
+        <div @onkeydown="HandleKeyDown">
         @switch (currentStep)
         {
             case 0:
@@ -65,10 +66,11 @@
                 <UploadCredentialsComponent model="model" ModelChanged="StateHasChanged" />
                 break;
             case 4:
-                <ConfigureDeviceComponent model="model" ModelChanged="StateHasChanged" />
+                <ConfigureDeviceComponent CameraId="model.PairedDeviceId ?? Guid.Empty" ModelChanged="StateHasChanged" />
                 break;
             default: break;
         }
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep == maxStep)">Cancel</MudButton>
@@ -156,9 +158,25 @@
             0 => model.PreprovisionRequest.DeviceTypeId != default,
             1 => model.PreprovisionRequest.LocalNetworkInfo != default,
             2 => !string.IsNullOrEmpty(model.PreprovisionRequest.WifiSSID) && !string.IsNullOrEmpty(model.PreprovisionRequest.WifiPassword),
-            3 => model.IsHandshakeCompleted,
+            3 => model.IsPaired,
             4 => true,
             _ => false
         };
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter")
+        {
+            return;
+        }
+        if (currentStep == maxStep)
+        {
+            Finish();
+        }
+        else if (IsCurrentStepCompleted())
+        {
+            Next();
+        }
     }
 }

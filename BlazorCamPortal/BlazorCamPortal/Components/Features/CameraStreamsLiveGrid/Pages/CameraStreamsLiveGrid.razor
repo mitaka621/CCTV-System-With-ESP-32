@@ -1,6 +1,7 @@
 @page "/"
 @rendermode InteractiveServer
 @using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
+@using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
 @using CamPortal.Contracts.Constants
 @using Microsoft.AspNetCore.Authorization
 
@@ -8,6 +9,7 @@
 
 @implements IAsyncDisposable
 @inject IDeviceService _cameraService
+@inject IDialogService _dialogService
 @inject IJSRuntime _js
 
 <PageTitle>Dashboard - BlazorCam Portal</PageTitle>
@@ -71,7 +73,7 @@ else
                             Snapshot
                         </MudButton>
                         <MudSpacer />
-                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="() => OpenConfigDialog(camera.Id)" />
                     </MudCardActions>
                 </MudCard>
             </MudItem>
@@ -121,6 +123,30 @@ else
             return camera.Name;
 
         return $"{camera.Id}";
+    }
+
+    private async Task OpenConfigDialog(Guid cameraId)
+    {
+        var parameters = new DialogParameters
+        {
+            ["CameraId"] = cameraId
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            Position = DialogPosition.TopCenter,
+            BackdropClick = false,
+            BackgroundClass = "blurry-background"
+        };
+
+        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>("Configure Camera", parameters, options);
+
+        await dialog.Result;
+
+        await LoadCamerasAsync();
     } 
 
     public async ValueTask DisposeAsync()

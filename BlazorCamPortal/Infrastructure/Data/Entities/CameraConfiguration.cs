@@ -1,4 +1,5 @@
-﻿using SixLabors.ImageSharp.Processing;
+﻿using CamPortal.Contracts.Enums;
+using SixLabors.ImageSharp.Processing;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -25,6 +26,12 @@ namespace CamPortal.Infrastructure.Data.Entities
 
         public FlipMode FlipMode { get; set; } = FlipMode.None;
 
+        public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
+
         public float SharpenFactor { get; set; } = 0;
+
+        public int ResolutionWidth { get; set; } = 0;
+
+        public int ResolutionHeight { get; set; } = 0;
     }
 }

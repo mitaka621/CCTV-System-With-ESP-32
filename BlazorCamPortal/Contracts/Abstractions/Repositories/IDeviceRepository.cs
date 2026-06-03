@@ -18,6 +18,8 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> SetDeviceNameAsync(Guid deviceId, string name);
 
+        Task<string?> GetDeviceNameAsync(Guid deviceId);
+
         Task<bool> SetDeviceStatusAsync(Guid deviceId, DevicePairStatus newStatus, IUnitOfWork? uow = null);
 
         Task<bool> UpdateDeviceIpAsync(Guid deviceId, string newIpv4);

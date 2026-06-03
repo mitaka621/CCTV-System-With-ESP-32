@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using System.Threading.RateLimiting;
 
@@ -25,16 +24,16 @@ namespace CamPortal.Extensions
         {
             services.AddMudServices();
 
-            services.AddScoped<IDeviceService, DeviceService>();
-            services.AddScoped<HttpClient>();
-            services.AddScoped<IVideoReplayService, VideoReplayService>();
-            services.AddScoped<IVideoChunkRepository, VideoChunkRepository>();
-            services.AddScoped<IDeviceTypeService, DeviceTypeService>();
-            services.AddScoped<IDeviceTypeRepository, DeviceTypeRepository>();
-            services.AddScoped<IDevicePreProvisionService, DevicePreProvisionService>();
-            services.AddScoped<ICameraConfigurationRepository, CameraConfigurationRepository>();
-            services.AddScoped<ICameraConfigurationService, CameraConfigurationService>();
-
+            services.AddSingleton<HttpClient>();
+            services.AddSingleton<IVideoReplayService, VideoReplayService>();
+            services.AddSingleton<IVideoChunkRepository, VideoChunkRepository>();
+            services.AddSingleton<IDeviceTypeService, DeviceTypeService>();
+            services.AddSingleton<IDeviceTypeRepository, DeviceTypeRepository>();
+            services.AddSingleton<IDevicePreProvisionService, DevicePreProvisionService>();
+            services.AddSingleton<IDeviceService, DeviceService>();
+            services.AddSingleton<IDeviceRepository, DeviceRepository>();
+            services.AddSingleton<ICameraConfigurationRepository, CameraConfigurationRepository>();
+            services.AddSingleton<ICameraConfigurationService, CameraConfigurationService>();
             services.AddSingleton<IUserRepository, UserRepository>();
             services.AddSingleton<IUserAuthService, UserAuthService>();
             services.AddSingleton<IUserManagementService, UserManagementService>();
@@ -51,13 +50,6 @@ namespace CamPortal.Extensions
             services.AddHostedService<FramesReceiverTcpService>();
             services.AddHostedService<VideoEncoderService>();
             services.AddHostedService<RawFrameProcessorService>();
-
-            return services;
-        }
-
-        public static IServiceCollection AddRepositories(this IServiceCollection services)
-        {
-            services.AddScoped<IDeviceRepository, DeviceRepository>();
 
             return services;
         }

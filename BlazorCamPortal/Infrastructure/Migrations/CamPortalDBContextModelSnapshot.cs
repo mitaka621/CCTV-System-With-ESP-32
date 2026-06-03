@@ -30,6 +30,9 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<float>("Brightness")
                         .HasColumnType("real");
 
+                    b.Property<int>("CameraAspectRatio")
+                        .HasColumnType("int");
+
                     b.Property<float>("Contrast")
                         .HasColumnType("real");
 
@@ -38,6 +41,12 @@ namespace CamPortal.Infrastructure.Migrations
 
                     b.Property<float>("FrameRotation")
                         .HasColumnType("real");
+
+                    b.Property<int>("ResolutionHeight")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ResolutionWidth")
+                        .HasColumnType("int");
 
                     b.Property<float>("SharpenFactor")
                         .HasColumnType("real");

@@ -1,5 +1,6 @@
 ﻿using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.SecureStreamingDtos;
 using CamPortal.Contracts.Enums;
@@ -29,12 +30,14 @@ namespace CamPortal.Core.BackgroundServices
         private const int _gcmIvLen = 12;
         private const int _seqLen = 8;
         private const int _frameHeaderLen = 4 + _seqLen + _gcmTagLen;
+        private const int _resolutionHeaderLen = 8;
 
         private readonly ILogger<FramesReceiverTcpService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly IActiveCameraConnections _activeCameraConnections;
         private readonly IServerIdentityService _serverIdentityService;
+        private readonly ICameraConfigurationService _cameraConfigurationService;
 
         private readonly int _port;
         private readonly SecureStreamSettingsDto _streamSettings;
@@ -45,13 +48,15 @@ namespace CamPortal.Core.BackgroundServices
             IServiceProvider serviceProvider,
             ICameraFramesManagerService cameraFramesManagerService,
             IActiveCameraConnections activeCameraConnections,
-            IServerIdentityService serverIdentityService)
+            IServerIdentityService serverIdentityService,
+            ICameraConfigurationService cameraConfigurationService)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _cameraFramesManagerService = cameraFramesManagerService;
             _activeCameraConnections = activeCameraConnections;
             _serverIdentityService = serverIdentityService;
+            _cameraConfigurationService = cameraConfigurationService;
 
             _port = int.Parse(configuration.GetSection("TCPServerConfig")["Port"]
                 ?? throw new ArgumentNullException("TCP server port not configured"));
@@ -339,6 +344,7 @@ namespace CamPortal.Core.BackgroundServices
 
             ulong lastSeq = 0;
             ulong totalFrames = 0;
+            bool resolutionSaved = false;
 
             var headerBuf = new byte[_frameHeaderLen];
             var ivBuf = new byte[_gcmIvLen];
@@ -384,7 +390,7 @@ namespace CamPortal.Core.BackgroundServices
                 var totalLen = BinaryPrimitives.ReadUInt32BigEndian(headerBuf.AsSpan(0, 4));
                 var seq = BinaryPrimitives.ReadUInt64BigEndian(headerBuf.AsSpan(4, 8));
 
-                if (totalLen < _seqLen + _gcmTagLen + 1
+                if (totalLen < _seqLen + _gcmTagLen + _resolutionHeaderLen + 1
                     || totalLen > _seqLen + _gcmTagLen + (uint)_streamSettings.MaxFrameBytes)
                 {
                     _logger.LogWarning("Stream {DeviceId}: invalid frame total length {Len}", device.Id, totalLen);
@@ -445,7 +451,25 @@ namespace CamPortal.Core.BackgroundServices
                 lastSeq = seq;
                 totalFrames++;
 
-                _cameraFramesManagerService.AddFrame(device, plaintext);
+                if (!resolutionSaved)
+                {
+                    resolutionSaved = true;
+
+                    var resolutionWidth = (int)BinaryPrimitives.ReadUInt32BigEndian(plaintext.AsSpan(0, 4));
+                    var resolutionHeight = (int)BinaryPrimitives.ReadUInt32BigEndian(plaintext.AsSpan(4, 4));
+
+
+                    await _cameraConfigurationService.SetCameraResolutionAsync(new CameraResolutionDto()
+                    {
+                        CameraId = device.Id,
+                        Width = resolutionWidth,
+                        Height = resolutionHeight
+                    });
+                }
+
+                var jpeg = plaintext.AsSpan(_resolutionHeaderLen).ToArray();
+
+                _cameraFramesManagerService.AddFrame(device, jpeg);
             }
         }
 

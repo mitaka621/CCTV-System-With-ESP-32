@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Dtos.DeviceDtos;
+using CamPortal.Contracts.Enums;
 using System.Threading.Channels;
 
 namespace CamPortal.Contracts.Abstractions.Services
@@ -28,5 +29,7 @@ namespace CamPortal.Contracts.Abstractions.Services
         ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId);
 
         void UnsubscribeViewer(Guid cameraId, Guid viewerId);
+
+        (int, int) CalculateActualResolution(int fullWidth, int fullHeight, CameraAspectRatios aspectRatio);
     }
 }

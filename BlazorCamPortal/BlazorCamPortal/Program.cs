@@ -43,7 +43,6 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 builder.Services.AddServices();
-builder.Services.AddRepositories();
 builder.Services.AddRateLimiterPolicy();
 builder.Services.AddAuth();
 

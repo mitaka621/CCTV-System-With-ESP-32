@@ -140,10 +140,12 @@ namespace CamPortal.Core.Services
 
                 var currentSize = ctx.GetCurrentSize();
 
-                if (cameraConfig.ZoomFactor > 1)
+                if (cameraConfig.ZoomFactor > 1 || cameraConfig.CameraAspectRatio != CameraAspectRatios.Original)
                 {
-                    var cropWidth = Math.Clamp((int)(currentSize.Width / cameraConfig.ZoomFactor), 1, currentSize.Width);
-                    var cropHeight = Math.Clamp((int)(currentSize.Height / cameraConfig.ZoomFactor), 1, currentSize.Height);
+                    (int frameWidth, int frameHeight) = CalculateActualResolution(currentSize.Width, currentSize.Height, cameraConfig.CameraAspectRatio);
+
+                    var cropWidth = Math.Clamp((int)(frameWidth / cameraConfig.ZoomFactor), 1, currentSize.Width);
+                    var cropHeight = Math.Clamp((int)(frameHeight / cameraConfig.ZoomFactor), 1, currentSize.Height);
                     var startX = Math.Clamp(cameraConfig.ZoomStartX, 0, currentSize.Width - cropWidth);
                     var startY = Math.Clamp(cameraConfig.ZoomStartY, 0, currentSize.Height - cropHeight);
                     ctx.Crop(new Rectangle(startX, startY, cropWidth, cropHeight));
@@ -243,6 +245,33 @@ namespace CamPortal.Core.Services
             {
                 writer.TryComplete();
             }
+        }
+        public (int, int) CalculateActualResolution(int fullWidth, int fullHeight, CameraAspectRatios aspectRatio)
+        {
+            (int ratioWidth, int ratioHeight) = aspectRatio switch
+            {
+                CameraAspectRatios.Ratio4_3 => (4, 3),
+                CameraAspectRatios.Ratio3_4 => (3, 4),
+                CameraAspectRatios.Ratio16_9 => (16, 9),
+                CameraAspectRatios.Ratio9_16 => (9, 16),
+                _ => (0, 0)
+            };
+
+            if (ratioWidth == 0 || ratioHeight == 0)
+            {
+                return (fullWidth, fullHeight);
+            }
+
+            int targetHeight = (int)Math.Floor(fullWidth * (double)ratioHeight / ratioWidth);
+
+            if (targetHeight <= fullHeight)
+            {
+                return (fullWidth, targetHeight);
+            }
+
+            int targetWidth = (int)Math.Floor(fullHeight * (double)ratioWidth / ratioHeight);
+
+            return (targetWidth, fullHeight);
         }
     }
 }

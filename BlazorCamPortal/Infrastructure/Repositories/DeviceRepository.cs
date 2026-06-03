@@ -91,6 +91,17 @@ namespace CamPortal.Infrastructure.Repositories
             return result != 0;
         }
 
+        public async Task<string?> GetDeviceNameAsync(Guid deviceId)
+        {
+            var db = await _dbContextFactory.CreateDbContextAsync();
+
+            return await db.Devices
+                .AsNoTracking()
+                .Where(x => x.Id == deviceId)
+                .Select(x => x.Name)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<bool> SetDeviceStatusAsync(Guid deviceId, DevicePairStatus newStatus, IUnitOfWork? uow = null)
         {
             if (uow != null)
@@ -258,6 +269,7 @@ namespace CamPortal.Infrastructure.Repositories
                         Brightness = x.CameraConfiguration!.Brightness,
                         Contrast = x.CameraConfiguration.Contrast,
                         FlipMode = x.CameraConfiguration.FlipMode,
+                        CameraAspectRatio = x.CameraConfiguration.CameraAspectRatio,
                         FrameRotation = x.CameraConfiguration.FrameRotation,
                         SharpenFactor = x.CameraConfiguration.SharpenFactor,
                         ZoomFactor = x.CameraConfiguration.ZoomFactor,
