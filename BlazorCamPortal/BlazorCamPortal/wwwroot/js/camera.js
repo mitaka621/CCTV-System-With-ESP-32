@@ -15,9 +15,25 @@ window.stopCameraStreamById = (elementId) => {
 window.startCameraStream = (elementId, url) => {
   const apply = () => {
     const img = document.getElementById(elementId);
-    if (img) {
-      img.src = url;
+    if (!img) {
+      return;
     }
+
+    const container = img.parentElement;
+    const loading = container
+      ? container.querySelector(".camera-loading, .fullscreen-loading")
+      : null;
+
+    const hideLoading = () => {
+      if (loading) {
+        loading.style.display = "none";
+      }
+    };
+
+    img.addEventListener("load", hideLoading, { once: true });
+    img.addEventListener("error", hideLoading, { once: true });
+
+    img.src = url;
   };
 
   if (document.readyState === "complete") {

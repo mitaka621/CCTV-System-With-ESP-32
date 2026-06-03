@@ -69,10 +69,6 @@ else
                         <CameraStreamComponent CameraId="camera.Id"/>         
                     </MudCardContent>
                     <MudCardActions>
-                        <MudButton StartIcon="@Icons.Material.Filled.PhotoCamera" Color="Color.Secondary" Size="Size.Small">
-                            Snapshot
-                        </MudButton>
-                        <MudSpacer />
                         <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="() => OpenConfigDialog(camera.Id)" />
                     </MudCardActions>
                 </MudCard>
@@ -142,7 +138,7 @@ else
             BackgroundClass = "blurry-background"
         };
 
-        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>("Configure Camera", parameters, options);
+        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
 
         await dialog.Result;
 

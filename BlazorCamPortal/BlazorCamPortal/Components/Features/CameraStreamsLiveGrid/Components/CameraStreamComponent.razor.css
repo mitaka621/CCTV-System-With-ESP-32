@@ -3,6 +3,7 @@
     overflow: hidden;
     border-radius: 8px;
     background: #000;
+    min-height: 200px;
 }
 
 .camera-loading {
@@ -26,8 +27,8 @@
 .camera-stream {
     position: relative;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    object-fit: contain;
     display: block;
     user-select: none;
     -webkit-user-drag: none;

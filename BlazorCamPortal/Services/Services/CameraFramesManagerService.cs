@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.CameraFrameDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
@@ -20,7 +21,7 @@ namespace CamPortal.Core.Services
         private readonly int _numberOfBufferFramesInChannel;
         private readonly ILogger<ICameraFramesManagerService> _logger;
         private readonly ConcurrentDictionary<Guid, Channel<byte[]>> _processedFramesCameraChannels = new();
-        private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, ChannelWriter<byte[]>>> _viewerWritersByCamera = new();
+        private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, CameraFramesForViewerDto>> _viewerWritersByCamera = new();
         private readonly ConcurrentDictionary<Guid, byte[]> _latestFrameByCamera = new();
         private readonly byte[] _defaultFrame;
         private readonly Font _stampFont = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
@@ -122,7 +123,7 @@ namespace CamPortal.Core.Services
             return _processedFramesCameraChannels[cameraId];
         }
 
-        public byte[] StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera)
+        public CameraFrameDto StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera)
         {
             using var image = Image.Load(frame);
 
@@ -169,30 +170,56 @@ namespace CamPortal.Core.Services
                 ctx.DrawText(cameraName, _stampFont, Color.White, new PointF(10, currentSize.Height - 50));
             });
 
-            using var ms = new MemoryStream();
-
-            image.SaveAsJpeg(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
+            using var originalResolution = new MemoryStream();
+            image.SaveAsJpeg(originalResolution, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
             {
                 Quality = 95,
             });
-            return ms.ToArray();
+
+            using var reducedResolution = new MemoryStream();
+            image.Mutate(ctx => ctx.Resize(new ResizeOptions()
+            {
+                Size = new Size(640, 0),
+                Mode = ResizeMode.Max,
+                Sampler = KnownResamplers.Triangle
+            }));
+            image.SaveAsJpeg(reducedResolution, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
+            {
+                Quality = 70,
+            });
+
+            return new CameraFrameDto
+            {
+                ProccessedFrameOriginalResolution = originalResolution.ToArray(),
+                ProccessedFrameReducedResolution = reducedResolution.ToArray()
+            };
         }
 
-        public void PublishProcessedFrame(Guid cameraId, byte[] frame)
+        public void PublishProcessedFrame(Guid cameraId, CameraFrameDto dto)
         {
+            //client live view update (dashboard camera live grid) in original (for full screen) and reduced resolutions (for camera grid previews)
             var channel = GetOrCreateProcessedFramesCameraChannel(cameraId);
-            channel.Writer.TryWrite(frame);
+            channel.Writer.TryWrite(dto.ProccessedFrameOriginalResolution);
 
-            _latestFrameByCamera[cameraId] = frame;
+            _latestFrameByCamera[cameraId] = dto.ProccessedFrameReducedResolution;
 
             if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers))
             {
-                foreach (var writer in viewers.Values)
+                foreach (var writers in viewers.Values)
                 {
-                    writer.TryWrite(frame);
+                    if (writers.OriginalFrameResolutionChannel != null)
+                    {
+                        writers.OriginalFrameResolutionChannel.TryWrite(dto.ProccessedFrameOriginalResolution);
+                    }
+
+                    if (writers.ReducedFrameResolutionChannel != null)
+                    {
+                        writers.ReducedFrameResolutionChannel.TryWrite(dto.ProccessedFrameReducedResolution);
+                    }
                 }
             }
 
+            //triggering background server side FrameProcessed events for camera footage saving to local server disk (original resolution)
             var handlers = FrameProcessed;
             if (handlers != null)
             {
@@ -201,49 +228,85 @@ namespace CamPortal.Core.Services
                     var localHandler = handler;
                     _ = Task.Run(async () =>
                     {
-                        try { await localHandler(cameraId, frame); }
+                        try { await localHandler(cameraId, dto.ProccessedFrameOriginalResolution); }
                         catch (Exception ex) { _logger.LogError(ex, "Frame handler failed for camera {CameraId}", cameraId); }
                     });
                 }
             }
         }
 
-        public ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId)
+        public ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId, bool isOriginalResolution)
         {
-            var channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(_viewerChannelBufferSize)
+            var viewers = _viewerWritersByCamera.GetOrAdd(cameraId, _ => new ConcurrentDictionary<Guid, CameraFramesForViewerDto>());
+
+            if (viewers.TryGetValue(viewerId, out var previousWriters))
+            {
+                if (isOriginalResolution)
+                {
+                    previousWriters.OriginalFrameResolutionChannel?.TryComplete();
+                }
+                else
+                {
+                    previousWriters.ReducedFrameResolutionChannel?.TryComplete();
+                }
+            }
+            else
+            {
+                viewers.TryAdd(viewerId, new CameraFramesForViewerDto());
+            }
+
+            byte[] firstFrame;
+
+            if (_latestFrameByCamera.TryGetValue(cameraId, out var lastFrame))
+            {
+                firstFrame = lastFrame;
+            }
+            else
+            {
+                firstFrame = _defaultFrame;
+            }
+
+            if (isOriginalResolution)
+            {
+                var originalFrameResolutionChannel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(_viewerChannelBufferSize)
+                {
+                    FullMode = BoundedChannelFullMode.DropOldest,
+                    SingleReader = true,
+                    SingleWriter = true,
+                });
+
+                viewers[viewerId].OriginalFrameResolutionChannel = originalFrameResolutionChannel.Writer;
+                viewers[viewerId].OriginalFrameResolutionChannel!.TryWrite(firstFrame);
+
+                return originalFrameResolutionChannel.Reader;
+            }
+
+            var reducedFrameResolutionChannel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(_viewerChannelBufferSize)
             {
                 FullMode = BoundedChannelFullMode.DropOldest,
                 SingleReader = true,
                 SingleWriter = true,
             });
 
-            var viewers = _viewerWritersByCamera.GetOrAdd(cameraId, _ => new ConcurrentDictionary<Guid, ChannelWriter<byte[]>>());
+            viewers[viewerId].ReducedFrameResolutionChannel = reducedFrameResolutionChannel.Writer;
+            viewers[viewerId].ReducedFrameResolutionChannel!.TryWrite(firstFrame);
 
-            if (viewers.TryGetValue(viewerId, out var previousWriter))
-            {
-                previousWriter.TryComplete();
-            }
-
-            viewers[viewerId] = channel.Writer;
-
-            if (_latestFrameByCamera.TryGetValue(cameraId, out var lastFrame))
-            {
-                channel.Writer.TryWrite(lastFrame);
-            }
-            else
-            {
-                channel.Writer.TryWrite(_defaultFrame);
-            }
-
-            return channel.Reader;
+            return reducedFrameResolutionChannel.Reader;
         }
 
-        public void UnsubscribeViewer(Guid cameraId, Guid viewerId)
+        public void UnsubscribeViewer(Guid cameraId, Guid viewerId, bool isOriginalResolution)
         {
             if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers) &&
-                viewers.TryRemove(viewerId, out var writer))
+                viewers.TryRemove(viewerId, out var writers))
             {
-                writer.TryComplete();
+                if (isOriginalResolution)
+                {
+                    writers.OriginalFrameResolutionChannel?.TryComplete();
+
+                    return;
+                }
+
+                writers.ReducedFrameResolutionChannel?.TryComplete();
             }
         }
         public (int, int) CalculateActualResolution(int fullWidth, int fullHeight, CameraAspectRatios aspectRatio)

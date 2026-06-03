@@ -56,7 +56,7 @@
         MudDialog?.Close();
     }
 
-    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream";
+    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream?isOriginalResolution=true";
 
     public async ValueTask DisposeAsync()
     {

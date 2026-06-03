@@ -1,3 +1,4 @@
+using CamPortal.Contracts.Dtos.CameraFrameDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Enums;
 using System.Threading.Channels;
@@ -20,15 +21,15 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task InitializeAsync(IDeviceService _cameraService);
 
-        byte[] StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera);
+        CameraFrameDto StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera);
 
         Channel<byte[]> GetOrCreateProcessedFramesCameraChannel(Guid cameraId);
 
-        void PublishProcessedFrame(Guid cameraId, byte[] frame);
+        void PublishProcessedFrame(Guid cameraId, CameraFrameDto dto);
 
-        ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId);
+        ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId, bool isOriginalResolution);
 
-        void UnsubscribeViewer(Guid cameraId, Guid viewerId);
+        void UnsubscribeViewer(Guid cameraId, Guid viewerId, bool isOriginalResolution);
 
         (int, int) CalculateActualResolution(int fullWidth, int fullHeight, CameraAspectRatios aspectRatio);
     }

@@ -43,7 +43,7 @@
         await _js.InvokeVoidAsync("startCameraStream", _elementId, GetStreamUrl());
     }
 
-    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream";
+    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream?isOriginalResolution=false";
 
     private async Task OpenFullScreen()
     {
