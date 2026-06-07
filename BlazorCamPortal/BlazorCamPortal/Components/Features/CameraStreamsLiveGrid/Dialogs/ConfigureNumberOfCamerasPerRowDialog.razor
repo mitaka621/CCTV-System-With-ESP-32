@@ -1,0 +1,118 @@
+@using CamPortal.Components.Shared
+@using CamPortal.Contracts.Models
+@using CamPortal.Core.Utilities
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IUserSettingsService _userSettingsService
+@inject IDialogService _dialogService
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Style="margin: 0 auto" Class="px-5 py-2">
+            <MudTextField @bind-Value="_model.NumberOfCamerasPerRow"
+                             Label="Number of Cameras per Row"
+                             Variant="Variant.Outlined"
+                             Immediate="false"
+                             For="()=>_model.NumberOfCamerasPerRow" />
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       Class="mt-4"
+                       OnClick="ResetConfigurationsAsync">
+                Reset Camera Grid Configurations
+            </MudButton>
+        </MudStack>
+        
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="SubmitAsync" Color="Color.Primary">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private UserSettingsModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is null)
+        {
+            return;
+        }
+
+        var authState = await AuthStateTask;
+        _model.UserId = AuthHelper.GetLoggedUserId(authState.User);
+        _model.NumberOfCamerasPerRow = await _userSettingsService.GetNumberOfCamerasPerRowAsync(_model.UserId);
+    }
+
+    private void Close()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (!MiscUtilities.ValidateModel(_model))
+        {
+            _snackbar.Add("Number of cameras per row must be between 1 and 10.", Severity.Error);
+            return;
+        }
+
+        var result = await _userSettingsService.SetNumberOfCamerasPerRowAsync(_model);
+
+        if (result)
+        {
+            _snackbar.Add("Number of cameras per row updated successfully.", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _snackbar.Add("Failed to update number of cameras per row.", Severity.Error);
+        }
+    }
+
+    private async Task ResetConfigurationsAsync()
+    {
+        var defaultColumns = _userSettingsService.GetDefaultNumberOfCamerasPerRow();
+
+        var parameters = new DialogParameters<DecisionDialog>
+        {
+            { x => x.Message, $"This will reset the number of cameras per row to the default ({defaultColumns}) and delete your saved camera grid layout. This cannot be undone." },
+            { x => x.ProceedButtonText, "Reset" },
+            { x => x.ProceedColor, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await _dialogService.ShowAsync<DecisionDialog>("Reset Camera Grid", parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult==null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var result = await _userSettingsService.ResetCameraGridSettingsAsync(_model.UserId);
+
+        if (result)
+        {
+            _model.NumberOfCamerasPerRow = defaultColumns;
+            _snackbar.Add("Camera grid configurations reset successfully.", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _snackbar.Add("Failed to reset camera grid configurations.", Severity.Error);
+        }
+    }
+}

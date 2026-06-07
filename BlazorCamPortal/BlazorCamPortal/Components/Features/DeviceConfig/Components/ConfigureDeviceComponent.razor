@@ -141,6 +141,9 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
     [Parameter, EditorRequired]
     public Guid CameraId { get; set; } = default!;
 
@@ -295,6 +298,17 @@
 
         _cameraFeedWidth = frameWidth;
         _cameraFeedHeight = frameHeight;
+    }
+
+    private async Task<Guid> ResolveUserIdAsync()
+    {
+        if (AuthStateTask is null)
+        {
+            return Guid.Empty;
+        }
+
+        var authState = await AuthStateTask;
+        return AuthHelper.GetLoggedUserId(authState.User);
     }
 
     public void Dispose()

@@ -14,7 +14,7 @@ namespace CamPortal.Infrastructure.Data.Entities
         [Required]
         public Guid DeviceTypeId { get; set; }
         [ForeignKey(nameof(DeviceTypeId))]
-        public DeviceType? DeviceType { get; set; }
+        public DeviceType DeviceType { get; set; } = null!;
 
         [MaxLength(100)]
         public string? Name { get; set; }

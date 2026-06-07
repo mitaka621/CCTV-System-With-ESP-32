@@ -3,6 +3,7 @@ using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
 using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
+using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Contracts.Models;
 using CamPortal.Infrastructure.Data.Entities;
@@ -57,6 +58,9 @@ namespace CamPortal.MapperConfiguration
                 .ReverseMap();
 
             CreateMap<CameraConfiguration, CameraStreamingConfigurationDto>()
+                .ReverseMap();
+
+            CreateMap<UserCameraPositionLayout, UserCameraLayoutItemDto>()
                 .ReverseMap();
         }
     }

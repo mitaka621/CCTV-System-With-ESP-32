@@ -34,6 +34,8 @@ namespace CamPortal.Extensions
             services.AddSingleton<IDeviceRepository, DeviceRepository>();
             services.AddSingleton<ICameraConfigurationRepository, CameraConfigurationRepository>();
             services.AddSingleton<ICameraConfigurationService, CameraConfigurationService>();
+            services.AddSingleton<IUserCameraLayoutRepository, UserCameraLayoutRepository>();
+            services.AddSingleton<IUserCameraLayoutService, UserCameraLayoutService>();
             services.AddSingleton<IUserRepository, UserRepository>();
             services.AddSingleton<IUserAuthService, UserAuthService>();
             services.AddSingleton<IUserManagementService, UserManagementService>();
@@ -46,6 +48,8 @@ namespace CamPortal.Extensions
             services.AddSingleton<IPreprovisionAttemptRepository, PreprovisionAttemptRepository>();
             services.AddSingleton<IPreprovisionNotifier, PreprovisionNotifier>();
             services.AddSingleton<IServerIdentityService, ServerIdentityService>();
+            services.AddSingleton<IUserSettingsRepository, UserSettingsRepository>();
+            services.AddSingleton<IUserSettingsService, UserSettingsService>();
 
             services.AddHostedService<FramesReceiverTcpService>();
             services.AddHostedService<VideoEncoderService>();
@@ -65,7 +69,7 @@ namespace CamPortal.Extensions
                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                        factory: _ => new FixedWindowRateLimiterOptions
                        {
-                           PermitLimit = 100,
+                           PermitLimit = 500,
                            Window = TimeSpan.FromMinutes(1),
                            QueueLimit = 0,
                            AutoReplenishment = true

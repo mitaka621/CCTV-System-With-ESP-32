@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 @using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
 
-<div class="camera-container">
+<div class="camera-container @(Fill ? "fill" : null)">
     <div class="camera-loading">
         <MudProgressCircular Indeterminate="true"
                              Color="Color.Primary"
@@ -26,8 +26,12 @@
     [Parameter, EditorRequired]
     public Guid CameraId { get; set; }
 
+    [Parameter]
+    public bool Fill { get; set; }
+
     private string _elementId = string.Empty;
     private bool _streamStarted;
+    private Guid _streamedCameraId;
 
     protected override void OnParametersSet()
     {
@@ -36,10 +40,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _streamStarted)
+        if (_streamStarted && _streamedCameraId == CameraId)
             return;
 
         _streamStarted = true;
+        _streamedCameraId = CameraId;
         await _js.InvokeVoidAsync("startCameraStream", _elementId, GetStreamUrl());
     }
 
@@ -72,7 +77,7 @@
 
         try
         {
-            await _js.InvokeVoidAsync("stopCameraStreamById", _elementId);
+            await _js.InvokeVoidAsync("scheduleCameraStreamStop", _elementId);
         }
         catch (JSDisconnectedException) { }
         catch (TaskCanceledException) { }

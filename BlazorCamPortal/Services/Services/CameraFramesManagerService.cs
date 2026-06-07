@@ -296,8 +296,7 @@ namespace CamPortal.Core.Services
 
         public void UnsubscribeViewer(Guid cameraId, Guid viewerId, bool isOriginalResolution)
         {
-            if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers) &&
-                viewers.TryRemove(viewerId, out var writers))
+            if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers) && viewers.TryGetValue(viewerId, out var writers))
             {
                 if (isOriginalResolution)
                 {

@@ -9,15 +9,13 @@ namespace CamPortal.Contracts.Dtos.CameraDtos
 
         public string? Name { get; set; }
 
-        public required string Ipv4Address { get; set; }
-
-        public required string MacAddress { get; set; }
+        public string? Ipv4Address { get; set; }
 
         public DevicePairStatus PairStatus { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
-        public DateTime UpdatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
         public required string PublicKey { get; set; }
 

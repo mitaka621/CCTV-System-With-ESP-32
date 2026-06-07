@@ -38,6 +38,11 @@ namespace CamPortal.Infrastructure.Repositories
                 })
                 .ToList();
 
+            entity.UserSettings = new UserSettings
+            {
+                UserId = entity.Id,
+            };
+
             context.Users.Add(entity);
 
             await context.SaveChangesAsync();

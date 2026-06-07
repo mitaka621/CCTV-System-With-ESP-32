@@ -1,7 +1,8 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
+using CamPortal.Contracts.Enums;
 using CamPortal.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,16 @@ namespace CamPortal.Infrastructure.Repositories
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;
+        }
+
+        public async Task<Dictionary<Guid, CameraAspectRatios>> GetCameraAspectRatiosAsync(IReadOnlyList<Guid> cameraIds)
+        {
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+
+            return await dbContext.CameraConfigurations
+                .AsNoTracking()
+                .Where(x => cameraIds.Contains(x.DeviceId))
+                .ToDictionaryAsync(x => x.DeviceId, x => x.CameraAspectRatio);
         }
 
         public async Task AddDefaultCameraConfigurationToDeviceAsync(Guid deviceId, IUnitOfWork? uow = null)

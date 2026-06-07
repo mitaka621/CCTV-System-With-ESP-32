@@ -29,5 +29,7 @@ namespace CamPortal.Infrastructure.Data.Entities
         public required Guid SecurityStamp { get; set; }
 
         public List<UserRole> UserRoles { get; set; } = new();
+
+        public UserSettings UserSettings { get; set; } = null!;
     }
 }

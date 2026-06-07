@@ -127,7 +127,7 @@ namespace CamPortal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("DeviceVariant")
+                    b.Property<int>("DeviceCategory")
                         .HasColumnType("int");
 
                     b.Property<string>("IconName")
@@ -303,6 +303,37 @@ namespace CamPortal.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserCameraPositionLayout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CameraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LayoutType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("X")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CameraId");
+
+                    b.HasIndex("UserId", "CameraId")
+                        .IsUnique();
+
+                    b.ToTable("UserCameraLayouts");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserRole", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -316,6 +347,19 @@ namespace CamPortal.Infrastructure.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("UsersRoles");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserSettings", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("NumberOfCamerasPerRowForLiveGrid")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserSettings");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
@@ -381,6 +425,25 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Navigation("Device");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserCameraPositionLayout", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Camera")
+                        .WithMany()
+                        .HasForeignKey("CameraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Camera");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserRole", b =>
                 {
                     b.HasOne("CamPortal.Infrastructure.Data.Entities.Role", "Role")
@@ -396,6 +459,17 @@ namespace CamPortal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserSettings", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.User", "User")
+                        .WithOne("UserSettings")
+                        .HasForeignKey("CamPortal.Infrastructure.Data.Entities.UserSettings", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -426,6 +500,9 @@ namespace CamPortal.Infrastructure.Migrations
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.User", b =>
                 {
                     b.Navigation("UserRoles");
+
+                    b.Navigation("UserSettings")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

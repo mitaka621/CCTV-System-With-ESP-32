@@ -1,6 +1,7 @@
 using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
+using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
@@ -262,7 +263,7 @@ namespace CamPortal.Infrastructure.Repositories
                     Id = x.Id,
                     PairStatus = x.PairStatus,
                     PublicKey = x.PublicKey,
-                    DeviceVariant = x.DeviceType!.DeviceVariant,
+                    DeviceVariant = x.DeviceType.DeviceCategory,
                     DeviceName = x.Name,
                     CameraStreamingConfiguration = new()
                     {
@@ -274,12 +275,50 @@ namespace CamPortal.Infrastructure.Repositories
                         SharpenFactor = x.CameraConfiguration.SharpenFactor,
                         ZoomFactor = x.CameraConfiguration.ZoomFactor,
                         ZoomStartX = x.CameraConfiguration.ZoomStartX,
-                        ZoomStartY = x.CameraConfiguration.ZoomStartY
+                        ZoomStartY = x.CameraConfiguration.ZoomStartY,
+                        ResolutionHeight = x.CameraConfiguration.ResolutionHeight,
+                        ResolutionWidth = x.CameraConfiguration.ResolutionWidth
                     }
                 })
                 .FirstOrDefaultAsync();
 
             return result;
+        }
+
+        public async Task<Dictionary<Guid, CameraInfoWithConfigurationDto>> GetAllCamerasWithConfigurationAsync()
+        {
+            var db = await _dbContextFactory.CreateDbContextAsync();
+
+            return await db.Devices
+                .AsNoTracking()
+                .Include(x => x.CameraConfiguration)
+                .Where(x => x.DeviceType.DeviceCategory == DeviceTypeCategories.Camera)
+                .OrderBy(x => x.CreatedAt)
+                .ToDictionaryAsync(x => x.Id, y => new CameraInfoWithConfigurationDto()
+                {
+                    Id = y.Id,
+                    Name = y.Name,
+                    PairStatus = y.PairStatus,
+                    CreatedAt = y.CreatedAt,
+                    Fingerprint = y.Fingerprint,
+                    Ipv4Address = y.Ipv4Address,
+                    PublicKey = y.PublicKey,
+                    UpdatedAt = y.UpdatedAt,
+                    Configuration = new()
+                    {
+                        Brightness = y.CameraConfiguration!.Brightness,
+                        Contrast = y.CameraConfiguration.Contrast,
+                        FlipMode = y.CameraConfiguration.FlipMode,
+                        CameraAspectRatio = y.CameraConfiguration.CameraAspectRatio,
+                        FrameRotation = y.CameraConfiguration.FrameRotation,
+                        SharpenFactor = y.CameraConfiguration.SharpenFactor,
+                        ZoomFactor = y.CameraConfiguration.ZoomFactor,
+                        ZoomStartX = y.CameraConfiguration.ZoomStartX,
+                        ZoomStartY = y.CameraConfiguration.ZoomStartY,
+                        ResolutionHeight = y.CameraConfiguration.ResolutionHeight,
+                        ResolutionWidth = y.CameraConfiguration.ResolutionWidth
+                    }
+                });
         }
     }
 }

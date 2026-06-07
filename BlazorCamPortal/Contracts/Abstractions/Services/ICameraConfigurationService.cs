@@ -1,4 +1,4 @@
-﻿using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
+using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Models;
 
 namespace CamPortal.Contracts.Abstractions.Services

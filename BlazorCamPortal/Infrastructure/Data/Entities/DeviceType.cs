@@ -16,6 +16,6 @@ namespace CamPortal.Infrastructure.Data.Entities
 
         public required DateTime IconUpdatedAt { get; set; }
 
-        public DeviceTypeCategories DeviceVariant { get; set; }
+        public DeviceTypeCategories DeviceCategory { get; set; }
     }
 }

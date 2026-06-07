@@ -87,7 +87,7 @@ namespace CamPortal.Infrastructure.Repositories
             var category = await db.DeviceTypes
                 .AsNoTracking()
                 .Where(x => x.Id == typeId)
-                .Select(x => x.DeviceVariant)
+                .Select(x => x.DeviceCategory)
                 .FirstOrDefaultAsync();
 
             return category;

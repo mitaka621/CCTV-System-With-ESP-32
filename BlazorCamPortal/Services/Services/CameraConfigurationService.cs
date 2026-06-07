@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
@@ -13,13 +13,15 @@ namespace CamPortal.Core.Services
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
         private readonly IMapper _mapper;
         private readonly IActiveCameraConnections _activeCameraConnectionsService;
+        private readonly IUserCameraLayoutRepository _userCameraLayoutRepository;
 
-        public CameraConfigurationService(ICameraConfigurationRepository cameraConfigurationRepository, IMapper mapper, IDeviceRepository deviceRepository, IActiveCameraConnections activeCameraConnectionsService)
+        public CameraConfigurationService(ICameraConfigurationRepository cameraConfigurationRepository, IMapper mapper, IDeviceRepository deviceRepository, IActiveCameraConnections activeCameraConnectionsService, IUserCameraLayoutRepository userCameraLayoutRepository)
         {
             _cameraConfigurationRepository = cameraConfigurationRepository;
             _mapper = mapper;
             _deviceRepository = deviceRepository;
             _activeCameraConnectionsService = activeCameraConnectionsService;
+            _userCameraLayoutRepository = userCameraLayoutRepository;
         }
 
         public async Task<bool> UpdateCameraConfigurationAsync(CameraConfigurationModel model)
@@ -35,7 +37,14 @@ namespace CamPortal.Core.Services
 
             _activeCameraConnectionsService.TryDisconnect(model.DeviceId);
 
-            return cameraNameUpdate && cameraConfigUpdate;
+            var result = cameraNameUpdate && cameraConfigUpdate;
+
+            if (result)
+            {
+                await _userCameraLayoutRepository.DeleteExisitingLayoutsForCameraAsync(model.DeviceId);
+            }
+
+            return result;
         }
 
         public async Task<CameraConfigurationModel?> GetCameraConfigurationAsync(Guid cameraId)

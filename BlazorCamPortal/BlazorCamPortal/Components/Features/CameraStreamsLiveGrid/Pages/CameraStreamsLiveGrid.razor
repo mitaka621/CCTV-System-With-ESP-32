@@ -3,12 +3,19 @@
 @using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
 @using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
 @using CamPortal.Contracts.Constants
+@using CamPortal.Contracts.Dtos.UserCameraLayoutDtos
+@using CamPortal.Contracts.Enums
+@using CamPortal.Core.Utilities
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using CamPortal.Contracts.Dtos.CameraConfigurationDtos
 
 @attribute [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
 
 @implements IAsyncDisposable
 @inject IDeviceService _cameraService
+@inject IUserCameraLayoutService _userCameraLayoutService
+@inject IUserSettingsService _userSettingsService
 @inject IDialogService _dialogService
 @inject IJSRuntime _js
 
@@ -18,12 +25,19 @@
 
 <Dashboard></Dashboard>
 
-<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Secondary">
-    <MudIcon Icon="@Icons.Material.Filled.GridView" Class="mr-2 icon-to-hide-on-mobile" />
-    Live Camera Feeds
-</MudText>
+<MudStack Row="true" Spacing="2" Class="mb-4 pt-4">
+    <MudText Typo="Typo.h4" Color="Color.Secondary" Class="mb-0">
+        <MudIcon Icon="@Icons.Material.Filled.GridView" Class="mr-2 icon-to-hide-on-mobile" />
+        Live Camera Feeds
+    </MudText>
+    <MudTooltip Text="Camera grid settings">
+        <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                       Color="Color.Secondary"
+                       OnClick="OpenGridSettingsDialogAsync" />
+    </MudTooltip>
+</MudStack>
 
-@if (cameras.Count == 0)
+@if (!_cells.Any())
 {
     <MudPaper Elevation="2" Class="pa-8 text-center">
         <MudIcon Icon="@Icons.Material.Outlined.VideocamOff" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
@@ -36,66 +50,118 @@
 }
 else
 {
-    <MudGrid>
-        @foreach (var camera in cameras)
-        {
-            <MudItem xs="12" sm="6" md="6" lg="4" xl="3" @key="camera.Id">
-                <MudCard Elevation="6" Class="camera-card">
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <div class="d-flex align-center justify-space-between">
-                                <div class="camera-info-container">
-                                    <MudTooltip Text="@GetCameraDisplayName(camera)" 
-                                              Placement="Placement.Top"
-                                              ShowOnFocus="false"
-                                              ShowOnHover="true"
-                                              Class="camera-name-tooltip">
-                                        <MudText Typo="Typo.body1" Class="camera-name-text">
-                                            <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Class="mr-2" />
-                                            <span class="camera-name-span">@GetCameraDisplayName(camera)</span>
-                                        </MudText>
-                                    </MudTooltip>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                        @camera.Ipv4Address
+        <MudDropContainer @key="_gridKey" T="CameraGridCellDto"
+                      @ref="_dropContainer"
+                      Items="_cells"
+                      ItemsSelector="@((cell, zone) => cell.LocationAsString == zone)"
+                      ItemsClassSelector="@((cell, zone) => _layoutMatrix[cell.Y][cell.X].LayoutType==CameraLayoutType.Vertical ? "board-item-tall" : string.Empty)"
+                      CanDrop="@CanDrop"
+                      ApplyDropClassesOnDragStarted="false"
+                      CanDropClass="board-cell-can"
+                      NoDropClass="board-cell-no"
+                      ItemDropped="ItemUpdated">
+        <ChildContent>
+            <div class="camera-board" style="--cols:@_camerasPerRow">
+                @for (int y = 0; y < _layoutMatrix.Count; y++)
+                {
+                    @for (int x = 0; x < _layoutMatrix[y].Length; x++)
+                    {
+                        <MudDropZone T="CameraGridCellDto"
+                                     Identifier="@($"{y}_{x}")"
+                                     ItemDraggingClass="camera-tile-dragging"
+                                     Class="@(_layoutMatrix[y][x].LayoutType == CameraLayoutType.Reserved ? "board-cell board-cell-reserved" : "board-cell")" />
+                    }
+                }
+            </div>
+        </ChildContent>
+        <ItemRenderer>
+                <MudCard Elevation="6" Class="@(_layoutMatrix[context.Y][context.X].LayoutType == CameraLayoutType.Vertical ? "camera-card camera-card-tall" : "camera-card")">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <div class="d-flex align-center justify-space-between camera-drag-handle">
+                            <div class="camera-info-container">
+                                <MudTooltip Text="@GetCameraDisplayName(_layoutMatrix[context.Y][context.X].CameraInfo!)"
+                                          Placement="Placement.Top"
+                                          ShowOnFocus="false"
+                                          ShowOnHover="true"
+                                          Class="camera-name-tooltip">
+                                    <MudText Typo="Typo.body1" Class="camera-name-text">
+                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-2 camera-drag-indicator" />
+                                        <span class="camera-name-span">@GetCameraDisplayName(_layoutMatrix[context.Y][context.X].CameraInfo!)</span>
                                     </MudText>
-                                </div>
-                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.FiberManualRecord">
-                                    Live
-                                </MudChip>
+                                </MudTooltip>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @_layoutMatrix[context.Y][context.X].CameraInfo!.Ipv4Address
+                                </MudText>
                             </div>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent Class="pa-0">
-                        <CameraStreamComponent CameraId="camera.Id"/>         
-                    </MudCardContent>
-                    <MudCardActions>
-                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="() => OpenConfigDialog(camera.Id)" />
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-        }
-    </MudGrid>
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.FiberManualRecord">
+                                Live
+                            </MudChip>
+                        </div>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="pa-0 camera-card-content">
+                    <CameraStreamComponent CameraId="_layoutMatrix[context.Y][context.X].CameraInfo!.Id" Fill="true" />
+                </MudCardContent>
+                <MudCardActions>
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="() => OpenConfigDialog(_layoutMatrix[context.Y][context.X].CameraInfo!.Id)" />
+                </MudCardActions>
+            </MudCard>
+        </ItemRenderer>
+    </MudDropContainer>
 }
 
 </PageLoader>
 
-@code {
-    private List<CameraDisplayModel> cameras = new();
-    private int connectedCameras = 0;
+    @code {
+    private int _camerasPerRow;
+    private MudDropContainer<CameraGridCellDto>? _dropContainer;
+    private Guid _userId;
     private bool _hasRenderedInteractively;
     private bool _isLoading = true;
+    private List<UserCameraLayoutItemDto[]> _layoutMatrix = new();
+    private bool _boardSized;
+    private int _gridKey = 0;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private IEnumerable<CameraGridCellDto> _cells=new List<CameraGridCellDto>();
+    private HashSet<string> _reserved = new();
+    private Dictionary<Guid, CameraAspectRatios> _aspectRatios = new();
 
     protected override async Task OnInitializedAsync()
     {
+        await ResolveUserIdAsync();
+        _camerasPerRow = await _userSettingsService.GetNumberOfCamerasPerRowAsync(_userId);
         await LoadCamerasAsync();
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             _hasRenderedInteractively = true;
         }
+
+        if (!_isLoading && !_boardSized && _cells.Any())
+        {
+            _boardSized = true;
+            await _js.InvokeVoidAsync("initCameraDragHandles");
+            await _js.InvokeVoidAsync("initCameraBoardSizing");
+        }
+    }
+
+    private async Task ResolveUserIdAsync()
+    {
+        if (AuthStateTask is null)
+        {
+            return;
+        }
+
+        var authState = await AuthStateTask;
+        _userId = AuthHelper.GetLoggedUserId(authState.User);
     }
 
     private async Task LoadCamerasAsync()
@@ -104,8 +170,11 @@ else
 
         try
         {
-            cameras = await _cameraService.GetAllCamerasAsync(Contracts.Enums.DevicePairStatus.Paired);
-            connectedCameras = cameras.Count;
+            _layoutMatrix = await _userCameraLayoutService.GetLatestLayoutAsync(_userId);
+
+            await _userCameraLayoutService.SaveLayoutAsync(_userId, _layoutMatrix);
+
+            UpdateCells();
         }
         finally
         {
@@ -113,12 +182,67 @@ else
         }
     }
 
-    private string GetCameraDisplayName(CameraDisplayModel camera)
+    private bool CanDrop(CameraGridCellDto cell, string zone)
     {
-        if (!string.IsNullOrEmpty(camera.Name))
-            return camera.Name;
+        var zoneSplit=zone.Split("_");
+        var targetY = int.Parse(zoneSplit[0]);
+        var targetX = int.Parse(zoneSplit[1]);
 
-        return $"{camera.Id}";
+        return _userCameraLayoutService.CanPlace(_layoutMatrix, cell, new CameraGridCellDto(){X = targetX, Y = targetY});
+    }
+
+    private async Task ItemUpdated(MudItemDropInfo<CameraGridCellDto> dropInfo)
+    {
+        if (dropInfo.Item==null)
+        {
+            return;
+        }
+
+        var zoneSplit = dropInfo.DropzoneIdentifier.Split("_");
+        var targetY = int.Parse(zoneSplit[0]);
+        var targetX = int.Parse(zoneSplit[1]);
+
+        _layoutMatrix = await _userCameraLayoutService.SwapLayoutsAsync(_userId, _layoutMatrix, dropInfo.Item, new CameraGridCellDto { X = targetX, Y = targetY });
+
+        UpdateCells();
+
+        _dropContainer?.Refresh();
+    }
+
+    private string GetCameraDisplayName(CameraInfoWithConfigurationDto dto)
+    {
+        if (dto==null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrEmpty(dto.Name))
+            return dto.Name;
+
+        return $"{dto.Id}";
+    }
+
+    private async Task OpenGridSettingsDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await _dialogService.ShowAsync<ConfigureNumberOfCamerasPerRowDialog>("Camera Grid Settings", options);
+
+        try
+        {
+            var result = await dialog.Result;
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await ReloadComponent();
     }
 
     private async Task OpenConfigDialog(Guid cameraId)
@@ -138,12 +262,34 @@ else
             BackgroundClass = "blurry-background"
         };
 
-        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
+        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>("Configure Camera", parameters, options);
 
         await dialog.Result;
 
+        await ReloadComponent();
+    }
+
+    private async Task ReloadComponent()
+    {
+        _camerasPerRow = await _userSettingsService.GetNumberOfCamerasPerRowAsync(_userId);
+        _boardSized = false;
+        _dropContainer = null;
         await LoadCamerasAsync();
-    } 
+        _gridKey++;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateCells()
+    {
+        _cells=_layoutMatrix.SelectMany(x => x)
+            .Where(x => x.CameraInfo != null)
+            .Where(x => x.LayoutType == CameraLayoutType.Horizontal || x.LayoutType == CameraLayoutType.Vertical)
+            .Select(x => new CameraGridCellDto()
+            {
+                X = x.X,
+                Y = x.Y
+            });
+    }
 
     public async ValueTask DisposeAsync()
     {

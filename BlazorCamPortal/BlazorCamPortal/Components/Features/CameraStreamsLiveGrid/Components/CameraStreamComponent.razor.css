@@ -3,7 +3,11 @@
     overflow: hidden;
     border-radius: 8px;
     background: #000;
-    min-height: 200px;
+    min-height: 120px;
+}
+
+.camera-container.fill {
+    height: 100%;
 }
 
 .camera-loading {
@@ -32,12 +36,22 @@
     display: block;
     user-select: none;
     -webkit-user-drag: none;
+    pointer-events: none;
     z-index: 2;
+}
+
+.camera-container.fill .camera-stream {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .fullscreen-btn {
     background: rgba(255,255,255,0.1) !important;
     backdrop-filter: blur(10px);
+    pointer-events: auto;
 }
 
 .camera-overlay {
@@ -52,6 +66,7 @@
     justify-content: center;
     opacity: 0;
     transition: opacity 0.3s ease;
+    pointer-events: auto;
     z-index: 3;
 }
 

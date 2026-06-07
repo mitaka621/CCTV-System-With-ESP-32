@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Abstractions.UnitOfWork;
+using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
@@ -41,5 +42,7 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<DeviceDto?> GetDeviceByIdWithStatusAsync(Guid deviceId, DevicePairStatus status);
 
         Task<DeviceStreamingHandshakeDto?> GetDeviceForStreamingHandshakeAsync(Guid deviceId);
+
+        Task<Dictionary<Guid, CameraInfoWithConfigurationDto>> GetAllCamerasWithConfigurationAsync();
     }
 }

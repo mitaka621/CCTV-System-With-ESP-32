@@ -25,6 +25,10 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<LogMessage> LogMessages { get; set; }
 
+        public DbSet<UserCameraPositionLayout> UserCameraLayouts { get; set; }
+
+        public DbSet<UserSettings> UserSettings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Role>().HasData(
