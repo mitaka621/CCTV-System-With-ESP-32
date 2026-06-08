@@ -15,5 +15,7 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<bool> DecreaseRemainingAttemptsAndRevokeIfDepletedAsync(Guid preprovisionId);
 
         Task<PreprovisionAttemptDto?> GetPreprovisionAttemptNonceWithStatusAsync(Guid deviceId, PreprovisionStatus status);
+
+        Task<PreprovisionAttemptDto?> GetLatestPreprovisionAttemptAsync(Guid deviceId);
     }
 }

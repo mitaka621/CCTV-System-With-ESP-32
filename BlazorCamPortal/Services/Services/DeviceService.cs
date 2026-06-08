@@ -4,7 +4,6 @@ using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Models;
 using Microsoft.Extensions.Configuration;
@@ -70,27 +69,6 @@ namespace CamPortal.Core.Services
         public async Task<bool> UpdateDeviceAsync(UpdateDeviceDto dto, IUnitOfWork? uow = null)
         {
             return await _deviceRepository.UpdateDeviceAsync(dto, uow);
-        }
-
-        public async Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac)
-        {
-            var newSessionToken = _deviceAuthenticatorService.GenerateSessionToken();
-
-            var result = await _deviceRepository.SetSessionTokenAsync(new SetESPSessionTokenDto()
-            {
-                Ipv4 = ipv4,
-                Mac = mac,
-                SessionToken = newSessionToken,
-                ExpirationDate = DateTime.UtcNow.AddMinutes(_sessionTokenDurationInMinutes),
-                AllowedStatuses = [DevicePairStatus.Paired, DevicePairStatus.Paired]
-            });
-
-            if (result)
-            {
-                return newSessionToken;
-            }
-
-            return null;
         }
 
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync()
@@ -159,6 +137,12 @@ namespace CamPortal.Core.Services
         public async Task<string?> GetDeviceNameAsync(Guid deviceId)
         {
             return await _deviceRepository.GetDeviceNameAsync(deviceId);
+        }
+
+        public async Task<bool> DeleteDeviceAsync(Guid deviceId)
+        {
+            InvalidateCamera(deviceId);
+            return await _deviceRepository.DeleteDeviceAsync(deviceId);
         }
 
         private void InvalidateCamera(Guid cameraId)

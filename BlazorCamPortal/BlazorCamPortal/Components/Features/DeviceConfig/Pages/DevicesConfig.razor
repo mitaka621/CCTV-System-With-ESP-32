@@ -115,7 +115,7 @@ else
                                 <MudChip T="string" Color="@GetStatusColor(camera.PairStatus)" 
                                         Size="Size.Small" 
                                         Icon="@GetStatusIcon(camera.PairStatus)">
-                                    @camera.PairStatus
+                                    @MiscUtilities.GetDisplayNameAttributeValue(camera.PairStatus)
                                 </MudChip>
                             </div>
                         </CardHeaderContent>
@@ -147,12 +147,25 @@ else
                     <MudCardActions Class="d-flex justify-space-between">
                         @if (camera.PairStatus != DevicePairStatus.Removed)
                         {
-                            <MudButton StartIcon="@Icons.Material.Filled.Edit" 
-                                     Color="Color.Secondary" 
-                                     Size="Size.Small"
-                                     Variant="Variant.Text">
-                                Configure
-                            </MudButton>
+                            @if (camera.PairStatus == DevicePairStatus.PairingPending)
+                            {
+                                <MudButton StartIcon="@Icons.Material.Filled.PlayArrow"
+                                         Color="Color.Primary"
+                                         Size="Size.Small"
+                                         Variant="Variant.Filled"
+                                         OnClick="() => ResumeSetup(camera)">
+                                    Resume Setup
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton StartIcon="@Icons.Material.Filled.Edit" 
+                                         Color="Color.Secondary" 
+                                         Size="Size.Small"
+                                         Variant="Variant.Text">
+                                    Configure
+                                </MudButton>
+                            }
                             <MudButton StartIcon="@Icons.Material.Filled.Delete" 
                                      Color="Color.Error" 
                                      Size="Size.Small"
@@ -225,6 +238,30 @@ else
         cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
 	}
 
+    private async Task ResumeSetup(CameraDisplayModel camera)
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            Position = DialogPosition.TopCenter,
+            BackdropClick = false,
+            BackgroundClass = "blurry-background"
+        };
+
+        var parameters = new DialogParameters<AddDeviceDialog>
+        {
+            { x => x.ResumeDeviceId, camera.Id }
+        };
+
+        var dialog = await _dialogService.ShowAsync<AddDeviceDialog>(null, parameters, options);
+
+        await dialog.Result;
+
+        cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
+    }
+
 	private async Task ForgetCamera(Guid cameraId)
 	{
   //       await _cameraService.ChangeStatusAndInvalidateCameraAsync(cameraId, DevicePairStatus.Forgotten);
@@ -238,10 +275,7 @@ else
 		return status switch
 		{
 			DevicePairStatus.Paired => Color.Success,
-			//DevicePairStatus.Forgotten => Color.Error,
-			//DevicePairStatus.ServerChallengeSolved => Color.Info,
-			// DevicePairStatus.ServerChallengeFailed => Color.Warning,
-			// DevicePairStatus.SessionTokenExpired => Color.Warning,
+            DevicePairStatus.PairingPending => Color.Warning,
 			_ => Color.Default
 		};
 	}
@@ -251,10 +285,7 @@ else
 		return status switch
 		{
 			DevicePairStatus.Paired => Icons.Material.Filled.CheckCircle,
-			// DevicePairStatus.Forgotten => Icons.Material.Filled.Cancel,
-			// DevicePairStatus.ServerChallengeSolved => Icons.Material.Filled.Check,
-			// DevicePairStatus.ServerChallengeFailed => Icons.Material.Filled.Error,
-			// DevicePairStatus.SessionTokenExpired => Icons.Material.Filled.Schedule,
+            DevicePairStatus.PairingPending => Icons.Material.Filled.Sync,
 			_ => Icons.Material.Filled.Help
 		};
 	}

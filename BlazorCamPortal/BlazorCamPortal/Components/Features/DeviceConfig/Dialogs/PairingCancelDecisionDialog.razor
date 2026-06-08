@@ -1,0 +1,45 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1">@Message</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Back">@BackButtonText</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ContinueLater" Disabled="@DisableContinueLater">@ContinueLaterButtonText</MudButton>
+        <MudButton Color="Color.Error" OnClick="CancelPairing">@CancelPairingButtonText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string Message { get; set; } = "Are you sure you want to cancel the pairing process?";
+
+    [Parameter]
+    public string BackButtonText { get; set; } = "Back";
+
+    [Parameter]
+    public string ContinueLaterButtonText { get; set; } = "Continue Setup Later";
+
+    [Parameter]
+    public string CancelPairingButtonText { get; set; } = "Cancel Pairing";
+
+    [Parameter]
+    public bool DisableContinueLater { get; set; }
+
+    private void Back()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void ContinueLater()
+    {
+        MudDialog?.Close(DialogResult.Ok(PairingCancelChoice.ContinueLater));
+    }
+
+    private void CancelPairing()
+    {
+        MudDialog?.Close(DialogResult.Ok(PairingCancelChoice.CancelPairing));
+    }
+}

@@ -7,6 +7,8 @@ namespace CamPortal.Contracts.Dtos.CameraDtos
     {
         public Guid Id { get; set; }
 
+        public Guid DeviceTypeId { get; set; }
+
         public string? Name { get; set; }
 
         public string? Ipv4Address { get; set; }

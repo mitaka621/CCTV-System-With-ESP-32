@@ -12,8 +12,6 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task<bool> UpdateDeviceAsync(UpdateDeviceDto dto, IUnitOfWork? uow = null);
 
-        Task<string?> GenerateSessionTokenForDeviceAsync(string ipv4, string mac);
-
         Task<List<CameraDisplayModel>> GetAllCamerasAsync();
 
         Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> cameraIds);
@@ -31,5 +29,7 @@ namespace CamPortal.Contracts.Abstractions.Services
         Task<int> GetTotalCamerasAsync(params List<DevicePairStatus> status);
 
         Task<string?> GetDeviceNameAsync(Guid deviceId);
+
+        Task<bool> DeleteDeviceAsync(Guid deviceId);
     }
 }

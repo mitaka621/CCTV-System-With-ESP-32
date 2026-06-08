@@ -6,6 +6,6 @@
 
         public bool IsPaired { get; set; }
 
-        public Guid? PairedDeviceId { get; set; }
+        public Guid? DeviceId { get; set; }
     }
 }

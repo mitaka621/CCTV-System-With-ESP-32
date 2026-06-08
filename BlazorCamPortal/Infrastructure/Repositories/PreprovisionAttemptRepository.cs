@@ -99,6 +99,19 @@ namespace CamPortal.Infrastructure.Repositories
             return _mapper.Map<PreprovisionAttemptDto?>(entity);
         }
 
+        public async Task<PreprovisionAttemptDto?> GetLatestPreprovisionAttemptAsync(Guid deviceId)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            var entity = await db.PreprovisionAttempts
+                .AsNoTracking()
+                .Where(a => a.DeviceId == deviceId)
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            return entity == null ? null : _mapper.Map<PreprovisionAttemptDto>(entity);
+        }
+
         public async Task<bool> DecreaseRemainingAttemptsAndRevokeIfDepletedAsync(Guid preprovisionId)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();

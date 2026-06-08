@@ -1,5 +1,8 @@
 @using CamPortal.Components.Features.DeviceConfig.Components
+@using CamPortal.Components.Shared
 @inject IDeviceTypeService _deviceTypeService
+@inject IDevicePreProvisionService _devicePreProvisionService
+@inject IDialogService _dialogService
 @inject ISnackbar _snackbar
 
 <MudDialog>
@@ -51,7 +54,7 @@
             </MudTimelineItem>
         </MudTimeline>
         <div @onkeydown="HandleKeyDown" style="min-height:500px">
-        @switch (currentStep)
+        @switch (_currentStep)
         {
             case 0:
                 <SelectDeviceTypeComponent model="model.PreprovisionRequest" ModelChanged="StateHasChanged" />
@@ -66,16 +69,16 @@
                 <UploadCredentialsComponent model="model" ModelChanged="StateHasChanged" />
                 break;
             case 4:
-                <ConfigureDeviceComponent CameraId="model.PairedDeviceId ?? Guid.Empty" ModelChanged="StateHasChanged" />
+                <ConfigureDeviceComponent CameraId="model.DeviceId ?? Guid.Empty" ModelChanged="StateHasChanged" />
                 break;
             default: break;
         }
         </div>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Error" Disabled="@(currentStep == maxStep)">Cancel</MudButton>
-        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@(currentStep == 0 || currentStep == maxStep)">Back</MudButton>
-        @if (currentStep == maxStep)
+        <MudButton OnClick="CancelAsync" Color="Color.Error">Cancel</MudButton>
+        <MudButton OnClick="Back" Color="Color.Primary" Disabled="@IsBackDisabled()">Back</MudButton>
+        @if (_currentStep == _maxStep)
         {
             <MudButton OnClick="Finish" Color="Color.Success" Variant="Variant.Filled">Finish</MudButton>
         }
@@ -90,19 +93,101 @@
     [CascadingParameter]
     public IMudDialogInstance? MudDialog { get; set; }
 
-    private int currentStep = 0;
-    private const int maxStep = 4;
+    [Parameter]
+    public Guid? ResumeDeviceId { get; set; }
+
+    private int _currentStep = 0;
+    private const int _maxStep = 4;
 
     public AddDeviceWizardStateModel model { get; set; } = new();
 
-    private void Cancel()
+    protected override async Task OnInitializedAsync()
     {
-        MudDialog?.Cancel();
+        if (!ResumeDeviceId.HasValue)
+        {
+            return;
+        }
+
+        var resumeState = await _devicePreProvisionService.GetResumeSetupStateAsync(ResumeDeviceId.Value);
+
+        if (resumeState == null)
+        {
+            _snackbar.Add("Unable to resume device setup.", Severity.Error);
+            return;
+        }
+
+        model.PreprovisionRequest.DeviceTypeId = resumeState.DeviceTypeId;
+        model.PreprovisionRequest.LocalNetworkInfo = resumeState.LocalNetworkInfo;
+        model.DeviceId = resumeState.DeviceId;
+        _currentStep = 2;
+
+        StateHasChanged();
+    }
+
+    private async Task CancelAsync()
+    {
+        if (!model.DeviceId.HasValue)
+        {
+            MudDialog?.Cancel();
+            return;
+        }
+
+        var choice = await ShowPairingCancelDialogAsync();
+
+        if (choice == null || choice == PairingCancelChoice.Back)
+        {
+            return;
+        }
+
+        if (choice == PairingCancelChoice.CancelPairing)
+        {
+            if (model.DeviceId.HasValue)
+            {
+                var deleted = await _devicePreProvisionService.CancelPairingAndDeleteDeviceAsync(model.DeviceId.Value);
+
+                if (!deleted)
+                {
+                    _snackbar.Add("Failed to cancel pairing.", Severity.Error);
+                    return;
+                }
+            }
+        }
+
+        MudDialog?.Close(DialogResult.Ok(choice));
+    }
+
+    private async Task<PairingCancelChoice?> ShowPairingCancelDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters<PairingCancelDecisionDialog>
+        {
+            { x => x.DisableContinueLater, model.IsPaired }
+        };
+
+        var dialog = await _dialogService.ShowAsync<PairingCancelDecisionDialog>("Cancel Pairing", parameters, options);
+        var result = await dialog.Result;
+
+        if (result == null || result.Canceled || result.Data is not PairingCancelChoice choice)
+        {
+            return PairingCancelChoice.Back;
+        }
+
+        return choice;
+    }
+
+    private bool IsBackDisabled()
+    {
+        return _currentStep == 0 || _currentStep == _maxStep || model.IsPaired;
     }
 
     private Color GetActiveColor(int step)
     {
-        if (step == currentStep  )
+        if (step == _currentStep  )
         {
             if (IsCurrentStepCompleted())
             {
@@ -112,12 +197,12 @@
             return Color.Info;
         }
 
-        return step < currentStep ? Color.Success : Color.Error;
+        return step < _currentStep ? Color.Success : Color.Error;
     }
 
     private Severity GetActiveSeverity(int step)
     {
-        if (step == currentStep)
+        if (step == _currentStep)
         {
             if (IsCurrentStepCompleted())
             {
@@ -127,33 +212,33 @@
             return Severity.Info;
         }
 
-        return step < currentStep ? Severity.Success : Severity.Error;
+        return step < _currentStep ? Severity.Success : Severity.Error;
     }
 
     private void Back()
     {
-        if (currentStep > 0)
+        if (_currentStep > 0)
         {
-            currentStep--;
+            _currentStep--;
         }
     }
 
     private void Next()
     {
-        if (currentStep < maxStep)
+        if (_currentStep < _maxStep)
         {
-            currentStep++;
+            _currentStep++;
         }
     }
 
     private void Finish()
     {
-        MudDialog?.Close(DialogResult.Ok(model.PairedDeviceId));
+        MudDialog?.Close(DialogResult.Ok(model.DeviceId));
     }
 
     private bool IsCurrentStepCompleted()
     {
-        return currentStep switch
+        return _currentStep switch
         {
             0 => model.PreprovisionRequest.DeviceTypeId != default,
             1 => model.PreprovisionRequest.LocalNetworkInfo != default,
@@ -170,7 +255,7 @@
         {
             return;
         }
-        if (currentStep == maxStep)
+        if (_currentStep == _maxStep)
         {
             Finish();
         }

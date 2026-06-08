@@ -1,4 +1,3 @@
-using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
@@ -20,13 +19,13 @@ namespace CamPortal.Core.Services
 {
     public class DevicePreProvisionService : IDevicePreProvisionService
     {
+        private readonly int _gracePeriodForAllowedDeviceDeletionMinutes = 5;
+
         private readonly IDeviceAuthenticatorService _deviceAuthenticatorService;
         private readonly IDeviceService _deviceService;
         private readonly IDeviceRepository _deviceRepository;
         private readonly IPreprovisionAttemptRepository _preprovisionAttemptRepository;
-        private readonly IMapper _mapper;
         private readonly ILogger<DevicePreProvisionService> _logger;
-        private readonly IDeviceTypeService _deviceTypeService;
         private readonly IUnitOfWorkFactory _unitOfWorkFactory;
         private readonly IPreprovisionNotifier _preprovisionNotifier;
         private readonly IServerIdentityService _serverIdentityService;
@@ -38,10 +37,8 @@ namespace CamPortal.Core.Services
             IDeviceAuthenticatorService deviceAuthenticatorService,
             IDeviceService cameraService,
             IPreprovisionAttemptRepository preprovisionAttemptRepository,
-            IMapper mapper,
             IDeviceRepository deviceRepository,
             ILogger<DevicePreProvisionService> logger,
-            IDeviceTypeService deviceTypeService,
             IUnitOfWorkFactory unitOfWorkFactory,
             IPreprovisionNotifier preprovisionNotifier,
             IServerIdentityService serverIdentityService,
@@ -50,10 +47,8 @@ namespace CamPortal.Core.Services
             _deviceAuthenticatorService = deviceAuthenticatorService;
             _deviceService = cameraService;
             _preprovisionAttemptRepository = preprovisionAttemptRepository;
-            _mapper = mapper;
             _deviceRepository = deviceRepository;
             _logger = logger;
-            _deviceTypeService = deviceTypeService;
             _unitOfWorkFactory = unitOfWorkFactory;
             _preprovisionNotifier = preprovisionNotifier;
             _serverIdentityService = serverIdentityService;
@@ -214,7 +209,7 @@ namespace CamPortal.Core.Services
 
             var validPreprovisionAttempt = device.PreprovisionAttempts
                 .OrderByDescending(x => x.CreatedAt)
-                .FirstOrDefault(x => x.PreprovisionStatus == PreprovisionStatus.Pending && x.ExpiresAt > DateTime.UtcNow);
+                .FirstOrDefault(x => x.PreprovisionStatus == PreprovisionStatus.Pending && x.ExpiresAt > DateTime.UtcNow && x.RemainingAttempts > 0);
 
             if (validPreprovisionAttempt == null)
             {
@@ -237,6 +232,8 @@ namespace CamPortal.Core.Services
                     remoteIp,
                     validPreprovisionAttempt.ExpectedNetworkIpv4,
                     validPreprovisionAttempt.ExpectedSubnetMask);
+
+                await _preprovisionAttemptRepository.DecreaseRemainingAttemptsAndRevokeIfDepletedAsync(validPreprovisionAttempt.Id);
 
                 return new VerifyDeviceResultDto()
                 {
@@ -287,6 +284,67 @@ namespace CamPortal.Core.Services
 
             await uow.CommitAsync();
             return true;
+        }
+
+        public async Task<bool> CancelPairingAndDeleteDeviceAsync(Guid deviceId)
+        {
+            var device = await _deviceRepository.GetDeviceByIdAsync(deviceId);
+
+            if (device == null)
+            {
+                return false;
+            }
+
+            if (device.PairStatus != DevicePairStatus.PairingPending && device.PairStatus != DevicePairStatus.Paired)
+            {
+                return false;
+            }
+
+            if (device.PairStatus == DevicePairStatus.Paired
+                && device.UpdatedAt.HasValue
+                && device.UpdatedAt.Value.AddMinutes(_gracePeriodForAllowedDeviceDeletionMinutes) < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            return await _deviceService.DeleteDeviceAsync(deviceId);
+        }
+
+        public async Task<ResumeDeviceSetupDto?> GetResumeSetupStateAsync(Guid deviceId)
+        {
+            var device = await _deviceRepository.GetDeviceByIdAsync(deviceId);
+
+            if (device == null)
+            {
+                return null;
+            }
+
+            if (device.PairStatus != DevicePairStatus.PairingPending)
+            {
+                return null;
+            }
+
+            var attempt = await _preprovisionAttemptRepository.GetLatestPreprovisionAttemptAsync(deviceId);
+            var localNetworkInfo = ResolveLocalNetworkInfo(attempt);
+
+            return new ResumeDeviceSetupDto
+            {
+                DeviceId = deviceId,
+                DeviceTypeId = device.DeviceTypeId,
+                PairStatus = device.PairStatus,
+                LocalNetworkInfo = localNetworkInfo,
+            };
+        }
+
+        private LocalNetworkInfoDto? ResolveLocalNetworkInfo(PreprovisionAttemptDto? attempt)
+        {
+            if (attempt?.ExpectedNetworkIpv4 == null || attempt.ExpectedSubnetMask == null)
+            {
+                return null;
+            }
+
+            return NetworkUtilities.GetLocalNetworkInfo()
+                .FirstOrDefault(x => x.LocalIp == attempt.ExpectedNetworkIpv4 && x.SubnetMask == attempt.ExpectedSubnetMask);
         }
 
         private bool IsLocalNetworkInfoValid(LocalNetworkInfoDto? dto)

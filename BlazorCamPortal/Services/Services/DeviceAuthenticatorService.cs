@@ -83,26 +83,5 @@ namespace CamPortal.Core.Services
                 return false;
             }
         }
-
-        public string GenerateSessionToken(int keySizeInBits = 256)
-        {
-            var rng = RandomNumberGenerator.Create();
-
-            var key = new byte[keySizeInBits / 8];
-            rng.GetBytes(key);
-
-            return Convert.ToBase64String(key);
-        }
-
-        public byte[] DecryptAesGcm(Span<byte> ciphertext, Span<byte> key, Span<byte> iv, Span<byte> tag)
-        {
-            byte[] plaintext = new byte[ciphertext.Length];
-
-            using (var aes = new AesGcm(key, tag.Length))
-            {
-                aes.Decrypt(iv, ciphertext, tag, plaintext);
-            }
-            return plaintext;
-        }
     }
 }
