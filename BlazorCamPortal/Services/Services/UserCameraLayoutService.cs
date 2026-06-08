@@ -199,14 +199,14 @@ namespace CamPortal.Core.Services
 
         public bool CanPlace(List<UserCameraLayoutItemDto[]> layoutMatrix, UserCameraLayoutItemDto initialPosition)
         {
-            var targetCell = layoutMatrix[initialPosition.Y][initialPosition.X];
-
-            if (targetCell.LayoutType != CameraLayoutType.Empty)
+            if (!IsPlacementValid(layoutMatrix, initialPosition))
             {
                 return false;
             }
 
-            return IsPlacementValid(layoutMatrix, initialPosition);
+            var targetCell = layoutMatrix[initialPosition.Y][initialPosition.X];
+
+            return targetCell.LayoutType == CameraLayoutType.Empty;
         }
 
         public bool IsPlacementValid(List<UserCameraLayoutItemDto[]> layoutMatrix, UserCameraLayoutItemDto newPosition)
@@ -259,12 +259,14 @@ namespace CamPortal.Core.Services
         {
             if (cameraConfig.CameraAspectRatio == CameraAspectRatios.Original && cameraConfig.ResolutionWidth > 0 && cameraConfig.ResolutionHeight > 0)
             {
-                if (cameraConfig.ResolutionWidth > cameraConfig.ResolutionHeight)
+                var layoutType = cameraConfig.ResolutionWidth > cameraConfig.ResolutionHeight ? CameraLayoutType.Horizontal : CameraLayoutType.Vertical;
+
+                if ((cameraConfig.FrameRotation / 90) % 2 != 0)
                 {
-                    return CameraLayoutType.Horizontal;
+                    return layoutType == CameraLayoutType.Horizontal ? CameraLayoutType.Vertical : CameraLayoutType.Horizontal;
                 }
 
-                return CameraLayoutType.Vertical;
+                return layoutType;
             }
 
             if (cameraConfig.CameraAspectRatio == CameraAspectRatios.Ratio16_9 || cameraConfig.CameraAspectRatio == CameraAspectRatios.Ratio4_3)
