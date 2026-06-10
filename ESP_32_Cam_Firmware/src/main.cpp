@@ -1,6 +1,7 @@
 #include "config.h"
 #include "secrets.h"
 #include "led_indicator.h"
+#include "status_led.h"
 #include "secret_store.h"
 #include "wifi_manager.h"
 #include "provision_ap.h"
@@ -64,6 +65,7 @@ static void handleResetButton()
 static void enterState(AppState next)
 {
   _state = next;
+  status_led::setMode(next == STATE_AP_PROVISIONING ? status_led::BLINKING : status_led::OFF);
   switch (next)
   {
   case STATE_BOOT:
@@ -114,6 +116,7 @@ void setup()
 
   led_indicator::begin();
   led_indicator::setState(led_indicator::BOOTING);
+  status_led::begin();
 
   if (!secret_store::begin())
   {
@@ -159,9 +162,11 @@ static void doApProvisioning()
 
   if (result != provision_ap::RECEIVED)
   {
+    status_led::setMode(provision_ap::clientConnected() ? status_led::SOLID : status_led::BLINKING);
     return;
   }
 
+  status_led::setMode(status_led::OFF);
   led_indicator::setState(led_indicator::PROVISION_RECEIVED);
   for (int i = 0; i < 10; i++)
   {
@@ -294,7 +299,11 @@ static void doNetworkRecovery()
 void loop()
 {
   handleResetButton();
-  led_indicator::tick();
+
+  if (DEBUG_ON)
+    led_indicator::tick();
+
+  status_led::tick();
 
   switch (_state)
   {

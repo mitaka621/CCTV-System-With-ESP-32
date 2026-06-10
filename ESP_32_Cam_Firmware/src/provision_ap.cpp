@@ -414,6 +414,11 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     return IDLE;
   }
 
+  bool clientConnected()
+  {
+    return _running && WiFi.softAPgetStationNum() > 0;
+  }
+
   void end()
   {
     if (!_running)

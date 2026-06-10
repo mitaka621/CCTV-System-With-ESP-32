@@ -15,6 +15,8 @@ namespace provision_ap
 
   TickResult tick(DeviceCredentials &credentialsOut);
 
+  bool clientConnected();
+
   void end();
 
   String apSsid();

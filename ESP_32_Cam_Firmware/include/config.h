@@ -10,6 +10,9 @@
 #define RGB_LED_PIN 48
 #define RGB_LED_COUNT 1
 
+#define STATUS_LED_PIN 21
+#define STATUS_LED_BLINK_INTERVAL_MS 400
+
 #define NVS_NAMESPACE "settings"
 
 #define WIFI_CONNECT_TIMEOUT_MS 20000
