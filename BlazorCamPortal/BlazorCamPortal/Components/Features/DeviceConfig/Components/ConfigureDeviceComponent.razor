@@ -291,13 +291,10 @@
 
     private void CalculateActualResolution()
     {
-        (int frameWidth, int frameHeight) = _cameraFramesManager.CalculateActualResolution(
+        (_cameraFeedWidth, _cameraFeedHeight) = CameraAspectRatioResolver.CalculateActualResolution(
            _defaultWidth,
            _defaultHeight,
            _cameraConfigurationModel.CameraAspectRatio);
-
-        _cameraFeedWidth = frameWidth;
-        _cameraFeedHeight = frameHeight;
     }
 
     private async Task<Guid> ResolveUserIdAsync()

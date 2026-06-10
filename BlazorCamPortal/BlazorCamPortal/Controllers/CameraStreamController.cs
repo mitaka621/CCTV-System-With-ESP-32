@@ -36,16 +36,20 @@ namespace CamPortal.Controllers
             var viewerId = AuthHelper.GetLoggedUserId(User);
             var reader = _cameraFramesManagerService.SubscribeViewer(cameraId, viewerId, isOriginalResolution);
 
+            var boundaryDelimiter = Encoding.ASCII.GetBytes($"\r\n--{_multipartBoundary}\r\n");
+
             try
             {
+                await Response.Body.WriteAsync(Encoding.ASCII.GetBytes($"--{_multipartBoundary}\r\n"), ct);
+
                 await foreach (var frame in reader.ReadAllAsync(ct))
                 {
                     var header = Encoding.ASCII.GetBytes(
-                        $"--{_multipartBoundary}\r\nContent-Type: image/jpeg\r\nContent-Length: {frame.Length}\r\n\r\n");
+                        $"Content-Type: image/jpeg\r\nContent-Length: {frame.Length}\r\n\r\n");
 
                     await Response.Body.WriteAsync(header, ct);
                     await Response.Body.WriteAsync(frame, ct);
-                    await Response.Body.WriteAsync("\r\n"u8.ToArray(), ct);
+                    await Response.Body.WriteAsync(boundaryDelimiter, ct);
                     await Response.Body.FlushAsync(ct);
                 }
             }

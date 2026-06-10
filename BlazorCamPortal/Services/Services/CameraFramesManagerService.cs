@@ -51,17 +51,6 @@ namespace CamPortal.Core.Services
             _logger = logger;
         }
 
-        public async Task InitializeAsync(IDeviceService cameraService)
-        {
-            var cameras = await cameraService.GetAllCamerasAsync(DevicePairStatus.Paired);
-
-            cameras.ForEach(camera =>
-            {
-                var channel = GetOrCreateProcessedFramesCameraChannel(camera.Id);
-                channel.Writer.TryWrite(_defaultFrame);
-            });
-        }
-
         public void AddFrame(DeviceStreamingHandshakeDto device, byte[] frame)
         {
             if (device.Id == Guid.Empty)
@@ -143,7 +132,7 @@ namespace CamPortal.Core.Services
 
                 if (cameraConfig.ZoomFactor > 1 || cameraConfig.CameraAspectRatio != CameraAspectRatios.Original)
                 {
-                    (int frameWidth, int frameHeight) = CalculateActualResolution(currentSize.Width, currentSize.Height, cameraConfig.CameraAspectRatio);
+                    (int frameWidth, int frameHeight) = CameraAspectRatioResolver.CalculateActualResolution(currentSize.Width, currentSize.Height, cameraConfig.CameraAspectRatio);
 
                     var cropWidth = Math.Clamp((int)(frameWidth / cameraConfig.ZoomFactor), 1, currentSize.Width);
                     var cropHeight = Math.Clamp((int)(frameHeight / cameraConfig.ZoomFactor), 1, currentSize.Height);
@@ -235,6 +224,20 @@ namespace CamPortal.Core.Services
             }
         }
 
+        public void PublishPlaceholderToViewers(Guid cameraId)
+        {
+            _latestFrameByCamera[cameraId] = _defaultFrame;
+
+            if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers))
+            {
+                foreach (var writers in viewers.Values)
+                {
+                    writers.OriginalFrameResolutionChannel?.TryWrite(_defaultFrame);
+                    writers.ReducedFrameResolutionChannel?.TryWrite(_defaultFrame);
+                }
+            }
+        }
+
         public ChannelReader<byte[]> SubscribeViewer(Guid cameraId, Guid viewerId, bool isOriginalResolution)
         {
             var viewers = _viewerWritersByCamera.GetOrAdd(cameraId, _ => new ConcurrentDictionary<Guid, CameraFramesForViewerDto>());
@@ -307,33 +310,6 @@ namespace CamPortal.Core.Services
 
                 writers.ReducedFrameResolutionChannel?.TryComplete();
             }
-        }
-        public (int, int) CalculateActualResolution(int fullWidth, int fullHeight, CameraAspectRatios aspectRatio)
-        {
-            (int ratioWidth, int ratioHeight) = aspectRatio switch
-            {
-                CameraAspectRatios.Ratio4_3 => (4, 3),
-                CameraAspectRatios.Ratio3_4 => (3, 4),
-                CameraAspectRatios.Ratio16_9 => (16, 9),
-                CameraAspectRatios.Ratio9_16 => (9, 16),
-                _ => (0, 0)
-            };
-
-            if (ratioWidth == 0 || ratioHeight == 0)
-            {
-                return (fullWidth, fullHeight);
-            }
-
-            int targetHeight = (int)Math.Floor(fullWidth * (double)ratioHeight / ratioWidth);
-
-            if (targetHeight <= fullHeight)
-            {
-                return (fullWidth, targetHeight);
-            }
-
-            int targetWidth = (int)Math.Floor(fullHeight * (double)ratioWidth / ratioHeight);
-
-            return (targetWidth, fullHeight);
         }
     }
 }

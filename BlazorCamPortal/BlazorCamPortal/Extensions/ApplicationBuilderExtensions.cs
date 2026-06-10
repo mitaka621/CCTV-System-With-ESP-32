@@ -29,8 +29,6 @@ namespace CamPortal.Extensions
 
             var cameraService = scope.ServiceProvider.GetRequiredService<IDeviceService>();
 
-            await service.InitializeAsync(cameraService);
-
             return app;
         }
 

@@ -1,3 +1,4 @@
+using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Contracts.Enums;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
 
@@ -17,6 +19,7 @@ namespace CamPortal.Core.BackgroundServices
         private readonly ILogger<VideoEncoderService> _logger;
         private readonly IDeviceService _cameraService;
         private readonly IVideoReplayService _videoChunkService;
+        private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
 
         private readonly byte[] _placeholderFrame;
         private readonly int _encodedVideoOutputFps;
@@ -25,16 +28,18 @@ namespace CamPortal.Core.BackgroundServices
         private readonly string _footagePath;
         private readonly VideoHardwareEncoder _activeEncoder;
 
-        private readonly Dictionary<Guid, CancellationTokenSource> _cameraEncodersCancelationSources = new();
+        private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cameraEncodersCancelationSources = new();
 
         public VideoEncoderService(
             ICameraFramesManagerService framesManager,
             IConfiguration configuration,
             IServiceProvider serviceProvider,
+            ICameraConfigurationRepository cameraConfigurationRepository,
             ILogger<VideoEncoderService> logger)
         {
             _framesManager = framesManager;
             _logger = logger;
+            _cameraConfigurationRepository = cameraConfigurationRepository;
 
             _cameraService = serviceProvider.CreateScope()
                 .ServiceProvider
@@ -68,29 +73,11 @@ namespace CamPortal.Core.BackgroundServices
             _activeEncoder = VideoChunkUtilities.ResolveHardwareEncoder(requestedEncoder, _logger);
         }
 
-        private static VideoHardwareEncoder ParseConfiguredEncoder(IConfiguration configuration)
-        {
-            var raw = configuration.GetSection("VideoEncoderConfig")["HardwareEncoder"];
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return VideoHardwareEncoder.Auto;
-            }
-
-            if (Enum.TryParse<VideoHardwareEncoder>(raw, ignoreCase: true, out var parsed))
-            {
-                return parsed;
-            }
-
-            return VideoHardwareEncoder.Auto;
-        }
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _framesManager.ChannelOpened += (Guid cameraId) => OnChannelOpen(cameraId, stoppingToken);
 
             _framesManager.ChannelClosed += OnChannelClose;
-
-            await _framesManager.InitializeAsync(_cameraService);
 
             _ = Task.Run(async () =>
             {
@@ -103,25 +90,49 @@ namespace CamPortal.Core.BackgroundServices
 
         private async Task EncodeCameraFramesAsync(Guid cameraId, CancellationToken stoppingToken)
         {
-            var framesChannel = _framesManager.GetOrCreateProcessedFramesCameraChannel(cameraId);
-            DateTime segmentStartTime = DateTime.UtcNow;
+            try
+            {
+                var framesChannel = _framesManager.GetOrCreateProcessedFramesCameraChannel(cameraId);
+                DateTime segmentStartTime = DateTime.UtcNow;
 
-            string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.UtcNow.ToString("yyyy-MM-dd"));
-            Directory.CreateDirectory(outputDir);
+                string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                Directory.CreateDirectory(outputDir);
 
-            string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
+                string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
 
-            var ffmpeg = CreateNewFfmpegProccess(tempPattern);
+                var outputResolution = await GetCameraEncodingResolutionAsync(cameraId);
 
-            ffmpeg.Start();
-            var input = ffmpeg.StandardInput.BaseStream;
+                var ffmpeg = CreateNewFfmpegProccess(tempPattern, outputResolution);
 
-            StartBackgroundVideoChunksRenamingJob(ffmpeg, outputDir, cameraId, stoppingToken);
+                ffmpeg.Start();
 
-            await EncodeFramesToVideoChunksAsync(framesChannel, input, stoppingToken);
+                _logger.LogInformation(
+                    "FFmpeg started for camera {CameraId} (PID {Pid}, encoder {Encoder}, output {Width}x{Height}).",
+                    cameraId,
+                    ffmpeg.Id,
+                    _activeEncoder,
+                    outputResolution.Width,
+                    outputResolution.Height);
 
-            input.Close();
-            await ffmpeg.WaitForExitAsync(stoppingToken);
+                var input = ffmpeg.StandardInput.BaseStream;
+
+                StartBackgroundVideoChunksRenamingJob(ffmpeg, outputDir, cameraId, stoppingToken);
+
+                await EncodeFramesToVideoChunksAsync(framesChannel, input, stoppingToken);
+
+                input.Close();
+                await ffmpeg.WaitForExitAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "FFmpeg encoding task for camera {CameraId} terminated due to an unhandled exception.",
+                    cameraId);
+            }
         }
 
         private string ExtractFileName(string ffmpegLine)
@@ -133,7 +144,7 @@ namespace CamPortal.Core.BackgroundServices
             return "unknown.mp4";
         }
 
-        private string RenameProducedChunkFromFFMPEG(string filename, DateTime dateCreated, string outputDir, Guid cameraId)
+        private async Task<string> RenameProducedChunkFromFFMPEGAsync(string filename, DateTime dateCreated, string outputDir, Guid cameraId)
         {
             var segmentEndTime = DateTime.UtcNow;
 
@@ -142,19 +153,38 @@ namespace CamPortal.Core.BackgroundServices
                 $"{cameraId}_={dateCreated:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.ts"
             );
 
-            try
-            {
-                if (File.Exists(newFileName)) File.Delete(newFileName);
+            const int maxAttempts = 5;
 
-                File.Move(filename, newFileName);
-                _logger.LogInformation(
-                    "Renamed video chunk {OldFileName} -> {NewFileName}",
-                    filename,
-                    newFileName);
-            }
-            catch (Exception ex)
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                _logger.LogError(ex, "Failed to rename {FileName}", filename);
+                try
+                {
+                    if (File.Exists(newFileName)) File.Delete(newFileName);
+
+                    File.Move(filename, newFileName);
+                    _logger.LogInformation(
+                        "Renamed video chunk {OldFileName} -> {NewFileName}",
+                        filename,
+                        newFileName);
+
+                    return newFileName;
+                }
+                catch (IOException ex) when (attempt < maxAttempts)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Video chunk {FileName} is still locked, retry {Attempt}/{MaxAttempts}",
+                        filename,
+                        attempt,
+                        maxAttempts);
+
+                    await Task.Delay(200);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to rename {FileName}", filename);
+                    return newFileName;
+                }
             }
 
             return newFileName;
@@ -170,8 +200,16 @@ namespace CamPortal.Core.BackgroundServices
                 DateTime? lastFileStartTime = null;
                 CreateVideoChunkDto? lastFileDto = null;
 
+                const int maxCapturedStderrLines = 50;
+                var recentStderrLines = new Queue<string>(maxCapturedStderrLines);
+
                 while ((line = await reader.ReadLineAsync()) != null && !stoppingToken.IsCancellationRequested)
                 {
+                    if (recentStderrLines.Count >= maxCapturedStderrLines)
+                        recentStderrLines.Dequeue();
+
+                    recentStderrLines.Enqueue(line);
+
                     if (line.Contains("Opening") && line.Contains(cameraId.ToString()))
                     {
                         // ffmpeg line: Opening 'camera_xxx_001.mp4' for writing
@@ -180,7 +218,7 @@ namespace CamPortal.Core.BackgroundServices
 
                         if (lastFileName != null && lastFileStartTime != null)
                         {
-                            var fileName = RenameProducedChunkFromFFMPEG(lastFileName, lastFileStartTime.Value, outputDir, cameraId);
+                            var fileName = await RenameProducedChunkFromFFMPEGAsync(lastFileName, lastFileStartTime.Value, outputDir, cameraId);
 
                             lastFileDto = new CreateVideoChunkDto
                             {
@@ -199,14 +237,27 @@ namespace CamPortal.Core.BackgroundServices
                     }
                 }
 
-                // handlining last file on server shutdown
-                ffmpeg.Kill();
+                bool cancellationRequested = stoppingToken.IsCancellationRequested;
+
+                if (!ffmpeg.HasExited)
+                {
+                    try { ffmpeg.WaitForExit(5000); } catch { }
+                }
+
+                LogFfmpegExit(cameraId, ffmpeg, recentStderrLines, cancellationRequested);
+
+                if (!ffmpeg.HasExited)
+                {
+                    try { ffmpeg.Kill(); } catch { }
+                }
+
+                try { ffmpeg.WaitForExit(2000); } catch { }
 
                 if (lastFileName != null)
                 {
                     var startTime = File.GetCreationTime(lastFileName);
 
-                    var fileName = RenameProducedChunkFromFFMPEG(lastFileName, startTime, outputDir, cameraId);
+                    var fileName = await RenameProducedChunkFromFFMPEGAsync(lastFileName, startTime, outputDir, cameraId);
 
                     if (lastFileDto != null)
                     {
@@ -215,6 +266,41 @@ namespace CamPortal.Core.BackgroundServices
                 }
 
             }, stoppingToken);
+        }
+
+        private void LogFfmpegExit(Guid cameraId, Process ffmpeg, IEnumerable<string> recentStderrLines, bool cancellationRequested)
+        {
+            int? exitCode = null;
+            try
+            {
+                if (ffmpeg.HasExited)
+                    exitCode = ffmpeg.ExitCode;
+            }
+            catch { }
+
+            if (cancellationRequested)
+            {
+                _logger.LogInformation(
+                    "FFmpeg for camera {CameraId} stopped because its channel was cancelled (exit code {ExitCode}).",
+                    cameraId,
+                    exitCode);
+
+                return;
+            }
+
+            const int maxStderrTailLength = 3500;
+
+            var stderrTail = string.Join(Environment.NewLine, recentStderrLines);
+
+            if (stderrTail.Length > maxStderrTailLength)
+                stderrTail = "...(truncated)..." + stderrTail[^maxStderrTailLength..];
+
+            _logger.LogError(
+                "FFmpeg for camera {CameraId} exited unexpectedly with code {ExitCode}. Recent FFmpeg output:{NewLine}{StderrTail}",
+                cameraId,
+                exitCode,
+                Environment.NewLine,
+                string.IsNullOrWhiteSpace(stderrTail) ? "(no output captured)" : stderrTail);
         }
 
         private async Task EncodeFramesToVideoChunksAsync(Channel<byte[]> framesChannel, Stream input, CancellationToken stoppingToken)
@@ -283,7 +369,7 @@ namespace CamPortal.Core.BackgroundServices
             {
                 var perCameraCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
 
-                _cameraEncodersCancelationSources.Add(cameraId, perCameraCts);
+                _cameraEncodersCancelationSources.TryAdd(cameraId, perCameraCts);
 
                 _ = Task.Run(() => EncodeCameraFramesAsync(cameraId, perCameraCts.Token), perCameraCts.Token);
             }
@@ -297,21 +383,41 @@ namespace CamPortal.Core.BackgroundServices
         {
             _cameraEncodersCancelationSources.GetValueOrDefault(cameraId)?.Cancel();
 
-            _cameraEncodersCancelationSources.Remove(cameraId);
+            _cameraEncodersCancelationSources.TryRemove(cameraId, out _);
 
             _logger.LogInformation(
                 "Channel closed for camera {CameraId}. Cancelling video encoding task.",
                 cameraId);
         }
 
-        private Process CreateNewFfmpegProccess(string filePath)
+        private async Task<(int Width, int Height)> GetCameraEncodingResolutionAsync(Guid cameraId)
+        {
+            try
+            {
+                var configuration = await _cameraConfigurationRepository.GetCameraConfigurationAsync(cameraId);
+
+                if (configuration == null)
+                {
+                    return (0, 0);
+                }
+
+                return CameraAspectRatioResolver.GetEncodingResolution(configuration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resolve encoding resolution for camera {CameraId}", cameraId);
+                return (0, 0);
+            }
+        }
+
+        private Process CreateNewFfmpegProccess(string filePath, (int Width, int Height) outputResolution)
         {
             var ffmpeg = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = VideoChunkUtilities.GetFfmpegPath(),
-                    Arguments = BuildFfmpegArguments(filePath),
+                    Arguments = BuildFfmpegArguments(filePath, outputResolution),
                     RedirectStandardInput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -323,13 +429,17 @@ namespace CamPortal.Core.BackgroundServices
             return ffmpeg;
         }
 
-        private string BuildFfmpegArguments(string filePath)
+        private string BuildFfmpegArguments(string filePath, (int Width, int Height) outputResolution)
         {
             int fps = _encodedVideoOutputFps;
             int gop = fps * _videoChunksSizeInS;
 
             string inputSection =
                 $"-f mjpeg -framerate {fps} -i pipe:0 -map 0:v:0 -an ";
+
+            string filterSection = outputResolution.Width > 0 && outputResolution.Height > 0
+                ? $"-vf scale={outputResolution.Width}:{outputResolution.Height}:force_original_aspect_ratio=decrease,pad={outputResolution.Width}:{outputResolution.Height}:(ow-iw)/2:(oh-ih)/2,setsar=1 "
+                : string.Empty;
 
             string codecSection = _activeEncoder switch
             {
@@ -349,7 +459,23 @@ namespace CamPortal.Core.BackgroundServices
             string outputSection =
                 $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts {filePath}";
 
-            return inputSection + codecSection + rateSection + outputSection;
+            return inputSection + filterSection + codecSection + rateSection + outputSection;
+        }
+
+        private static VideoHardwareEncoder ParseConfiguredEncoder(IConfiguration configuration)
+        {
+            var raw = configuration.GetSection("VideoEncoderConfig")["HardwareEncoder"];
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return VideoHardwareEncoder.Auto;
+            }
+
+            if (Enum.TryParse<VideoHardwareEncoder>(raw, ignoreCase: true, out var parsed))
+            {
+                return parsed;
+            }
+
+            return VideoHardwareEncoder.Auto;
         }
 
         public override void Dispose()

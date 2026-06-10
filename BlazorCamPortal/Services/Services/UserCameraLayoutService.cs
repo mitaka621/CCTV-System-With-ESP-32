@@ -1,8 +1,8 @@
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
 using CamPortal.Contracts.Enums;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -85,7 +85,7 @@ namespace CamPortal.Core.Services
                         Y = y,
                     };
 
-                    newLayout.LayoutType = GetLayoutTypeFromCameraConfiguration(newCamera.Configuration);
+                    newLayout.LayoutType = CameraAspectRatioResolver.GetLayoutType(newCamera.Configuration);
 
                     if (!CanPlace(layoutMatrix, newLayout))
                     {
@@ -253,28 +253,6 @@ namespace CamPortal.Core.Services
                     layoutMatrix[y][x].Y = y;
                 }
             }
-        }
-
-        private CameraLayoutType GetLayoutTypeFromCameraConfiguration(CameraStreamingConfigurationDto cameraConfig)
-        {
-            if (cameraConfig.CameraAspectRatio == CameraAspectRatios.Original && cameraConfig.ResolutionWidth > 0 && cameraConfig.ResolutionHeight > 0)
-            {
-                var layoutType = cameraConfig.ResolutionWidth > cameraConfig.ResolutionHeight ? CameraLayoutType.Horizontal : CameraLayoutType.Vertical;
-
-                if ((cameraConfig.FrameRotation / 90) % 2 != 0)
-                {
-                    return layoutType == CameraLayoutType.Horizontal ? CameraLayoutType.Vertical : CameraLayoutType.Horizontal;
-                }
-
-                return layoutType;
-            }
-
-            if (cameraConfig.CameraAspectRatio == CameraAspectRatios.Ratio16_9 || cameraConfig.CameraAspectRatio == CameraAspectRatios.Ratio4_3)
-            {
-                return CameraLayoutType.Horizontal;
-            }
-
-            return CameraLayoutType.Vertical;
         }
     }
 }

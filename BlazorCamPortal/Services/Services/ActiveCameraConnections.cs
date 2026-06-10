@@ -1,4 +1,4 @@
-﻿using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Abstractions.Services;
 using System.Collections.Concurrent;
 
 namespace CamPortal.Core.Services
@@ -6,6 +6,12 @@ namespace CamPortal.Core.Services
     public class ActiveCameraConnections : IActiveCameraConnections
     {
         private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _byCameraId = new();
+        private readonly ICameraFramesManagerService _cameraFramesManagerService;
+
+        public ActiveCameraConnections(ICameraFramesManagerService cameraFramesManagerService)
+        {
+            _cameraFramesManagerService = cameraFramesManagerService;
+        }
 
         public CancellationToken Register(Guid cameraId, CancellationToken linkedTo)
         {
@@ -32,6 +38,7 @@ namespace CamPortal.Core.Services
             {
                 cts.Cancel();
                 cts.Dispose();
+                _cameraFramesManagerService.PublishPlaceholderToViewers(cameraId);
                 return true;
             }
             return false;
