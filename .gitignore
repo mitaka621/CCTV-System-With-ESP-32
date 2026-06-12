@@ -50,7 +50,6 @@ Generated Files/
 *.g.cs
 *.g.i.cs
 *.assemblyinfo.cs
-*.designer.cs
 *.generated.cs
 *.props
 *.targets
