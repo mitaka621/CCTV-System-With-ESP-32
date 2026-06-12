@@ -25,8 +25,8 @@ if (!IsOpenSslAvailable())
 
 Console.WriteLine("OpenSSL is available.");
 
-string localIP = GetLocalIPAddress();
-Console.WriteLine($"Local IP detected: {localIP}");
+List<string> localIPs = GetLocalIPAddresses();
+Console.WriteLine($"Local IPs detected: {string.Join(", ", localIPs)}");
 
 string caKey = "ca.key";
 string caCert = "ca.crt";
@@ -38,7 +38,7 @@ string pfxFile = "server.pfx";
 
 string password = GenerateRandomPassword(16);
 
-WriteServerExtensionsFile(serverExt, localIP);
+WriteServerExtensionsFile(serverExt, localIPs);
 
 Console.WriteLine("Generating CA key and certificate...");
 RunOpenSsl($"genrsa -out {caKey} 2048");
@@ -70,6 +70,8 @@ Console.WriteLine(cString);
 
 CopyCaToSecretsFile(esp32SecretsRelativePath, cString);
 
+ImportCaToTrustedRoot(caCert);
+
 Console.WriteLine($"\n\n====================================");
 
 Console.WriteLine("Operation completed!");
@@ -100,8 +102,9 @@ bool IsOpenSslAvailable()
     }
 }
 
-string GetLocalIPAddress()
+List<string> GetLocalIPAddresses()
 {
+    var addresses = new List<string>();
     foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
     {
         if (ni.OperationalStatus == OperationalStatus.Up && ni.NetworkInterfaceType != NetworkInterfaceType.Loopback)
@@ -111,12 +114,14 @@ string GetLocalIPAddress()
             {
                 if (addr.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
                 {
-                    return addr.Address.ToString();
+                    string ip = addr.Address.ToString();
+                    if (!addresses.Contains(ip))
+                        addresses.Add(ip);
                 }
             }
         }
     }
-    return "127.0.0.1";
+    return addresses;
 }
 
 void RunOpenSsl(string arguments)
@@ -148,22 +153,34 @@ void RunOpenSsl(string arguments)
         throw new Exception($"OpenSSL command failed: {arguments}");
 }
 
-void WriteServerExtensionsFile(string path, string localIp)
+void WriteServerExtensionsFile(string path, List<string> localIps)
 {
-    var contents =
-        "basicConstraints=CA:FALSE\n" +
-        "keyUsage=digitalSignature,keyEncipherment\n" +
-        "extendedKeyUsage=serverAuth\n" +
-        "subjectAltName=@alt_names\n" +
-        "\n" +
-        "[alt_names]\n" +
-        "DNS.1=localhost\n" +
-        $"DNS.2={localIp}\n" +
-        "IP.1=127.0.0.1\n" +
-        "IP.2=::1\n" +
-        $"IP.3={localIp}\n";
+    var sb = new StringBuilder();
+    sb.Append("basicConstraints=CA:FALSE\n");
+    sb.Append("keyUsage=digitalSignature,keyEncipherment\n");
+    sb.Append("extendedKeyUsage=serverAuth\n");
+    sb.Append("subjectAltName=@alt_names\n");
+    sb.Append("\n");
+    sb.Append("[alt_names]\n");
 
-    File.WriteAllText(path, contents);
+    sb.Append("DNS.1=localhost\n");
+    int dnsIndex = 2;
+    foreach (var ip in localIps)
+    {
+        sb.Append($"DNS.{dnsIndex}={ip}\n");
+        dnsIndex++;
+    }
+
+    sb.Append("IP.1=127.0.0.1\n");
+    sb.Append("IP.2=::1\n");
+    int ipIndex = 3;
+    foreach (var ip in localIps)
+    {
+        sb.Append($"IP.{ipIndex}={ip}\n");
+        ipIndex++;
+    }
+
+    File.WriteAllText(path, sb.ToString());
 }
 
 string GenerateRandomPassword(int length)
@@ -297,6 +314,52 @@ void CopyCaToSecretsFile(string secretsRelativePath, string caCString)
     catch (Exception ex)
     {
         Console.WriteLine($"Error updating secrets.h: {ex.Message}");
+    }
+}
+
+void ImportCaToTrustedRoot(string caCertFile)
+{
+    try
+    {
+        string caCertFullPath = Path.Combine(Directory.GetCurrentDirectory(), caCertFile);
+
+        Console.WriteLine($"\nImporting CA certificate into Trusted Root store: {caCertFullPath}");
+
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"Import-Certificate -FilePath '{caCertFullPath}' -CertStoreLocation Cert:\\LocalMachine\\Root\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            }
+        };
+
+        process.Start();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (!string.IsNullOrEmpty(output))
+            Console.WriteLine(output);
+        if (!string.IsNullOrEmpty(error))
+            Console.WriteLine(error);
+
+        if (process.ExitCode == 0)
+        {
+            Console.WriteLine("CA certificate imported into Trusted Root store successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Failed to import CA certificate. Run this app as Administrator to import into the Local Machine Trusted Root store.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error importing CA certificate: {ex.Message}");
     }
 }
 
