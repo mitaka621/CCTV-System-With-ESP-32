@@ -41,6 +41,9 @@
 #define STREAM_STATS_LOG_INTERVAL_MS 5000
 #define STREAM_CAPTURE_READY_THRESHOLD_US 2000
 
+#define ServerHttpsPort 7010
+#define ServerTcpPort 7000
+
 #define DEBUG_ON true
 
 #define DEBUG_PRINT(x)   \
