@@ -35,33 +35,6 @@
 // Replace by running CertGenerator.
 // =============================================================
 
-#ifdef HAS_PROVISIONED_SECRETS
-
-#define WIFI_SSID "your-ssid"
-
-#define WIFI_PASS "your-password"
-
-#define DEVICE_ID "00000000-0000-0000-0000-000000000000"
-
-#define PRIVATE_KEY "base64-pkcs8-der-of-p256-private-key"
-
-#define NONCE "base64-of-32-byte-nonce"
-
-#define SERVER_IP "192.168.1.42"
-
-#define SERVER_IDENTITY_PUBKEY "base64-spki-der-of-server-p256-public-key"
-
-#endif
-
-// =============================================================
-
-// Self-signed CA the server uses for HTTPS.
-
-// Replace by running CertGenerator.
-
-// =============================================================
-
-#define ROOT_CA_CERT \
-"-----BEGIN CERTIFICATE-----\n" \
-"-----END CERTIFICATE-----\n" \
-
+#define ROOT_CA_CERT                \
+    "-----BEGIN CERTIFICATE-----\n" \
+    "-----END CERTIFICATE-----\n"
