@@ -1,5 +1,6 @@
 @inject IDeviceTypeService _deviceTypeService
 @inject ISnackbar _snackbar
+@inject IConfiguration _configuration
 
 <MudDialog>
     <DialogContent>
@@ -82,10 +83,18 @@
     private string? _submitError;
     private bool _isSubmitting;
 
-    private const long _maxIconSizeBytes = 256 * 1024;
+    private long _maxIconSizeBytes;
     private const string _allowedExtension = ".svg";
     private const string _allowedContentType = "image/svg+xml";
 
+    protected override void OnInitialized()
+    {
+        _maxIconSizeBytes = long.Parse(
+                _configuration.GetSection("DeviceTypeIconsConfig")["MaxIconSizeBytes"]
+                ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"));
+
+        base.OnInitialized();
+    }
     private void OnFileChanged(IBrowserFile? file)
     {
         _iconError = null;
