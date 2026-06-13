@@ -8,6 +8,6 @@ namespace CamPortal.Contracts.Models
 
         public required string Name { get; set; }
 
-        public DevicePairStatus Status { get; set; }
+        public DevicePairStatus PairStatus { get; set; }
     }
 }

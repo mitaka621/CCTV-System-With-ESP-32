@@ -36,7 +36,7 @@ class TimelineController {
     const track = timelineContainer.querySelector(".timeline-track");
     if (track) {
       track.addEventListener("click", (e) =>
-        this.handleTimelineClick(cameraId, e)
+        this.handleTimelineClick(cameraId, e),
       );
     }
 
@@ -87,7 +87,7 @@ class TimelineController {
           .invokeMethodAsync(
             "GetFormattedTimeForPercentage",
             cameraId,
-            clampedPercentage
+            clampedPercentage,
           )
           .then((formattedTime) => {
             this.updateCurrentTimeDisplay(cameraId, formattedTime);
@@ -182,7 +182,7 @@ class TimelineController {
     if (window.blazorComponentInstance) {
       window.blazorComponentInstance.invokeMethodAsync(
         "OnTimelineDragEnd",
-        cameraId
+        cameraId,
       );
     }
 
@@ -250,7 +250,7 @@ class TimelineController {
   // Update current time display
   updateCurrentTimeDisplay(cameraId, timeText) {
     const currentTimeDisplay = document.getElementById(
-      `current-time-${cameraId}`
+      `current-time-${cameraId}`,
     );
     if (currentTimeDisplay) {
       currentTimeDisplay.textContent = timeText;
@@ -263,7 +263,7 @@ class TimelineController {
       window.blazorComponentInstance.invokeMethodAsync(
         "OnTimelinePositionChanged",
         cameraId,
-        percentage
+        percentage,
       );
     }
   }
@@ -309,13 +309,13 @@ window.initTimelineForCamera = function (cameraId) {
   // Debug: Check if markers are present
   setTimeout(() => {
     const markers = document.querySelectorAll(
-      `#timeline-${cameraId} .timeline-marker`
+      `#timeline-${cameraId} .timeline-marker`,
     );
     const labels = document.querySelectorAll(
-      `#timeline-${cameraId} .marker-label`
+      `#timeline-${cameraId} .marker-label`,
     );
     const track = document.querySelector(
-      `#timeline-${cameraId} .timeline-track`
+      `#timeline-${cameraId} .timeline-track`,
     );
     const container = document.querySelector(`#timeline-${cameraId}`);
 
@@ -324,11 +324,11 @@ window.initTimelineForCamera = function (cameraId) {
     console.log(`- Found ${labels.length} labels`);
     console.log(
       `- Track dimensions:`,
-      track ? track.getBoundingClientRect() : "not found"
+      track ? track.getBoundingClientRect() : "not found",
     );
     console.log(
       `- Container dimensions:`,
-      container ? container.getBoundingClientRect() : "not found"
+      container ? container.getBoundingClientRect() : "not found",
     );
 
     if (markers.length > 0) {
@@ -336,7 +336,7 @@ window.initTimelineForCamera = function (cameraId) {
         "First marker:",
         markers[0].style.cssText,
         markers[0].className,
-        markers[0].dataset.minute
+        markers[0].dataset.minute,
       );
     }
 
@@ -344,7 +344,7 @@ window.initTimelineForCamera = function (cameraId) {
       console.log(
         "First label:",
         labels[0].textContent,
-        labels[0].style.cssText
+        labels[0].style.cssText,
       );
       console.log("Label computed style:", {
         position: window.getComputedStyle(labels[0]).position,
@@ -375,7 +375,7 @@ window.seekVideoToTime = function (videoId, timeString) {
       if (video.seekable && video.seekable.length > 0) {
         const targetTime = Math.max(
           video.seekable.start(0),
-          Math.min(video.seekable.end(0) - 1, seconds)
+          Math.min(video.seekable.end(0) - 1, seconds),
         );
         video.currentTime = targetTime;
       } else {
@@ -402,14 +402,14 @@ window.seekVideoToRelativeTime = function (videoId, relativeSeconds) {
           startTime + Math.max(0, Math.min(videoDuration - 1, relativeSeconds));
 
         console.log(
-          `Seeking video ${videoId} to: ${targetTime}s (relative: ${relativeSeconds}s, range: ${startTime}-${endTime})`
+          `Seeking video ${videoId} to: ${targetTime}s (relative: ${relativeSeconds}s, range: ${startTime}-${endTime})`,
         );
         video.currentTime = targetTime;
       } else {
         // Fallback for non-HLS videos
         video.currentTime = Math.max(
           0,
-          Math.min(video.duration - 1, relativeSeconds)
+          Math.min(video.duration - 1, relativeSeconds),
         );
       }
     } catch (error) {

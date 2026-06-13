@@ -8,6 +8,6 @@ namespace CamPortal.Contracts.Dtos.CameraDtos
 
         public required string Name { get; set; }
 
-        public DevicePairStatus Status { get; set; }
+        public DevicePairStatus PairStatus { get; set; }
     }
 }

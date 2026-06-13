@@ -38,6 +38,8 @@
                 overlay.setAttribute('aria-hidden', 'false');
             }
         };
+
+        window.getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
     </script>
 </body>
 

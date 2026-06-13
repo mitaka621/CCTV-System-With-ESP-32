@@ -10,6 +10,7 @@
 @inject IDeviceService _cameraService
 @inject IDialogService _dialogService
 @inject IDevicePreProvisionService _devicePairHttpService
+@inject IUserTimeZoneService _userTimeZoneService
 
 <PageTitle>Camera Configuration - BlazorCam Portal</PageTitle>
 
@@ -138,7 +139,7 @@ else
                             <div class="d-flex align-center">
                                 <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
                                 <MudText Typo="Typo.body2">
-                                    <strong>Added:</strong> @camera.CreatedAt.ToString("MMM dd, yyyy")
+                                    <strong>Added:</strong> @_userTimeZoneService.ToLocal(camera.CreatedAt).ToString("MMM dd, yyyy")
                                 </MudText>
                             </div>
                         </MudStack>

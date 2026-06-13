@@ -24,6 +24,8 @@ namespace CamPortal.Extensions
         {
             services.AddMudServices();
 
+            services.AddScoped<IUserTimeZoneService, UserTimeZoneService>();
+
             services.AddSingleton<HttpClient>();
             services.AddSingleton<IVideoReplayService, VideoReplayService>();
             services.AddSingleton<IVideoChunkRepository, VideoChunkRepository>();

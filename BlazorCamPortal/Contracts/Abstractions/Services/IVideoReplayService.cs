@@ -8,9 +8,7 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task<List<HLSPlaylistDto>> GenerateHLSPlaylistsAsync(List<Guid> cameraId, DateTime startTime, DateTime endTime);
 
-        Task GeneratePlaceholderChunksForMissingOnesAsync(double durationSeconds);
-
-        Task<(DateTime, DateTime)> GetMinAndMaxDateTimeOfAvailableVideoChunksAsync();
+        Task GeneratePlaceholderChunksForMissingOnesAsync(IEnumerable<double> durationSeconds);
 
         Task<double> GetTotalVideoChinksSizeInGBAsync();
     }

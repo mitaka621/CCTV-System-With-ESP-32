@@ -1,11 +1,11 @@
-﻿using System.Diagnostics;
-using System.Text;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Text;
 
 namespace CamPortal.Core.Services
 {
@@ -61,44 +61,45 @@ namespace CamPortal.Core.Services
 
             List<HLSPlaylistDto> playlists = new();
 
-            foreach (var cameraChunks in availableChunksByCameraId)
+            foreach (var cameraId in cameraIds)
             {
-                var cameraId = cameraChunks.Key;
-                var availableChunks = cameraChunks.Value;
-
-                if (availableChunks.Count == 0)
-                {
-                    continue;
-                }
-
                 List<VideoChunkDateTimeEventDto> missingVideoChunkEvents = new();
                 List<VideoChunkShortInfoDto> fullTimeline = new();
 
-                DateTime cursor = startTime;
-
-                foreach (var chunk in availableChunks)
+                if (!availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks) || availableChunks.Count == 0)
                 {
-                    if (chunk.ChunkStartTime > cursor)
-                    {
-                        FillGap(cursor, chunk.ChunkStartTime, fullTimeline, missingVideoChunkEvents);
-                    }
+                    FillGap(startTime, endTime, fullTimeline, missingVideoChunkEvents);
 
-                    fullTimeline.Add(new VideoChunkShortInfoDto
-                    {
-                        FileName = chunk.FileName.Replace('\\', '/'),
-                        ChunkStartTime = chunk.ChunkStartTime,
-                        ChunkEndTime = chunk.ChunkEndTime
-                    });
-
-                    if (chunk.ChunkEndTime > cursor)
-                    {
-                        cursor = chunk.ChunkEndTime;
-                    }
+                    continue;
                 }
-
-                if (cursor < endTime)
+                else
                 {
-                    FillGap(cursor, endTime, fullTimeline, missingVideoChunkEvents);
+                    DateTime cursor = startTime;
+
+                    foreach (var chunk in availableChunks)
+                    {
+                        if (chunk.ChunkStartTime > cursor)
+                        {
+                            FillGap(cursor, chunk.ChunkStartTime, fullTimeline, missingVideoChunkEvents);
+                        }
+
+                        fullTimeline.Add(new VideoChunkShortInfoDto
+                        {
+                            FileName = chunk.FileName.Replace('\\', '/'),
+                            ChunkStartTime = chunk.ChunkStartTime,
+                            ChunkEndTime = chunk.ChunkEndTime
+                        });
+
+                        if (chunk.ChunkEndTime > cursor)
+                        {
+                            cursor = chunk.ChunkEndTime;
+                        }
+                    }
+
+                    if (cursor < endTime)
+                    {
+                        FillGap(cursor, endTime, fullTimeline, missingVideoChunkEvents);
+                    }
                 }
 
                 var sb = new StringBuilder();
@@ -138,67 +139,65 @@ namespace CamPortal.Core.Services
             return playlists;
         }
 
-        public async Task GeneratePlaceholderChunksForMissingOnesAsync(double durationSeconds)
+        public async Task GeneratePlaceholderChunksForMissingOnesAsync(IEnumerable<double> durationSeconds)
         {
-            var outputPath = string.Format(_missingPlaceholderChunksPath, durationSeconds);
+            List<Task> FfmpegTasks = new();
 
-            var directory = Path.GetDirectoryName(outputPath);
-
-            if (directory != null)
+            foreach (var duration in durationSeconds)
             {
-                Directory.CreateDirectory(directory);
-            }
+                var outputPath = string.Format(_missingPlaceholderChunksPath, duration);
 
-            if (File.Exists(outputPath))
-            {
-                return;
-            }
+                var directory = Path.GetDirectoryName(outputPath);
 
-            var ffmpegPath = VideoChunkUtilities.GetFfmpegPath();
-
-            var args =
-                $"-loop 1 -i \"{_defaultFramePathOnMissingChunk}\" " +
-                $"-framerate {_encodedVideoOutputFps} " +
-                "-map 0:v:0 -an " +
-                "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
-                $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
-                $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
-                $"-t {durationSeconds} " +
-                $"{outputPath}";
-
-            var ffmpeg = new Process
-            {
-                StartInfo = new ProcessStartInfo
+                if (directory != null)
                 {
-                    FileName = ffmpegPath,
-                    Arguments = args,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                },
-                EnableRaisingEvents = true
-            };
+                    Directory.CreateDirectory(directory);
+                }
 
-            ffmpeg.Start();
+                if (File.Exists(outputPath))
+                {
+                    continue;
+                }
 
-            string stderr = await ffmpeg.StandardError.ReadToEndAsync();
+                var ffmpegPath = VideoChunkUtilities.GetFfmpegPath();
 
-            ffmpeg.WaitForExit();
+                var args =
+                    $"-loop 1 -i \"{_defaultFramePathOnMissingChunk}\" " +
+                    $"-framerate {_encodedVideoOutputFps} " +
+                    "-map 0:v:0 -an " +
+                    "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
+                    $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
+                    $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
+                    $"-t {duration} " +
+                    $"{outputPath}";
 
-            if (ffmpeg.ExitCode != 0)
-                _logger.LogError(
-                    "Failed to generate placeholder chunks. FFmpeg exited with code {ExitCode}. Error: {Error}",
-                    ffmpeg.ExitCode,
-                    stderr);
-        }
+                var ffmpeg = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = args,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    },
+                    EnableRaisingEvents = true
+                };
 
-        public async Task<(DateTime, DateTime)> GetMinAndMaxDateTimeOfAvailableVideoChunksAsync()
-        {
-            var minTime = await _videoChunkRepository.GetMinDateTimeOfAvailableVideoChunksAsync();
+                ffmpeg.Start();
 
-            var maxTime = await _videoChunkRepository.GetMaxDateTimeOfAvailableVideoChunksAsync();
+                string stderr = await ffmpeg.StandardError.ReadToEndAsync();
 
-            return (minTime, maxTime);
+                if (ffmpeg.ExitCode != 0)
+                    _logger.LogError(
+                        "Failed to generate placeholder chunks. FFmpeg exited with code {ExitCode}. Error: {Error}",
+                        ffmpeg.ExitCode,
+                        stderr);
+
+                FfmpegTasks.Add(ffmpeg.WaitForExitAsync());
+            }
+
+            await Task.WhenAll(FfmpegTasks);
         }
 
         public async Task<double> GetTotalVideoChinksSizeInGBAsync()
