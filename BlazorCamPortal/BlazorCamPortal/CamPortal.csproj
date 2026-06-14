@@ -58,6 +58,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="Components\Features\CameraReplay\Dialogs\" />
       <Folder Include="Components\Features\Settings\Components\" />
     </ItemGroup>
 

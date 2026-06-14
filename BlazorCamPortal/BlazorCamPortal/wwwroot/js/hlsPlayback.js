@@ -1,8 +1,10 @@
-﻿window.initHlsStream = (videoId, playlistContent) => {
+﻿window.initHlsStream = (videoId, playlistContent, startPercentage = 0) => {
   const video = document.getElementById(videoId);
   if (!video) {
     return;
   }
+
+  window.destroyHlsStream(videoId);
 
   const origin = window.location.origin;
   const normalizedPlaylist = playlistContent
@@ -24,6 +26,37 @@
     type: "application/vnd.apple.mpegurl",
   });
   const manifestUrl = URL.createObjectURL(manifestBlob);
+  video._manifestUrl = manifestUrl;
+
+  const seekToStartPercentage = () => {
+    if (startPercentage <= 0) {
+      return;
+    }
+
+    try {
+      if (video.seekable && video.seekable.length > 0) {
+        const start = video.seekable.start(0);
+        const end = video.seekable.end(0);
+        const duration = end - start;
+        video.currentTime =
+          start +
+          Math.max(0, Math.min(duration - 0.1, duration * (startPercentage / 100)));
+        return;
+      }
+
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = Math.max(
+          0,
+          Math.min(
+            video.duration - 0.1,
+            video.duration * (startPercentage / 100),
+          ),
+        );
+      }
+    } catch (error) {
+      console.warn("Error seeking HLS stream:", error);
+    }
+  };
 
   try {
     console.log("HLS normalized playlist:\n", normalizedPlaylist);
@@ -45,12 +78,14 @@
 
   if (Hls.isSupported()) {
     const hls = new Hls({ lowLatencyMode: true, debug: true });
+    video._hlsInstance = hls;
     console.log("initHlsStream: attaching media", { videoId, manifestUrl });
     hls.loadSource(manifestUrl);
     hls.attachMedia(video);
 
     hls.on(Hls.Events.MANIFEST_PARSED, (_evt, data) => {
       console.log("HLS MANIFEST_PARSED", data);
+      seekToStartPercentage();
       if (video.paused) {
         video.play().catch((e) => console.warn("Autoplay failed:", e));
       }
@@ -71,7 +106,49 @@
       console.error("HLS error:", data);
     });
   } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-    // Safari native HLS support
     video.src = manifestUrl;
+    video.addEventListener(
+      "loadedmetadata",
+      () => {
+        seekToStartPercentage();
+        video.play().catch((e) => console.warn("Autoplay failed:", e));
+      },
+      { once: true },
+    );
   }
 };
+
+window.destroyHlsStream = (videoId) => {
+  const video = document.getElementById(videoId);
+  if (!video) {
+    return;
+  }
+
+  if (video._hlsInstance) {
+    video._hlsInstance.destroy();
+    video._hlsInstance = null;
+  }
+
+  if (video._manifestUrl) {
+    URL.revokeObjectURL(video._manifestUrl);
+    video._manifestUrl = null;
+  }
+
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+};
+
+window.openFullScreen = async (videoId) => {
+    const video = document.getElementById(videoId);
+    video.controls = true;
+    await video.requestFullscreen();   
+};
+
+document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement) {
+        document.querySelectorAll("video").forEach(video => {
+            video.controls = false;
+        });
+    }
+});

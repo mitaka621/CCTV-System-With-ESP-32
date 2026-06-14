@@ -23,5 +23,10 @@ namespace CamPortal.Core.Utilities
 
             return Validator.TryValidateObject(model, context, null, validateAllProperties: true);
         }
+
+        public static DateTime FloorToSecond(DateTime dt)
+        {
+            return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+        }
     }
 }

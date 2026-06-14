@@ -69,8 +69,6 @@ namespace CamPortal.Core.Services
                 if (!availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks) || availableChunks.Count == 0)
                 {
                     FillGap(startTime, endTime, fullTimeline, missingVideoChunkEvents);
-
-                    continue;
                 }
                 else
                 {
@@ -128,11 +126,11 @@ namespace CamPortal.Core.Services
                     CameraId = cameraId,
                     HLSPlaylistString = sb.ToString(),
                     MissingVideoChunkEvents = missingVideoChunkEvents,
-                    AvailableVideoChunkEvents = availableChunks.Select(x => new VideoChunkDateTimeEventDto
+                    AvailableVideoChunkEvents = availableChunks?.Select(x => new VideoChunkDateTimeEventDto
                     {
                         EventStartTime = x.ChunkStartTime,
                         EventEndTime = x.ChunkEndTime
-                    }).ToList()
+                    }).ToList() ?? new List<VideoChunkDateTimeEventDto>()
                 });
             }
 
@@ -216,7 +214,7 @@ namespace CamPortal.Core.Services
 
             // Only consider whole-second gaps to avoid flicker from sub-second gaps
             DateTime effectiveStart = CeilToSecond(gapStart);
-            DateTime effectiveEnd = FloorToSecond(gapEnd);
+            DateTime effectiveEnd = MiscUtilities.FloorToSecond(gapEnd);
 
             int missingSeconds = (int)(effectiveEnd - effectiveStart).TotalSeconds;
             if (missingSeconds <= 0)
@@ -248,19 +246,14 @@ namespace CamPortal.Core.Services
             }
         }
 
-        private static DateTime FloorToSecond(DateTime dt)
-        {
-            return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
-        }
-
-        private static DateTime CeilToSecond(DateTime dt)
+        private DateTime CeilToSecond(DateTime dt)
         {
             if (dt.Millisecond == 0 && dt.Ticks % TimeSpan.TicksPerSecond == 0)
             {
                 return dt;
             }
 
-            var floored = FloorToSecond(dt);
+            var floored = MiscUtilities.FloorToSecond(dt);
             return floored.AddSeconds(1);
         }
     }

@@ -6,6 +6,6 @@
 
         public DateTime EventEndTime { get; set; }
 
-        public double Duration => (EventEndTime - EventStartTime).TotalSeconds;
+        public double TotalDuration => (EventEndTime - EventStartTime).TotalSeconds;
     }
 }
