@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @using CamPortal.Contracts.Constants
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Roles = $"{Roles.Admin},{Roles.InfoDashboard}")]
+@attribute [Authorize(Roles = Roles.InfoDashboard)]
 
 <PageTitle>Info Dashboard</PageTitle>
 
@@ -14,7 +14,7 @@
         </MudStack>
 
         <MudAlert Severity="Severity.Info">
-            This is a placeholder for the read-only info dashboard. Add your live status cards, sensors and controls here.
+            This is a placeholder for the read-only info dashboard.
         </MudAlert>
     </MudStack>
 </MudContainer>
