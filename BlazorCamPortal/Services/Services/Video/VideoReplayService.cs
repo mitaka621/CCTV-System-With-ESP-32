@@ -7,32 +7,27 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Video
 {
     public class VideoReplayService : IVideoReplayService
     {
         private readonly IVideoChunkRepository _videoChunkRepository;
+        private readonly IStorageLocationService _storageLocationService;
         private readonly ILogger<IVideoReplayService> _logger;
 
-        private readonly string _missingPlaceholderChunksPath;
-        private readonly string _videoChunksBaseApiUrl;
         private readonly string _defaultFramePathOnMissingChunk;
         private readonly int _encodedVideoOutputFps;
         private readonly int _maxChunksSizeInS;
 
         public VideoReplayService(
             IVideoChunkRepository videoChunkRepository,
+            IStorageLocationService storageLocationService,
             IConfiguration configuration,
             ILogger<IVideoReplayService> logger)
         {
             _videoChunkRepository = videoChunkRepository;
+            _storageLocationService = storageLocationService;
             _logger = logger;
-
-            _missingPlaceholderChunksPath = configuration.GetSection("VideoEncoderConfig")["MissingPlaceholderChunksPath"]
-                ?? throw new ArgumentNullException("MissingPlaceholderChunksPath not configured");
-
-            _videoChunksBaseApiUrl = configuration.GetSection("VideoEncoderConfig")["VideoChunksBaseApiUrl"]
-                ?? throw new ArgumentNullException("VideoChunksBaseApiUrl not configured");
 
             _defaultFramePathOnMissingChunk = configuration.GetSection("VideoEncoderConfig")["DefaultFramePathOnMissingChunk"]
                ?? throw new ArgumentNullException("DefaultFramePathOnMissingChunk not configured");
@@ -64,41 +59,10 @@ namespace CamPortal.Core.Services
             foreach (var cameraId in cameraIds)
             {
                 List<VideoChunkDateTimeEventDto> missingVideoChunkEvents = new();
-                List<VideoChunkShortInfoDto> fullTimeline = new();
 
-                if (!availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks) || availableChunks.Count == 0)
-                {
-                    FillGap(startTime, endTime, fullTimeline, missingVideoChunkEvents);
-                }
-                else
-                {
-                    DateTime cursor = startTime;
+                availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks);
 
-                    foreach (var chunk in availableChunks)
-                    {
-                        if (chunk.ChunkStartTime > cursor)
-                        {
-                            FillGap(cursor, chunk.ChunkStartTime, fullTimeline, missingVideoChunkEvents);
-                        }
-
-                        fullTimeline.Add(new VideoChunkShortInfoDto
-                        {
-                            FileName = chunk.FileName.Replace('\\', '/'),
-                            ChunkStartTime = chunk.ChunkStartTime,
-                            ChunkEndTime = chunk.ChunkEndTime
-                        });
-
-                        if (chunk.ChunkEndTime > cursor)
-                        {
-                            cursor = chunk.ChunkEndTime;
-                        }
-                    }
-
-                    if (cursor < endTime)
-                    {
-                        FillGap(cursor, endTime, fullTimeline, missingVideoChunkEvents);
-                    }
-                }
+                List<VideoChunkShortInfoDto> fullTimeline = BuildFullTimeline(cameraId, availableChunks, startTime, endTime, missingVideoChunkEvents);
 
                 var sb = new StringBuilder();
                 sb.AppendLine("#EXTM3U");
@@ -117,7 +81,7 @@ namespace CamPortal.Core.Services
                 {
                     sb.AppendLine("#EXT-X-DISCONTINUITY");
                     sb.AppendLine($"#EXTINF:{(segment.ChunkEndTime - segment.ChunkStartTime).TotalSeconds:0.###},");
-                    sb.AppendLine(_videoChunksBaseApiUrl + segment.FileName.Replace('\\', '/'));
+                    sb.AppendLine(_storageLocationService.BuildChunkUrl(segment.CameraFolder!, segment.FileName));
                 }
 
                 sb.AppendLine("#EXT-X-ENDLIST");
@@ -137,13 +101,35 @@ namespace CamPortal.Core.Services
             return playlists;
         }
 
+        public async Task<List<string>> GetExportTimelineSegmentsAsync(Guid cameraId, DateTime startTime, DateTime endTime)
+        {
+            var availableChunksByCameraId = await _videoChunkRepository
+                .GetVideoChunksForPeriodForCameraAsync(new List<Guid> { cameraId }, startTime, endTime);
+
+            availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks);
+
+            List<VideoChunkDateTimeEventDto> missingVideoChunkEvents = new();
+
+            var fullTimeline = BuildFullTimeline(cameraId, availableChunks, startTime, endTime, missingVideoChunkEvents);
+
+            var missingDurations = missingVideoChunkEvents
+                .Select(x => x.TotalDuration)
+                .Distinct();
+
+            await GeneratePlaceholderChunksForMissingOnesAsync(missingDurations);
+
+            return fullTimeline
+                .Select(x => _storageLocationService.GetChunkFullPath(x.CameraFolder!, x.FileName))
+                .ToList();
+        }
+
         public async Task GeneratePlaceholderChunksForMissingOnesAsync(IEnumerable<double> durationSeconds)
         {
             List<Task> FfmpegTasks = new();
 
             foreach (var duration in durationSeconds)
             {
-                var outputPath = string.Format(_missingPlaceholderChunksPath, duration);
+                var outputPath = _storageLocationService.GetPlaceholderChunkFullPath(duration);
 
                 var directory = Path.GetDirectoryName(outputPath);
 
@@ -152,7 +138,7 @@ namespace CamPortal.Core.Services
                     Directory.CreateDirectory(directory);
                 }
 
-                if (File.Exists(outputPath))
+                if (File.Exists(outputPath) && new FileInfo(outputPath).Length > 0)
                 {
                     continue;
                 }
@@ -160,14 +146,14 @@ namespace CamPortal.Core.Services
                 var ffmpegPath = VideoChunkUtilities.GetFfmpegPath();
 
                 var args =
-                    $"-loop 1 -i \"{_defaultFramePathOnMissingChunk}\" " +
-                    $"-framerate {_encodedVideoOutputFps} " +
+                    $"-y -framerate {_encodedVideoOutputFps} -loop 1 -i \"{_defaultFramePathOnMissingChunk}\" " +
+                    "-vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1\" " +
                     "-map 0:v:0 -an " +
                     "-c:v libx264 -preset medium -tune zerolatency -sc_threshold 0 " +
                     $"-g {_encodedVideoOutputFps * 2} -keyint_min {_encodedVideoOutputFps * 2} " +
                     $"-pix_fmt yuv420p -r {_encodedVideoOutputFps} " +
                     $"-t {duration} " +
-                    $"{outputPath}";
+                    $"\"{outputPath}\"";
 
                 var ffmpeg = new Process
                 {
@@ -230,7 +216,8 @@ namespace CamPortal.Core.Services
 
                 fullTimeline.Add(new VideoChunkShortInfoDto
                 {
-                    FileName = string.Format(_missingPlaceholderChunksPath, segmentSeconds).Replace('\\', '/'),
+                    FileName = _storageLocationService.GetPlaceholderChunkFileName(segmentSeconds),
+                    CameraFolder = _storageLocationService.PlaceholderFolderName,
                     ChunkStartTime = current,
                     ChunkEndTime = current.AddSeconds(segmentSeconds)
                 });
@@ -255,6 +242,53 @@ namespace CamPortal.Core.Services
 
             var floored = MiscUtilities.FloorToSecond(dt);
             return floored.AddSeconds(1);
+        }
+
+        private List<VideoChunkShortInfoDto> BuildFullTimeline(
+            Guid cameraId,
+            List<VideoChunkShortInfoDto>? availableChunks,
+            DateTime startTime,
+            DateTime endTime,
+            List<VideoChunkDateTimeEventDto> missingVideoChunkEvents)
+        {
+            List<VideoChunkShortInfoDto> fullTimeline = new();
+
+            if (availableChunks == null || availableChunks.Count == 0)
+            {
+                FillGap(startTime, endTime, fullTimeline, missingVideoChunkEvents);
+
+                return fullTimeline;
+            }
+
+            DateTime cursor = startTime;
+
+            foreach (var chunk in availableChunks)
+            {
+                if (chunk.ChunkStartTime > cursor)
+                {
+                    FillGap(cursor, chunk.ChunkStartTime, fullTimeline, missingVideoChunkEvents);
+                }
+
+                fullTimeline.Add(new VideoChunkShortInfoDto
+                {
+                    FileName = Path.GetFileName(chunk.FileName),
+                    CameraFolder = cameraId.ToString(),
+                    ChunkStartTime = chunk.ChunkStartTime,
+                    ChunkEndTime = chunk.ChunkEndTime
+                });
+
+                if (chunk.ChunkEndTime > cursor)
+                {
+                    cursor = chunk.ChunkEndTime;
+                }
+            }
+
+            if (cursor < endTime)
+            {
+                FillGap(cursor, endTime, fullTimeline, missingVideoChunkEvents);
+            }
+
+            return fullTimeline;
         }
     }
 }

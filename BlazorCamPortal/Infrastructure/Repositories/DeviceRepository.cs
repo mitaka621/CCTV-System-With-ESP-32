@@ -6,6 +6,7 @@ using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
 using CamPortal.Contracts.Enums;
+using CamPortal.Contracts.Models;
 using CamPortal.Infrastructure.Data;
 using CamPortal.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -123,8 +124,18 @@ namespace CamPortal.Infrastructure.Repositories
             return result != 0;
         }
 
-        public async Task<bool> UpdateDeviceIpAsync(Guid deviceId, string newIpv4)
+        public async Task<bool> UpdateDeviceIpAsync(Guid deviceId, string newIpv4, IUnitOfWork? uow = null)
         {
+            if (uow != null)
+            {
+                var ownedDb = (CamPortalDBContext)uow.Db;
+                var rowsAffected = await ownedDb.Devices
+                    .Where(x => x.Id == deviceId)
+                    .ExecuteUpdateAsync(x => x.SetProperty(c => c.Ipv4Address, newIpv4).SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
+
+                return rowsAffected != 0;
+            }
+
             await using var db = await _dbContextFactory.CreateDbContextAsync();
             var result = await db.Devices
                 .Where(x => x.Id == deviceId)
@@ -144,7 +155,50 @@ namespace CamPortal.Infrastructure.Repositories
                 query = query.Where(x => ids != null && ids.Count != 0 && ids.Contains(x.Id));
             }
 
-            var result = await query.Select(device => _mapper.Map<DeviceDto>(device))
+            var result = await query.Select(device => new DeviceDto
+            {
+                Id = device.Id,
+                DeviceTypeId = device.DeviceTypeId,
+                Name = device.Name,
+                Ipv4Address = device.Ipv4Address ?? device.PreprovisionAttempts
+                    .Where(a => a.PreprovisionStatus == PreprovisionStatus.Claimed && a.ClaimedFromIpv4 != null)
+                    .OrderByDescending(a => a.ClaimedAt)
+                    .Select(a => a.ClaimedFromIpv4)
+                    .FirstOrDefault(),
+                PairStatus = device.PairStatus,
+                CreatedAt = device.CreatedAt,
+                UpdatedAt = device.UpdatedAt,
+                PublicKey = device.PublicKey,
+                Fingerprint = device.Fingerprint
+            }).ToListAsync();
+
+            return result;
+        }
+
+        public async Task<List<CameraDisplayModel>> GetAllCameraDisplayModelsAsync()
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            var result = await db.Devices
+                .AsNoTracking()
+                .Select(device => new CameraDisplayModel
+                {
+                    Id = device.Id,
+                    Name = device.Name,
+                    Ipv4Address = device.Ipv4Address ?? device.PreprovisionAttempts
+                        .Where(a => a.PreprovisionStatus == PreprovisionStatus.Claimed && a.ClaimedFromIpv4 != null)
+                        .OrderByDescending(a => a.ClaimedAt)
+                        .Select(a => a.ClaimedFromIpv4)
+                        .FirstOrDefault(),
+                    PairStatus = device.PairStatus,
+                    CreatedAt = device.CreatedAt,
+                    UpdatedAt = device.UpdatedAt,
+                    Fingerprint = device.Fingerprint,
+                    FirmwareVersion = device.FirmwareVersion,
+                    ResolutionWidth = device.CameraConfiguration != null ? device.CameraConfiguration.ResolutionWidth : (int?)null,
+                    ResolutionHeight = device.CameraConfiguration != null ? device.CameraConfiguration.ResolutionHeight : (int?)null,
+                    AspectRatio = device.CameraConfiguration != null ? device.CameraConfiguration.CameraAspectRatio : (CameraAspectRatios?)null
+                })
                 .ToListAsync();
 
             return result;
@@ -292,7 +346,8 @@ namespace CamPortal.Infrastructure.Repositories
             return await db.Devices
                 .AsNoTracking()
                 .Include(x => x.CameraConfiguration)
-                .Where(x => x.DeviceType.DeviceCategory == DeviceTypeCategories.Camera)
+                .Where(x => x.DeviceType.DeviceCategory == DeviceTypeCategories.Camera
+                    && x.PairStatus != DevicePairStatus.Removed)
                 .OrderBy(x => x.CreatedAt)
                 .ToDictionaryAsync(x => x.Id, y => new CameraInfoWithConfigurationDto()
                 {

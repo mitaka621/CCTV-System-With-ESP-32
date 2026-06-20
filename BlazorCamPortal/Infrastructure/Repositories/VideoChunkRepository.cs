@@ -77,5 +77,35 @@ namespace CamPortal.Infrastructure.Repositories
 
             return result;
         }
+
+        public async Task<List<ExpiredVideoChunkDto>> GetExpiredVideoChunksAsync(DateTime expirationCutoffUtc)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            return await db.VideoChunks
+                .AsNoTracking()
+                .Where(x => x.ChunkEndTime < expirationCutoffUtc)
+                .Select(x => new ExpiredVideoChunkDto
+                {
+                    Id = x.Id,
+                    DeviceId = x.DeviceId,
+                    FileName = x.FileName
+                })
+                .ToListAsync();
+        }
+
+        public async Task DeleteVideoChunksAsync(List<Guid> chunkIds)
+        {
+            if (chunkIds.Count == 0)
+            {
+                return;
+            }
+
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            await db.VideoChunks
+                .Where(x => chunkIds.Contains(x.Id))
+                .ExecuteDeleteAsync();
+        }
     }
 }

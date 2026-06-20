@@ -1,3 +1,4 @@
+using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Constants;
 using CamPortal.Contracts.Models;
@@ -28,6 +29,29 @@ namespace CamPortal.Extensions
             var service = scope.ServiceProvider.GetRequiredService<ICameraFramesManagerService>();
 
             var cameraService = scope.ServiceProvider.GetRequiredService<IDeviceService>();
+
+            return app;
+        }
+
+        public static async Task<WebApplication> RecoverPendingVideoExportsAsync(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var exportedVideoRepository = scope.ServiceProvider.GetRequiredService<IExportedVideoRepository>();
+            var videoExportJobQueue = scope.ServiceProvider.GetRequiredService<IVideoExportJobQueue>();
+
+            var pendingExportIds = await exportedVideoRepository.GetPendingExportIdsAsync();
+
+            foreach (var pendingExportId in pendingExportIds)
+            {
+                videoExportJobQueue.Enqueue(pendingExportId);
+            }
+
+            if (pendingExportIds.Count > 0)
+            {
+                var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("VideoExportRecovery");
+                logger.LogInformation("Re-queued {Count} interrupted video export(s) from a previous session.", pendingExportIds.Count);
+            }
 
             return app;
         }

@@ -101,7 +101,7 @@ else
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent Class="pa-0 camera-card-content">
-                    <CameraStreamComponent CameraId="_layoutMatrix[context.Y][context.X].CameraInfo!.Id" Fill="true" />
+                    <CameraStreamComponent CameraId="_layoutMatrix[context.Y][context.X].CameraInfo!.Id" Fill="true" StreamToken="_streamVersion" />
                 </MudCardContent>
                 <MudCardActions>
                     <MudSpacer />
@@ -123,6 +123,7 @@ else
     private List<UserCameraLayoutItemDto[]> _layoutMatrix = new();
     private bool _boardSized;
     private int _gridKey = 0;
+    private Guid _streamVersion = Guid.NewGuid();
 
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
@@ -262,7 +263,7 @@ else
             BackgroundClass = "blurry-background"
         };
 
-        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>("Configure Camera", parameters, options);
+        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
 
         await dialog.Result;
 
@@ -274,6 +275,7 @@ else
         _camerasPerRow = await _userSettingsService.GetNumberOfCamerasPerRowAsync(_userId);
         _boardSized = false;
         _dropContainer = null;
+        _streamVersion = Guid.NewGuid();
         await LoadCamerasAsync();
         _gridKey++;
         await InvokeAsync(StateHasChanged);

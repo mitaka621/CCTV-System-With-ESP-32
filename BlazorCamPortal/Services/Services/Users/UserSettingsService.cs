@@ -4,7 +4,7 @@ using CamPortal.Contracts.Models;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Users
 {
     public class UserSettingsService : IUserSettingsService
     {

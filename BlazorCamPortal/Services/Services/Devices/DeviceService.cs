@@ -8,7 +8,7 @@ using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Devices
 {
     public class DeviceService : IDeviceService
     {
@@ -73,9 +73,7 @@ namespace CamPortal.Core.Services
 
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync()
         {
-            var result = await _deviceRepository.GetAllDevicesAsync();
-
-            return _mapper.Map<List<CameraDisplayModel>>(result);
+            return await _deviceRepository.GetAllCameraDisplayModelsAsync();
         }
 
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> cameraIds)

@@ -17,15 +17,13 @@ namespace CamPortal.Core.BackgroundServices
     {
         private readonly ICameraFramesManagerService _framesManager;
         private readonly ILogger<VideoEncoderService> _logger;
-        private readonly IDeviceService _cameraService;
         private readonly IVideoReplayService _videoChunkService;
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
-
+        private readonly IStorageLocationService _storageLocationService;
         private readonly byte[] _placeholderFrame;
         private readonly int _encodedVideoOutputFps;
         private readonly int _videoChunksSizeInS;
         private readonly int _timeoutInS;
-        private readonly string _footagePath;
         private readonly VideoHardwareEncoder _activeEncoder;
 
         private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cameraEncodersCancelationSources = new();
@@ -35,15 +33,13 @@ namespace CamPortal.Core.BackgroundServices
             IConfiguration configuration,
             IServiceProvider serviceProvider,
             ICameraConfigurationRepository cameraConfigurationRepository,
+            IStorageLocationService storageLocationService,
             ILogger<VideoEncoderService> logger)
         {
             _framesManager = framesManager;
             _logger = logger;
             _cameraConfigurationRepository = cameraConfigurationRepository;
-
-            _cameraService = serviceProvider.CreateScope()
-                .ServiceProvider
-                .GetRequiredService<IDeviceService>();
+            _storageLocationService = storageLocationService;
 
             _videoChunkService = serviceProvider.CreateScope()
                 .ServiceProvider
@@ -65,9 +61,6 @@ namespace CamPortal.Core.BackgroundServices
                 configuration.GetSection("VideoEncoderConfig")["VideoChunksSizeInS"]
                 ?? throw new ArgumentNullException("Video chunk size not configured")
             );
-
-            _footagePath = configuration.GetSection("VideoEncoderConfig")["VideoChunksFolder"]
-                ?? throw new ArgumentNullException("VideoChunksFolder not configured");
 
             var requestedEncoder = ParseConfiguredEncoder(configuration);
             _activeEncoder = VideoChunkUtilities.ResolveHardwareEncoder(requestedEncoder, _logger);
@@ -95,7 +88,7 @@ namespace CamPortal.Core.BackgroundServices
                 var framesChannel = _framesManager.GetOrCreateProcessedFramesCameraChannel(cameraId);
                 DateTime segmentStartTime = DateTime.UtcNow;
 
-                string outputDir = Path.Combine(_footagePath, cameraId.ToString(), DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                string outputDir = _storageLocationService.GetCameraChunkDirectory(cameraId);
                 Directory.CreateDirectory(outputDir);
 
                 string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
@@ -225,7 +218,7 @@ namespace CamPortal.Core.BackgroundServices
                                 DeviceId = cameraId,
                                 ChunkStartTime = lastFileStartTime.Value,
                                 ChunkEndTime = DateTime.UtcNow,
-                                FileName = fileName,
+                                FileName = Path.GetFileName(fileName),
                                 SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                             };
 
@@ -457,7 +450,7 @@ namespace CamPortal.Core.BackgroundServices
                 $"-pix_fmt yuv420p -r {fps} -b:v 1500k -maxrate 2000k -bufsize 4000k ";
 
             string outputSection =
-                $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts {filePath}";
+                $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts \"{filePath}\"";
 
             return inputSection + filterSection + codecSection + rateSection + outputSection;
         }

@@ -5,7 +5,7 @@ using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Models;
 using CamPortal.Core.Utilities;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Devices
 {
     public class CameraConfigurationService : ICameraConfigurationService
     {

@@ -25,7 +25,7 @@ namespace CamPortal.Controllers
         }
 
         [HttpGet("{cameraId:guid}/stream")]
-        public async Task StreamAsync(Guid cameraId, CancellationToken ct, bool isOriginalResolution)
+        public async Task StreamAsync(Guid cameraId, CancellationToken ct, bool isOriginalResolution, [FromQuery(Name = "t")] Guid streamToken)
         {
             Response.ContentType = $"multipart/x-mixed-replace; boundary={_multipartBoundary}";
             Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
@@ -33,7 +33,7 @@ namespace CamPortal.Controllers
             Response.Headers["Connection"] = "keep-alive";
             Response.Headers["X-Accel-Buffering"] = "no";
 
-            var viewerId = AuthHelper.GetLoggedUserId(User);
+            var viewerId = streamToken != Guid.Empty ? streamToken : AuthHelper.GetLoggedUserId(User);
             var reader = _cameraFramesManagerService.SubscribeViewer(cameraId, viewerId, isOriginalResolution);
 
             var boundaryDelimiter = Encoding.ASCII.GetBytes($"\r\n--{_multipartBoundary}\r\n");

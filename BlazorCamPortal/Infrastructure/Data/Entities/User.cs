@@ -31,5 +31,7 @@ namespace CamPortal.Infrastructure.Data.Entities
         public List<UserRole> UserRoles { get; set; } = new();
 
         public UserSettings UserSettings { get; set; } = null!;
+
+        public List<ExportedVideo> ExportedVideos { get; set; } = new();
     }
 }

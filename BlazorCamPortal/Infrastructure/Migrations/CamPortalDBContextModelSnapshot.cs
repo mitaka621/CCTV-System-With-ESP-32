@@ -148,6 +148,55 @@ namespace CamPortal.Infrastructure.Migrations
                     b.ToTable("DeviceTypes");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.ExportedVideo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CameraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExportFinishedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExportStartedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ExportStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExportedURLForDownload")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("SizeInMB")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("VideoEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("VideoStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CameraId");
+
+                    b.HasIndex("ExportFinishedDate");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ExportedVideos");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.LogMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -258,6 +307,31 @@ namespace CamPortal.Infrastructure.Migrations
                         {
                             Id = new Guid("60ed5d3e-f4d6-456b-8748-47f9bf9c7c53"),
                             Name = "InfoDashboard"
+                        });
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.SystemSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CameraChunkRetention")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EncodedVideoRetention")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d"),
+                            CameraChunkRetention = 3,
+                            EncodedVideoRetention = 5
                         });
                 });
 
@@ -414,6 +488,25 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Navigation("DeviceType");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.ExportedVideo", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Camera")
+                        .WithMany()
+                        .HasForeignKey("CameraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.User", "User")
+                        .WithMany("ExportedVideos")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Camera");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.PreprovisionAttempt", b =>
                 {
                     b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Device")
@@ -499,6 +592,8 @@ namespace CamPortal.Infrastructure.Migrations
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.User", b =>
                 {
+                    b.Navigation("ExportedVideos");
+
                     b.Navigation("UserRoles");
 
                     b.Navigation("UserSettings")

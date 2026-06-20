@@ -12,7 +12,7 @@ using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Devices
 {
     public class CameraFramesManagerService : ICameraFramesManagerService
     {

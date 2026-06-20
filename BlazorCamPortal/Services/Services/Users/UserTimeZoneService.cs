@@ -1,7 +1,7 @@
 using CamPortal.Contracts.Abstractions.Services;
 using Microsoft.JSInterop;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Users
 {
     public sealed class UserTimeZoneService : IUserTimeZoneService
     {

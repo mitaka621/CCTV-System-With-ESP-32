@@ -1,7 +1,7 @@
 using CamPortal.Contracts.Abstractions.Services;
 using System.Collections.Concurrent;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Devices
 {
     public class ActiveCameraConnections : IActiveCameraConnections
     {
@@ -42,6 +42,11 @@ namespace CamPortal.Core.Services
                 return true;
             }
             return false;
+        }
+
+        public int TotalActiveCameraConnevtions()
+        {
+            return _byCameraId.Count;
         }
     }
 }

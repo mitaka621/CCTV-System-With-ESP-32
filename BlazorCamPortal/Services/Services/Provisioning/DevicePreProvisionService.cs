@@ -15,7 +15,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Provisioning
 {
     public class DevicePreProvisionService : IDevicePreProvisionService
     {
@@ -280,6 +280,11 @@ namespace CamPortal.Core.Services
             {
                 await uow.RollbackAsync();
                 return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.ClaimedFromIpv4))
+            {
+                await _deviceRepository.UpdateDeviceIpAsync(dto.DeviceId, dto.ClaimedFromIpv4, uow);
             }
 
             await uow.CommitAsync();

@@ -13,5 +13,9 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<DateTime> GetMaxDateTimeOfAvailableVideoChunksAsync();
 
         Task<double> GetTotalVideoChinksSizeInMBAsync();
+
+        Task<List<ExpiredVideoChunkDto>> GetExpiredVideoChunksAsync(DateTime expirationCutoffUtc);
+
+        Task DeleteVideoChunksAsync(List<Guid> chunkIds);
     }
 }

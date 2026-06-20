@@ -1,4 +1,5 @@
 @page "/camerasConfig"
+@using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
 @using CamPortal.Contracts.Constants
 @using CamPortal.Contracts.Enums
 @using Microsoft.AspNetCore.Authorization
@@ -40,25 +41,87 @@
             </MudButton>
         </MudStack>
     </MudPaper>
+    <MudPaper Elevation="4" Class="pa-4 mb-6">
+        <MudGrid AlignItems="Center">
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="_searchTerm"
+                              Immediate="true"
+                              Label="Search by name or ID"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="DevicePairStatus"
+                           Label="Filter by status"
+                           MultiSelection="true"
+                           @bind-SelectedValues="_selectedStatuses"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           MultiSelectionTextFunc="@(selected => string.Join(", ", selected.Select(s => MiscUtilities.GetDisplayNameAttributeValue(Enum.Parse<DevicePairStatus>(s)))))">
+                    @foreach (var status in Enum.GetValues<DevicePairStatus>())
+                    {
+                        <MudSelectItem T="DevicePairStatus" Value="@status">
+                            @MiscUtilities.GetDisplayNameAttributeValue(status)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="CameraAspectRatios"
+                           Label="Filter by aspect ratio"
+                           MultiSelection="true"
+                           @bind-SelectedValues="_selectedAspectRatios"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           MultiSelectionTextFunc="@(selected => string.Join(", ", selected.Select(s => MiscUtilities.GetDisplayNameAttributeValue(Enum.Parse<CameraAspectRatios>(s)))))">
+                    @foreach (var aspectRatio in Enum.GetValues<CameraAspectRatios>())
+                    {
+                        <MudSelectItem T="CameraAspectRatios" Value="@aspectRatio">
+                            @MiscUtilities.GetDisplayNameAttributeValue(aspectRatio)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex justify-end mt-3">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       OnClick="ResetFilters">
+                Reset Filters
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @{
+        var filteredCameras = GetFilteredCameras();
+        var cameraRows = ChunkIntoRows(filteredCameras);
+    }
+
     <MudText Typo="Typo.h4" Class="mb-4" Color="Color.Secondary">
         <MudIcon Icon="@Icons.Material.Filled.Videocam" Class="mr-2" />
-        Cameras (@cameraDisplayModels.Count)
+        Cameras (@filteredCameras.Count)
     </MudText>
 
-    @if (cameraDisplayModels.Count == 0)
+    @if (filteredCameras.Count == 0)
     {
         <MudPaper Elevation="2" Class="pa-8 text-center">
             <MudIcon Icon="@Icons.Material.Outlined.VideocamOff" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
             <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Devices Found</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Adjust your search or status filters to see more devices</MudText>
         </MudPaper>
     }
     else
     {
-        <MudGrid>
-            @foreach (var camera in cameraDisplayModels)
-            {
-                <MudItem xs="12" md="6" lg="4" @key="camera.Id">
-                    <MudCard Elevation="6" Class="camera-config-card">
+        <Virtualize Items="cameraRows" Context="row" ItemSize="RowHeightPx" OverscanCount="2">
+            <div class="camera-config-row">
+                @foreach (var camera in row)
+                {
+                    <div class="camera-config-row-item" @key="camera.Id">
+                        <MudCard Elevation="6" Class="camera-config-card">
                         <MudCardHeader>
                             <CardHeaderContent>
                                 <div class="d-flex align-center justify-space-between">
@@ -67,7 +130,7 @@
                                             <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Class="mr-2" />
                                             @(camera.Name ?? "Unnamed Camera")
                                         </MudText>
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="config-truncate">
                                             ID: @camera.Id
                                         </MudText>
                                     </div>
@@ -85,21 +148,53 @@
                                 <div class="d-flex align-center">
                                     <MudIcon Icon="@Icons.Material.Filled.NetworkWifi" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
                                     <MudText Typo="Typo.body2">
-                                        <strong>IP:</strong> @camera.Ipv4Address
+                                        <strong>IP:</strong> @(string.IsNullOrWhiteSpace(camera.Ipv4Address) ? "Unknown" : camera.Ipv4Address)
                                     </MudText>
                                 </div>
-                                <div class="d-flex align-center">
-                                    <MudIcon Icon="@Icons.Material.Filled.Router" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.body2">
-                                        <strong>MAC:</strong> @camera.MacAddress
-                                    </MudText>
-                                </div>
+                                @if (camera.ResolutionWidth.HasValue && camera.ResolutionHeight.HasValue && camera.ResolutionWidth > 0)
+                                {
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.AspectRatio" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2">
+                                            <strong>Resolution:</strong> @camera.ResolutionWidth x @camera.ResolutionHeight
+                                        </MudText>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(camera.FirmwareVersion))
+                                {
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2">
+                                            <strong>Firmware:</strong> @camera.FirmwareVersion
+                                        </MudText>
+                                    </div>
+                                }
                                 <div class="d-flex align-center">
                                     <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
                                     <MudText Typo="Typo.body2">
                                         <strong>Added:</strong> @_userTimeZoneService.ToLocal(camera.CreatedAt).ToString("MMM dd, yyyy")
                                     </MudText>
                                 </div>
+                                @if (camera.UpdatedAt.HasValue)
+                                {
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Update" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2">
+                                            <strong>Updated:</strong> @_userTimeZoneService.ToLocal(camera.UpdatedAt.Value).ToString("MMM dd, yyyy HH:mm")
+                                        </MudText>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(camera.Fingerprint))
+                                {
+                                    <MudTooltip Text="@camera.Fingerprint">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.body2">
+                                                <strong>Fingerprint:</strong> @(camera.Fingerprint)
+                                            </MudText>
+                                        </div>
+                                    </MudTooltip>
+                                }
                             </MudStack>
                         </MudCardContent>
                     
@@ -121,7 +216,8 @@
                                     <MudButton StartIcon="@Icons.Material.Filled.Edit" 
                                              Color="Color.Secondary" 
                                              Size="Size.Small"
-                                             Variant="Variant.Text">
+                                             Variant="Variant.Text"
+                                               OnClick="() => ConfigureCamera(camera.Id)">
                                         Configure
                                     </MudButton>
                                 }
@@ -139,15 +235,17 @@
                                 <MudButton StartIcon="@Icons.Material.Filled.Restore" 
                                          Color="Color.Primary" 
                                          Size="Size.Small"
-                                         Variant="Variant.Text">
+                                         Variant="Variant.Text"
+                                           OnClick="() => RestoreCamera(camera.Id)">
                                     Restore
                                 </MudButton>
                             }
                         </MudCardActions>
                     </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
+                    </div>
+                }
+            </div>
+        </Virtualize>
     }
 </PageLoader>
 
@@ -155,12 +253,71 @@
     .blurry-background {
         backdrop-filter: blur(10px);
     }
+
+    .camera-config-row {
+        display: flex;
+        gap: 16px;
+        height: 320px;
+        margin-bottom: 16px;
+    }
+
+    .camera-config-row-item {
+        flex: 0 1 calc(33.333% - 11px);
+        max-width: calc(33.333% - 11px);
+        min-width: 0;
+    }
+
+    .camera-config-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .camera-config-card .mud-card-content {
+            flex: 1 1 auto;
+            overflow: hidden;
+        }
+
+        .camera-config-card .mud-card-actions {
+            margin-top: auto;
+        }
+
+        .camera-config-card .mud-card-content .d-flex {
+            min-width: 0;
+        }
+
+            .camera-config-card .mud-card-content .d-flex .mud-typography {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                min-width: 0;
+            }
+
+    .config-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        display: block;
+    }
 </style>
 
 @code {
 	bool _isLoading = true;
 	List<CameraDisplayModel> cameraDisplayModels = new();
 	List<Guid>? foundDeviceIds;
+
+	private const int CamerasPerRow = 3;
+	private const float RowHeightPx = 336f;
+
+	private string _searchTerm = string.Empty;
+	private IEnumerable<DevicePairStatus> _selectedStatuses = new HashSet<DevicePairStatus>
+	{
+		DevicePairStatus.PairingPending,
+		DevicePairStatus.Paired
+	};
+
+	private IEnumerable<CameraAspectRatios> _selectedAspectRatios = Enum.GetValues<CameraAspectRatios>().ToHashSet();
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -173,6 +330,77 @@
 		{
 			_isLoading = false;
 		}
+	}
+
+	private List<CameraDisplayModel> GetFilteredCameras()
+	{
+		return cameraDisplayModels
+			.Where(c => _selectedStatuses.Contains(c.PairStatus))
+			.Where(c => !c.AspectRatio.HasValue || _selectedAspectRatios.Contains(c.AspectRatio.Value))
+			.Where(c => string.IsNullOrWhiteSpace(_searchTerm)
+				|| (c.Name?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+				|| c.Id.ToString().Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+			.OrderBy(c => GetStatusOrder(c.PairStatus))
+			.ThenBy(c => c.Name)
+			.ToList();
+	}
+
+	private void ResetFilters()
+	{
+		_searchTerm = string.Empty;
+		_selectedStatuses = new HashSet<DevicePairStatus>
+		{
+			DevicePairStatus.PairingPending,
+			DevicePairStatus.Paired
+		};
+		_selectedAspectRatios = Enum.GetValues<CameraAspectRatios>().ToHashSet();
+	}
+
+	private List<List<CameraDisplayModel>> ChunkIntoRows(List<CameraDisplayModel> cameras)
+	{
+		var rows = new List<List<CameraDisplayModel>>();
+
+		for (int i = 0; i < cameras.Count; i += CamerasPerRow)
+		{
+			rows.Add(cameras.GetRange(i, Math.Min(CamerasPerRow, cameras.Count - i)));
+		}
+
+		return rows;
+	}
+
+	private int GetStatusOrder(DevicePairStatus status)
+	{
+		return status switch
+		{
+			DevicePairStatus.PairingPending => 0,
+			DevicePairStatus.Paired => 1,
+			DevicePairStatus.Removed => 2,
+			_ => 3
+		};
+	}
+
+	private async Task ConfigureCamera(Guid cameraId)
+	{
+		var parameters = new DialogParameters
+		{
+			["CameraId"] = cameraId
+		};
+
+		var options = new DialogOptions
+		{
+			CloseOnEscapeKey = true,
+			MaxWidth = MaxWidth.Large,
+			FullWidth = true,
+			Position = DialogPosition.TopCenter,
+			BackdropClick = false,
+			BackgroundClass = "blurry-background"
+		};
+
+		var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
+
+		await dialog.Result;
+
+		cameraDisplayModels = await _cameraService.GetAllCamerasAsync();
 	}
 
 	private async Task AddDevice()
@@ -221,10 +449,28 @@
 
 	private async Task ForgetCamera(Guid cameraId)
 	{
-  //       await _cameraService.ChangeStatusAndInvalidateCameraAsync(cameraId, DevicePairStatus.Forgotten);
+		await _cameraService.ChangeStatusAndInvalidateCameraAsync(cameraId, DevicePairStatus.Removed);
 
-		// cameraDisplayModels.First(x => x.Id == cameraId).PairStatus = DevicePairStatus.Forgotten;
-		// StateHasChanged();
+		var camera = cameraDisplayModels.FirstOrDefault(x => x.Id == cameraId);
+		if (camera != null)
+		{
+			camera.PairStatus = DevicePairStatus.Removed;
+		}
+
+		StateHasChanged();
+	}
+
+	private async Task RestoreCamera(Guid cameraId)
+	{
+		await _cameraService.ChangeStatusAndInvalidateCameraAsync(cameraId, DevicePairStatus.Paired);
+
+		var camera = cameraDisplayModels.FirstOrDefault(x => x.Id == cameraId);
+		if (camera != null)
+		{
+			camera.PairStatus = DevicePairStatus.Paired;
+		}
+
+		StateHasChanged();
 	}
 
 	private Color GetStatusColor(DevicePairStatus status)
@@ -233,6 +479,7 @@
 		{
 			DevicePairStatus.Paired => Color.Success,
             DevicePairStatus.PairingPending => Color.Warning,
+            DevicePairStatus.Removed => Color.Error,
 			_ => Color.Default
 		};
 	}
@@ -243,6 +490,7 @@
 		{
 			DevicePairStatus.Paired => Icons.Material.Filled.CheckCircle,
             DevicePairStatus.PairingPending => Icons.Material.Filled.Sync,
+            DevicePairStatus.Removed => Icons.Material.Filled.Block,
 			_ => Icons.Material.Filled.Help
 		};
 	}

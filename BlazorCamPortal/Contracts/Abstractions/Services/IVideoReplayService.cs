@@ -10,6 +10,8 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task GeneratePlaceholderChunksForMissingOnesAsync(IEnumerable<double> durationSeconds);
 
+        Task<List<string>> GetExportTimelineSegmentsAsync(Guid cameraId, DateTime startTime, DateTime endTime);
+
         Task<double> GetTotalVideoChinksSizeInGBAsync();
     }
 }

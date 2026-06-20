@@ -29,10 +29,14 @@
     [Parameter]
     public bool Fill { get; set; }
 
-    private readonly Guid _streamToken = Guid.NewGuid();
+    [Parameter]
+    public Guid? StreamToken { get; set; }
+
+    private readonly Guid _fallbackToken = Guid.NewGuid();
     private string _elementId = string.Empty;
-    private bool _streamStarted;
-    private Guid _streamedCameraId;
+    private string? _startedUrl;
+
+    private Guid EffectiveToken => StreamToken ?? _fallbackToken;
 
     protected override void OnParametersSet()
     {
@@ -41,15 +45,16 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_streamStarted && _streamedCameraId == CameraId)
+        var url = GetStreamUrl();
+
+        if (_startedUrl == url)
             return;
 
-        _streamStarted = true;
-        _streamedCameraId = CameraId;
-        await _js.InvokeVoidAsync("startCameraStream", _elementId, GetStreamUrl());
+        _startedUrl = url;
+        await _js.InvokeVoidAsync("startCameraStream", _elementId, url);
     }
 
-    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream?isOriginalResolution=false&t={_streamToken}";
+    private string GetStreamUrl() => $"/api/cameras/{CameraId}/stream?isOriginalResolution=false&t={EffectiveToken}";
 
     private async Task OpenFullScreen()
     {
@@ -73,7 +78,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (!_streamStarted)
+        if (_startedUrl == null)
             return;
 
         try

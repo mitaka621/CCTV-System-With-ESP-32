@@ -5,7 +5,11 @@ using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Constants;
 using CamPortal.Core.BackgroundServices;
 using CamPortal.Core.LoggerProviders.DatabaseLogger;
-using CamPortal.Core.Services;
+using CamPortal.Core.Services.Devices;
+using CamPortal.Core.Services.Provisioning;
+using CamPortal.Core.Services.SystemSettings;
+using CamPortal.Core.Services.Users;
+using CamPortal.Core.Services.Video;
 using CamPortal.Core.Utilities;
 using CamPortal.Infrastructure.Repositories;
 using CamPortal.Infrastructure.UnitOfWork;
@@ -27,6 +31,7 @@ namespace CamPortal.Extensions
             services.AddScoped<IUserTimeZoneService, UserTimeZoneService>();
 
             services.AddSingleton<HttpClient>();
+            services.AddSingleton<IStorageLocationService, StorageLocationService>();
             services.AddSingleton<IVideoReplayService, VideoReplayService>();
             services.AddSingleton<IVideoChunkRepository, VideoChunkRepository>();
             services.AddSingleton<IDeviceTypeService, DeviceTypeService>();
@@ -52,10 +57,21 @@ namespace CamPortal.Extensions
             services.AddSingleton<IServerIdentityService, ServerIdentityService>();
             services.AddSingleton<IUserSettingsRepository, UserSettingsRepository>();
             services.AddSingleton<IUserSettingsService, UserSettingsService>();
+            services.AddSingleton<IExportedVideoRepository, ExportedVideoRepository>();
+            services.AddSingleton<ISystemSettingsRepository, SystemSettingsRepository>();
+            services.AddSingleton<ISystemSettingsService, SystemSettingsService>();
+            services.AddSingleton<IVideoExportJobQueue, VideoExportJobQueue>();
+            services.AddSingleton<IVideoExportNotifier, VideoExportNotifier>();
+            services.AddSingleton<IVideoExportService, VideoExportService>();
+
+            services.AddSingleton<VideoExportEncoderService>();
+            services.AddSingleton<IVideoExportCanceller>(sp => sp.GetRequiredService<VideoExportEncoderService>());
 
             services.AddHostedService<FramesReceiverTcpService>();
             services.AddHostedService<VideoEncoderService>();
             services.AddHostedService<RawFrameProcessorService>();
+            services.AddHostedService(sp => sp.GetRequiredService<VideoExportEncoderService>());
+            services.AddHostedService<VideoRetentionCleanupService>();
 
             return services;
         }

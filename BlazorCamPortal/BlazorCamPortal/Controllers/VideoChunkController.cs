@@ -1,4 +1,5 @@
-using System.Net;
+using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,48 +7,45 @@ namespace CamPortal.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = $"{Roles.User},{Roles.Admin}")]
     public class VideoChunkController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly IStorageLocationService _storageLocationService;
 
-        public VideoChunkController(IWebHostEnvironment env)
+        public VideoChunkController(IStorageLocationService storageLocationService)
         {
-            _env = env;
+            _storageLocationService = storageLocationService;
         }
 
-        [HttpGet("file/{*filePath}")]
-        [HttpHead("file/{*filePath}")]
-        public async Task<IActionResult> GetActionAsync(string filePath)
+        [HttpGet("chunk/{cameraId}/{chunkName}")]
+        [HttpHead("chunk/{cameraId}/{chunkName}")]
+        public IActionResult GetChunk(string cameraId, string chunkName)
         {
-            if (string.IsNullOrEmpty(filePath))
-                return BadRequest("File path is required.");
-
-            var decoded = WebUtility.UrlDecode(filePath);
-            var safeRelativePath = decoded.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-
-            var baseRoots = new List<string>
+            if (!_storageLocationService.TryGetChunkFullPath(cameraId, chunkName, out var fullPath))
             {
-                _env.ContentRootPath,
-                AppContext.BaseDirectory,
-                Directory.GetCurrentDirectory(),
-                Path.GetFullPath(Path.Combine(_env.ContentRootPath, ".."))
-            };
-
-            string? fullPath = null;
-            foreach (var baseRoot in baseRoots.Distinct())
-            {
-                var candidate = Path.GetFullPath(Path.Combine(baseRoot, safeRelativePath));
-                if (System.IO.File.Exists(candidate))
-                {
-                    fullPath = candidate;
-                    break;
-                }
+                return BadRequest("Invalid chunk identifier.");
             }
 
-            if (fullPath is null)
+            return ServeFile(fullPath, "Video chunk not found.");
+        }
+
+        [HttpGet("export/{fileName}")]
+        [HttpHead("export/{fileName}")]
+        public IActionResult GetExport(string fileName)
+        {
+            if (!_storageLocationService.TryGetExportFullPath(fileName, out var fullPath))
             {
-                return NotFound("Video chunk not found.");
+                return BadRequest("Invalid export identifier.");
+            }
+
+            return ServeFile(fullPath, "Exported video not found.");
+        }
+
+        private IActionResult ServeFile(string fullPath, string notFoundMessage)
+        {
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return NotFound(notFoundMessage);
             }
 
             var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);

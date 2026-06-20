@@ -1,14 +1,14 @@
 ﻿@implements IDisposable
 @inject IDeviceService _cameraService
 @inject IVideoReplayService _videoReplayService
+@inject IActiveCameraConnections _activeCameraConnections
+@inject IUserManagementService _userManagementService
 
 <MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
     <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-3 icon-to-hide-on-mobile" />
     Dashboard
 </MudText>
-
 <MudGrid Class="mb-6">
-    <!-- Active Cameras -->
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="4" Class="relative pa-4 text-center" 
                   Style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
@@ -21,8 +21,6 @@
             <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
         </MudPaper>
     </MudItem>
-
-    <!-- Total Cameras -->
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="4" Class="relative pa-4 text-center" 
                   Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
@@ -35,8 +33,6 @@
             <MudText Typo="Typo.body2" Color="Color.Inherit">Total Cameras</MudText>
         </MudPaper>
     </MudItem>
-
-    <!-- Storage Used -->
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="4" Class="relative pa-4 text-center" 
                   Style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
@@ -51,9 +47,9 @@
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-            <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">127</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Recordings</MudText>
+            <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Color="Color.Inherit">@totalUsers</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Inherit">Users</MudText>
         </MudPaper>
     </MudItem>
 </MudGrid>
@@ -64,6 +60,7 @@
     int activeCameras = 0;
     int totalCameras = 0;
     double storageUsedInGB = 0;
+    int totalUsers = 0;
 
     private Dictionary<string, (PeriodicTimer timer, CancellationTokenSource cts)> _timers = new();
     private Dictionary<string, int> _refreshIntervalsInMinutes = new();
@@ -73,11 +70,12 @@
         await RefreshActiveCameras();
         await RefreshTotalCameras();
         await RefreshStorageUsed();
+        totalUsers = await _userManagementService.GetTotalUsersAsync();
     }
 
     private async Task RefreshActiveCameras()
     {
-        activeCameras = await _cameraService.GetTotalCamerasAsync(DevicePairStatus.Paired);
+        activeCameras = _activeCameraConnections.TotalActiveCameraConnevtions();
         await InvokeAsync(StateHasChanged);
     }
 

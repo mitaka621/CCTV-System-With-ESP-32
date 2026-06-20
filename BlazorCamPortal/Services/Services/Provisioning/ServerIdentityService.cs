@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Provisioning
 {
     public class ServerIdentityService : IServerIdentityService, IDisposable
     {

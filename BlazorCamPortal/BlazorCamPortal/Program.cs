@@ -56,6 +56,8 @@ app.ApplyMigrations(app.Services);
 
 await app.SeedInitialAdminAsync();
 
+await app.RecoverPendingVideoExportsAsync();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

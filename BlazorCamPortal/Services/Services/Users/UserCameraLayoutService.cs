@@ -6,7 +6,7 @@ using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Users
 {
     public class UserCameraLayoutService : IUserCameraLayoutService
     {

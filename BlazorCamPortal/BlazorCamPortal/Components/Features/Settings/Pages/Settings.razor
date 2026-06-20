@@ -53,6 +53,25 @@
                     </MudCardActions>
                 </MudCard>
             </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="4">
+                    <MudCardContent>
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.AutoDelete" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.h6">Video Retention</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                Configure when encoded videos and camera chunks are removed.
+                            </MudText>
+                        </MudStack>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/retention">
+                            Open
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
         </MudGrid>
     </MudStack>
 </MudContainer>

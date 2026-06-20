@@ -1,0 +1,274 @@
+﻿@rendermode InteractiveServer
+@using CamPortal.Contracts.Dtos.ExportedVideoDtos
+@implements IDisposable
+
+@inject IVideoExportService _videoExportService
+@inject IVideoExportNotifier _videoExportNotifier
+@inject IUserTimeZoneService _userTimeZoneService
+@inject AuthenticationStateProvider _authenticationStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        <MudMenu @ref="_menu" AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 Dense="true"
+                 PopoverClass="user-menu-popover">
+            <ActivatorContent>
+                <MudBadge Overlap="true" Origin="Origin.TopLeft" Color="Color.Error" Content="_activeExportsCount" Visible="_activeExportsCount>0">
+                    <MudIconButton Style="padding: 0.2rem 0 0 0; margin-right:2rem;" Size="Size.Medium" Color="Color.Default" Icon="@Icons.Material.Filled.Downloading" />
+                </MudBadge>
+            </ActivatorContent>
+            <ChildContent>
+                <MudStack Style="width:500px; max-height:60vh; overflow-y:auto;" Class="pa-3" Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Class="px-1">Video Export Manager</MudText>
+                    <MudDivider />
+
+                    @if (_exports.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-3" Align="Align.Center">
+                            No video exports yet.
+                        </MudText>
+                    }
+                    else
+                    {
+                        @foreach (var export in _exports)
+                        {
+                            <MudPaper Elevation="1" Outlined="true" Class="pa-3">
+                                <MudStack Spacing="1">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.body1">
+                                            @(string.IsNullOrEmpty(export.CameraName) ? export.CameraId.ToString() : export.CameraName)
+                                        </MudText>
+                                        <MudChip T="string" Size="Size.Small" Color="GetStatusColor(export.ExportStatus)">
+                                            @GetStatusLabel(export.ExportStatus)
+                                        </MudChip>
+                                    </MudStack>
+
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @_userTimeZoneService.ToLocal(export.VideoStartDate).ToString("MMM dd, HH:mm:ss")
+                                        -
+                                        @_userTimeZoneService.ToLocal(export.VideoEndDate).ToString("MMM dd, HH:mm:ss")
+                                    </MudText>
+
+                                    @switch (export.ExportStatus)
+                                    {
+                                        case ExportVideoStatuses.Started:
+                                            var progress = _progress.GetValueOrDefault(export.Id);
+                                            <MudStack Spacing="1">
+                                                @if (progress != null)
+                                                {
+                                                    <MudProgressLinear Color="Color.Primary"
+                                                                       Value="@progress.ProgressPercent"
+                                                                       Rounded="true"
+                                                                       Size="Size.Medium" />
+                                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                                        <MudText Typo="Typo.caption">Encoding @progress.ProgressPercent.ToString("0.#")%</MudText>
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@GetTimeRemainingLabel(progress)</MudText>
+                                                    </MudStack>
+                                                }
+                                                else
+                                                {
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                                                        <MudText Typo="Typo.caption">Preparing...</MudText>
+                                                    </MudStack>
+                                                }
+                                                <MudStack Row="true" Justify="Justify.FlexEnd">
+                                                    <MudButton StartIcon="@Icons.Material.Filled.Stop"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               Variant="Variant.Outlined"
+                                                               OnClick="() => CancelAsync(export.Id)"
+                                                               Disabled="_cancelling.Contains(export.Id)">
+                                                        Stop
+                                                    </MudButton>
+                                                </MudStack>
+                                            </MudStack>
+                                            break;
+                                        case ExportVideoStatuses.Finished:
+                                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@export.SizeInMB MB</MudText>
+                                                <MudButton Href="@export.ExportedURLForDownload"
+                                                           download="@GetDownloadFileName(export)"
+                                                           StartIcon="@Icons.Material.Filled.Download"
+                                                           Size="Size.Small"
+                                                           Color="Color.Primary"
+                                                           Variant="Variant.Filled">
+                                                    Download
+                                                </MudButton>
+                                            </MudStack>
+                                            break;
+                                        case ExportVideoStatuses.Expired:
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">This export has expired and is no longer available.</MudText>
+                                            break;
+                                        case ExportVideoStatuses.Failed:
+                                            <MudText Typo="Typo.caption" Color="Color.Error">Export failed. No footage was available for this range.</MudText>
+                                            break;
+                                    }
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    }
+                </MudStack>
+            </ChildContent>
+        </MudMenu>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private List<ExportedVideoDto> _exports = new();
+    private readonly Dictionary<Guid, VideoExportProgressDto> _progress = new();
+    private readonly HashSet<Guid> _cancelling = new();
+    private Guid _currentUserId;
+    private MudMenu _menu = null!;
+
+    private int _activeExportsCount => _exports.Count(x => x.ExportStatus == ExportVideoStatuses.Started);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        Guid.TryParse(authState.User.FindFirst(CustomClaimTypes.Id)?.Value, out _currentUserId);
+
+        if (_currentUserId == Guid.Empty)
+        {
+            return;
+        }
+
+        _exports = await _videoExportService.GetExportsForUserAsync(_currentUserId);
+
+        _videoExportNotifier.ExportStatusChanged += OnExportStatusChanged;
+        _videoExportNotifier.ExportProgressChanged += OnExportProgressChanged;
+        _videoExportNotifier.ExportRemoved += OnExportRemoved;
+    }
+
+    private async Task CancelAsync(Guid exportId)
+    {
+        if (!_cancelling.Add(exportId))
+        {
+            return;
+        }
+
+        await _videoExportService.CancelExportAsync(exportId, _currentUserId);
+    }
+
+    private void OnExportRemoved(VideoExportRemovedDto removed)
+    {
+        if (removed.UserId != _currentUserId)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            _exports.RemoveAll(x => x.Id == removed.ExportId);
+            _progress.Remove(removed.ExportId);
+            _cancelling.Remove(removed.ExportId);
+
+            StateHasChanged();
+        });
+    }
+
+    private void OnExportStatusChanged(ExportedVideoDto export)
+    {
+        if (export.UserId != _currentUserId)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            var existingIndex = _exports.FindIndex(x => x.Id == export.Id);
+
+            if (existingIndex >= 0)
+            {
+                _exports[existingIndex] = export;
+            }
+            else
+            {
+                _exports.Insert(0, export);
+            }
+
+            if (export.ExportStatus != ExportVideoStatuses.Started)
+            {
+                _progress.Remove(export.Id);
+            }
+
+            if (_menu!=null)
+            {
+                _ = _menu.OpenMenuAsync(EventArgs.Empty);
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private void OnExportProgressChanged(VideoExportProgressDto progress)
+    {
+        if (progress.UserId != _currentUserId)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            _progress[progress.ExportId] = progress;
+
+            StateHasChanged();
+        });
+    }
+
+    private static string GetTimeRemainingLabel(VideoExportProgressDto progress)
+    {
+        if (progress.EstimatedSecondsRemaining == null)
+        {
+            return string.Empty;
+        }
+
+        var remaining = TimeSpan.FromSeconds(Math.Max(0, progress.EstimatedSecondsRemaining.Value));
+
+        if (remaining.TotalHours >= 1)
+        {
+            return $"~{(int)remaining.TotalHours}h {remaining.Minutes}m left";
+        }
+
+        if (remaining.TotalMinutes >= 1)
+        {
+            return $"~{remaining.Minutes}m {remaining.Seconds}s left";
+        }
+
+        return $"~{remaining.Seconds}s left";
+    }
+
+    private static string GetStatusLabel(ExportVideoStatuses status) => status switch
+    {
+        ExportVideoStatuses.Started => "Encoding",
+        ExportVideoStatuses.Finished => "Ready",
+        ExportVideoStatuses.Expired => "Expired",
+        ExportVideoStatuses.Failed => "Failed",
+        _ => status.ToString()
+    };
+
+    private static Color GetStatusColor(ExportVideoStatuses status) => status switch
+    {
+        ExportVideoStatuses.Started => Color.Info,
+        ExportVideoStatuses.Finished => Color.Success,
+        ExportVideoStatuses.Expired => Color.Default,
+        ExportVideoStatuses.Failed => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetDownloadFileName(ExportedVideoDto export)
+    {
+        var cameraName = string.IsNullOrEmpty(export.CameraName) ? export.CameraId.ToString() : export.CameraName;
+        var start = _userTimeZoneService.ToLocal(export.VideoStartDate).ToString("yyyy-MM-dd_HH-mm-ss");
+
+        return $"{cameraName}_{start}.mp4";
+    }
+
+    public void Dispose()
+    {
+        _videoExportNotifier.ExportStatusChanged -= OnExportStatusChanged;
+        _videoExportNotifier.ExportProgressChanged -= OnExportProgressChanged;
+        _videoExportNotifier.ExportRemoved -= OnExportRemoved;
+    }
+}

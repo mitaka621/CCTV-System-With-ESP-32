@@ -4,7 +4,7 @@ using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
 using CamPortal.Contracts.Models;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Devices
 {
     public class DeviceTypeService : IDeviceTypeService
     {

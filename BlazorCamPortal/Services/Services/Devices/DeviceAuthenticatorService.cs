@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Devices
 {
     public class DeviceAuthenticatorService : IDeviceAuthenticatorService
     {

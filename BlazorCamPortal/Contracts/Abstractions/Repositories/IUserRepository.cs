@@ -16,6 +16,8 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<List<UserListItemDto>> GetAllUsersAsync();
 
+        Task<int> GetTotalUsersAsync();
+
         Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, bool clearFirstTimeSetup);
 
         Task<bool> DeleteUserAsync(Guid userId);

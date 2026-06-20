@@ -6,6 +6,8 @@ namespace CamPortal.Contracts.Abstractions.Services
     {
         Task<List<UserListItemDto>> GetAllUsersAsync();
 
+        Task<int> GetTotalUsersAsync();
+
         Task<List<RoleDto>> GetAllRolesAsync();
 
         Task<UpdateUserRolesResult> UpdateUserRolesAsync(Guid userId, List<Guid> roleIds, Guid currentUserId);

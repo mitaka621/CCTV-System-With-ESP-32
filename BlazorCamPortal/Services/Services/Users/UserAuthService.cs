@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Users
 {
     public class UserAuthService : IUserAuthService
     {

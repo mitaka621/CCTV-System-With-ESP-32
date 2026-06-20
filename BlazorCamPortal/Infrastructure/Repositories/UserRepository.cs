@@ -140,6 +140,15 @@ namespace CamPortal.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> GetTotalUsersAsync()
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            return await context.Users
+                .AsNoTracking()
+                .CountAsync();
+        }
+
         public async Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, bool clearFirstTimeSetup)
         {
             await using var context = await _dbContextFactory.CreateDbContextAsync();

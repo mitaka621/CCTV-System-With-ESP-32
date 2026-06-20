@@ -29,8 +29,22 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<UserSettings> UserSettings { get; set; }
 
+        public DbSet<ExportedVideo> ExportedVideos { get; set; }
+
+        public DbSet<SystemSettings> SystemSettings { get; set; }
+
+        public static readonly Guid SystemSettingsId = Guid.Parse("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d");
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<SystemSettings>().HasData(
+                new SystemSettings
+                {
+                    Id = SystemSettingsId,
+                    EncodedVideoRetention = Contracts.Enums.RetentionPeriod.OneMonth,
+                    CameraChunkRetention = Contracts.Enums.RetentionPeriod.OneWeek
+                });
+
             modelBuilder.Entity<Role>().HasData(
                 new Role
                 {

@@ -7,5 +7,7 @@
         bool IsCameraActive(Guid cameraId);
 
         bool TryDisconnect(Guid cameraId);
+
+        int TotalActiveCameraConnevtions();
     }
 }

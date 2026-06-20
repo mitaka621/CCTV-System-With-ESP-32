@@ -1,7 +1,7 @@
 using CamPortal.Contracts.Abstractions.Services;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Provisioning
 {
     public class PreprovisionNotifier : IPreprovisionNotifier
     {

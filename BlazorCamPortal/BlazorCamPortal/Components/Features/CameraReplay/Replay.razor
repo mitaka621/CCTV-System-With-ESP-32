@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using CamPortal.Contracts.Constants
 @using CamPortal.Contracts.Dtos.VideoChunkDtos
+@using CamPortal.Contracts.Dtos.ExportedVideoDtos
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
@@ -11,6 +12,9 @@
 @inject IDeviceService _cameraService
 @inject IVideoReplayService _videoReplayService
 @inject IUserTimeZoneService _userTimeZoneService
+@inject IVideoExportService _videoExportService
+@inject AuthenticationStateProvider _authenticationStateProvider
+@inject ISnackbar _snackbar
 
 <PageTitle>Replay - BlazorCam Portal</PageTitle>
 
@@ -306,7 +310,8 @@ else
                                                 <MudButton StartIcon="@Icons.Material.Filled.Download"
                                                            Color="Color.Primary"
                                                            Size="Size.Small"
-                                                           Variant="Variant.Filled">
+                                                           Variant="Variant.Filled"
+                                                           OnClick="() => ExportCameraAsync(camera.Id)">
                                                     Export
                                                 </MudButton>
                                             </div>
@@ -345,11 +350,15 @@ else
     private MudDatePicker? _endDatePicker;
     private string _error = string.Empty;
     private int _totalTimelineDurationInMinutes=0;
+    private Guid _currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
         _selectedStartTime = new TimeSpan();
         _selectedEndTime = new TimeSpan(DateTime.Now.Hour, DateTime.Now.Minute, 0);
+
+        var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        Guid.TryParse(authState.User.FindFirst(CustomClaimTypes.Id)?.Value, out _currentUserId);
 
         _allCamerasNameAndId = await _cameraService.GetAllCameraNameAndIdAsync();
 
@@ -461,6 +470,40 @@ else
     private async Task OpenFullScreen(Guid cameraId)
     {
         await _js.InvokeVoidAsync("openFullScreen", $"video-{cameraId}");
+    }
+
+    private async Task ExportCameraAsync(Guid cameraId)
+    {
+        var startDateTime = GetCombinedStartDateTime();
+        var endDateTime = GetCombinedEndDateTime();
+
+        if (startDateTime == null || endDateTime == null)
+        {
+            _snackbar.Add("Apply a valid time range before exporting.", Severity.Warning);
+            return;
+        }
+
+        if (endDateTime < startDateTime)
+        {
+            _snackbar.Add("The start date and time cannot be after the end date and time.", Severity.Warning);
+            return;
+        }
+
+        if (_currentUserId == Guid.Empty)
+        {
+            _snackbar.Add("Unable to determine the current user.", Severity.Error);
+            return;
+        }
+
+        await _videoExportService.QueueExportAsync(new QueueVideoExportInputDto
+        {
+            UserId = _currentUserId,
+            CameraId = cameraId,
+            VideoStartDate = _userTimeZoneService.ToUtc(startDateTime.Value),
+            VideoEndDate = _userTimeZoneService.ToUtc(endDateTime.Value)
+        });
+
+        _snackbar.Add("Export started. Track its progress in the export manager.", Severity.Success);
     }
 
     private DateTime? GetCombinedStartDateTime()

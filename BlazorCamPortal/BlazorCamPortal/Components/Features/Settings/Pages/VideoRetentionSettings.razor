@@ -1,0 +1,98 @@
+@page "/system/settings/retention"
+@rendermode InteractiveServer
+
+@using CamPortal.Contracts.Constants
+@using CamPortal.Contracts.Dtos.SystemSettingsDtos
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize(Roles = Roles.Admin)]
+
+@inject ISystemSettingsService _systemSettingsService
+@inject ISnackbar _snackbar
+
+<PageTitle>Video Retention - BlazorCam Portal</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AutoDelete" Color="Color.Primary" />
+            <MudText Typo="Typo.h4">Video Retention</MudText>
+        </MudStack>
+
+        <MudCard Elevation="4" Style="width:800px;">
+            <MudCardContent>
+                <MudStack Spacing="4">
+                    <MudSelect T="RetentionPeriod"
+                               Label="Encoded videos expire after"
+                               @bind-Value="_settings.EncodedVideoRetention"
+                               HelperText="Exported MP4 videos are removed from disk after this period.">
+                        @foreach (var period in Enum.GetValues<RetentionPeriod>())
+                        {
+                            <MudSelectItem Value="@period">@MiscUtilities.GetDisplayNameAttributeValue(period)</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="RetentionPeriod"
+                               Label="Camera chunks removal"
+                               @bind-Value="_settings.CameraChunkRetention"
+                               HelperText="Recorded camera footage chunks and their metadata are deleted after this period.">
+                        @foreach (var period in Enum.GetValues<RetentionPeriod>())
+                        {
+                            <MudSelectItem Value="@period">@MiscUtilities.GetDisplayNameAttributeValue(period)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="SaveAsync"
+                           Disabled="_isSaving">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Saving</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Save</MudText>
+                    }
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private SystemSettingsDto _settings = new();
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await _systemSettingsService.GetSystemSettingsAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+
+        try
+        {
+            var success = await _systemSettingsService.UpdateSystemSettingsAsync(_settings);
+
+            if (success)
+            {
+                _snackbar.Add("Retention settings saved.", Severity.Success);
+            }
+            else
+            {
+                _snackbar.Add("Failed to save retention settings.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

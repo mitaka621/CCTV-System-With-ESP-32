@@ -2,6 +2,7 @@ using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
+using CamPortal.Contracts.Enums;
 using CamPortal.Infrastructure.Data;
 using CamPortal.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,7 @@ namespace CamPortal.Infrastructure.Repositories
 
             var layoutItems = await dbContext.UserCameraLayouts
                 .AsNoTracking()
-                .Where(x => x.UserId == userId)
+                .Where(x => x.UserId == userId && x.Camera.PairStatus == DevicePairStatus.Paired)
                 .Select(x => new UserCameraLayoutItemDto()
                 {
                     LayoutType = x.LayoutType,

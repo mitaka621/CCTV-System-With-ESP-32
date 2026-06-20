@@ -4,7 +4,7 @@ using CamPortal.Contracts.Constants;
 using CamPortal.Contracts.Dtos.UserDtos;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services
+namespace CamPortal.Core.Services.Users
 {
     public class UserManagementService : IUserManagementService
     {
@@ -27,6 +27,9 @@ namespace CamPortal.Core.Services
 
         public Task<List<UserListItemDto>> GetAllUsersAsync()
             => _userRepository.GetAllUsersAsync();
+
+        public Task<int> GetTotalUsersAsync()
+            => _userRepository.GetTotalUsersAsync();
 
         public Task<List<RoleDto>> GetAllRolesAsync()
             => _userRoleRepository.GetAllRolesAsync();
