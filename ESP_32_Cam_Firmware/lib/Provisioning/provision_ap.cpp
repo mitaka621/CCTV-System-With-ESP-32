@@ -4,10 +4,23 @@
 #include <DNSServer.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <esp_random.h>
 #include <mbedtls/base64.h>
+
+extern "C"
+{
+#include "tweetnacl.h"
+}
+
+extern "C" void randombytes(unsigned char *buf, unsigned long long len)
+{
+  esp_fill_random(buf, (size_t)len);
+}
 
 extern const uint8_t jsqr_gz_start[] asm("_binary_data_jsqr_min_js_gz_start");
 extern const uint8_t jsqr_gz_end[] asm("_binary_data_jsqr_min_js_gz_end");
+extern const uint8_t nacl_gz_start[] asm("_binary_data_nacl_min_js_gz_start");
+extern const uint8_t nacl_gz_end[] asm("_binary_data_nacl_min_js_gz_end");
 
 namespace provision_ap
 {
@@ -17,6 +30,16 @@ namespace provision_ap
   static volatile bool _hasCreds = false;
   static DeviceCredentials _pendingCreds;
   static String _apSsid;
+
+  static constexpr size_t NACL_PUBLICKEY_LEN = 32;
+  static constexpr size_t NACL_SECRETKEY_LEN = 32;
+  static constexpr size_t NACL_NONCE_LEN = 24;
+  static constexpr size_t NACL_BOXZERO_LEN = 16;
+  static constexpr size_t NACL_ZERO_LEN = 32;
+
+  static uint8_t _devicePublicKey[NACL_PUBLICKEY_LEN];
+  static uint8_t _deviceSecretKey[NACL_SECRETKEY_LEN];
+  static bool _keypairReady = false;
 
   static const IPAddress AP_IP(192, 168, 4, 1);
   static const IPAddress AP_GATEWAY(192, 168, 4, 1);
@@ -84,6 +107,7 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
 </div>
 
 <script src="/jsqr.js"></script>
+<script src="/nacl.js"></script>
 <script>
 (function(){
   var scanBtn = document.getElementById('scanBtn');
@@ -110,15 +134,52 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     return null;
   }
 
+  function b64ToBytes(b64){
+    var bin = atob(b64.replace(/-/g,'+').replace(/_/g,'/'));
+    var out = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++){ out[i] = bin.charCodeAt(i); }
+    return out;
+  }
+  function bytesToB64(bytes){
+    var bin = '';
+    for(var i=0;i<bytes.length;i++){ bin += String.fromCharCode(bytes[i]); }
+    return btoa(bin);
+  }
+
   function submit(d){
-    setStatus('info', 'Sending credentials to the device...');
+    setStatus('info', 'Securing and sending credentials...');
     scanBtn.disabled = true; manualBtn.disabled = true;
-    fetch('/provision?d=' + encodeURIComponent(d), { method: 'GET', cache: 'no-store' })
+    if(typeof nacl !== 'object' || !nacl.box){
+      setStatus('err', 'Encryption library failed to load. Reload the page and try again.');
+      scanBtn.disabled = false; manualBtn.disabled = false;
+      return;
+    }
+    fetch('/devicekey', { cache: 'no-store' })
+      .then(function(r){ if(!r.ok){ throw new Error('device key HTTP ' + r.status); } return r.text(); })
+      .then(function(pkText){
+        var devicePub = b64ToBytes(pkText.trim());
+        if(devicePub.length !== 32){ throw new Error('bad device key'); }
+        var eph = nacl.box.keyPair();
+        var nonce = nacl.randomBytes(24);
+        var msg = new TextEncoder().encode(d);
+        var box = nacl.box(msg, nonce, devicePub, eph.secretKey);
+        var body = JSON.stringify({
+          epk: bytesToB64(eph.publicKey),
+          nonce: bytesToB64(nonce),
+          box: bytesToB64(box)
+        });
+        return fetch('/provision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: body
+        });
+      })
       .then(function(r){
         if(r.ok){
           setStatus('ok', 'Credentials accepted. The device is rebooting and will join your Wi-Fi.');
         } else {
-          return r.text().then(function(t){ throw new Error('HTTP ' + r.status); });
+          throw new Error('HTTP ' + r.status);
         }
       })
       .catch(function(e){
@@ -242,6 +303,106 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     return true;
   }
 
+  static String base64Encode(const uint8_t *data, size_t len)
+  {
+    size_t cap = ((len + 2) / 3) * 4 + 1;
+    uint8_t *buf = (uint8_t *)malloc(cap);
+    if (buf == nullptr)
+    {
+      return String();
+    }
+    size_t outLen = 0;
+    if (mbedtls_base64_encode(buf, cap, &outLen, data, len) != 0)
+    {
+      free(buf);
+      return String();
+    }
+    buf[outLen] = '\0';
+    String result((const char *)buf);
+    free(buf);
+    return result;
+  }
+
+  static bool generateDeviceKeypair()
+  {
+    if (crypto_box_keypair(_devicePublicKey, _deviceSecretKey) != 0)
+    {
+      return false;
+    }
+    _keypairReady = true;
+    return true;
+  }
+
+  static bool decryptProvisionPayload(const String &body, String &payloadOut)
+  {
+    if (!_keypairReady)
+    {
+      return false;
+    }
+
+    JsonDocument doc;
+    if (deserializeJson(doc, body))
+    {
+      return false;
+    }
+
+    String epkB64 = doc["epk"].as<String>();
+    String nonceB64 = doc["nonce"].as<String>();
+    String boxB64 = doc["box"].as<String>();
+    if (epkB64.length() == 0 || nonceB64.length() == 0 || boxB64.length() == 0)
+    {
+      return false;
+    }
+
+    uint8_t epk[NACL_PUBLICKEY_LEN];
+    uint8_t nonce[NACL_NONCE_LEN];
+    String epkRaw, nonceRaw;
+    if (!urlSafeBase64Decode(epkB64, epkRaw) || epkRaw.length() != NACL_PUBLICKEY_LEN ||
+        !urlSafeBase64Decode(nonceB64, nonceRaw) || nonceRaw.length() != NACL_NONCE_LEN)
+    {
+      return false;
+    }
+    memcpy(epk, epkRaw.c_str(), NACL_PUBLICKEY_LEN);
+    memcpy(nonce, nonceRaw.c_str(), NACL_NONCE_LEN);
+
+    String boxRaw;
+    if (!urlSafeBase64Decode(boxB64, boxRaw) || boxRaw.length() < NACL_BOXZERO_LEN)
+    {
+      return false;
+    }
+
+    size_t cipherLen = NACL_BOXZERO_LEN + boxRaw.length();
+    uint8_t *cipher = (uint8_t *)malloc(cipherLen);
+    uint8_t *plain = (uint8_t *)malloc(cipherLen);
+    if (cipher == nullptr || plain == nullptr)
+    {
+      free(cipher);
+      free(plain);
+      return false;
+    }
+
+    memset(cipher, 0, NACL_BOXZERO_LEN);
+    memcpy(cipher + NACL_BOXZERO_LEN, boxRaw.c_str(), boxRaw.length());
+
+    int ret = crypto_box_open(plain, cipher, cipherLen, nonce, epk, _deviceSecretKey);
+    free(cipher);
+    if (ret != 0)
+    {
+      free(plain);
+      return false;
+    }
+
+    size_t payloadLen = cipherLen - NACL_ZERO_LEN;
+    payloadOut = "";
+    payloadOut.reserve(payloadLen + 1);
+    for (size_t i = 0; i < payloadLen; i++)
+    {
+      payloadOut += (char)plain[NACL_ZERO_LEN + i];
+    }
+    free(plain);
+    return true;
+  }
+
   static bool parseProvisionJson(const String &json, DeviceCredentials &out)
   {
     JsonDocument doc;
@@ -276,13 +437,20 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
       return;
     }
 
-    if (!_server.hasArg("d"))
+    if (!_server.hasArg("plain"))
     {
-      _server.send(400, "text/plain", "Missing d parameter");
+      _server.send(400, "text/plain", "Missing body");
       return;
     }
 
-    String data = _server.arg("d");
+    String data;
+    if (!decryptProvisionPayload(_server.arg("plain"), data))
+    {
+      DEBUG_PRINT("Provisioning payload decryption failed");
+      _server.send(400, "text/plain", "Decryption failed");
+      return;
+    }
+
     String json;
     if (!urlSafeBase64Decode(data, json))
     {
@@ -302,6 +470,27 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
 
     DEBUG_PRINT("Provisioning payload accepted; device will reboot to STA mode.");
     _server.send(200, "text/plain", "Credentials accepted; device rebooting.");
+  }
+
+  static void handleDeviceKey()
+  {
+    if (!_keypairReady)
+    {
+      _server.send(503, "text/plain", "Device key not ready");
+      return;
+    }
+    _server.sendHeader("Cache-Control", "no-store");
+    _server.send(200, "text/plain", base64Encode(_devicePublicKey, NACL_PUBLICKEY_LEN));
+  }
+
+  static void handleNaclJs()
+  {
+    size_t len = nacl_gz_end - nacl_gz_start;
+    _server.sendHeader("Content-Encoding", "gzip");
+    _server.sendHeader("Cache-Control", "max-age=86400");
+    _server.setContentLength(len);
+    _server.send(200, "application/javascript", "");
+    _server.client().write(nacl_gz_start, len);
   }
 
   static void handleRoot()
@@ -374,11 +563,21 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
 
     DEBUG_PRINT("Soft AP started: " + _apSsid + " @ " + WiFi.softAPIP().toString());
 
+    if (!generateDeviceKeypair())
+    {
+      DEBUG_PRINT("Failed to generate provisioning keypair");
+      WiFi.softAPdisconnect(true);
+      WiFi.mode(WIFI_OFF);
+      return false;
+    }
+
     _dns.setErrorReplyCode(DNSReplyCode::NoError);
     _dns.start(53, "*", AP_IP);
 
-    _server.on("/provision", HTTP_GET, handleProvision);
+    _server.on("/provision", HTTP_POST, handleProvision);
+    _server.on("/devicekey", HTTP_GET, handleDeviceKey);
     _server.on("/jsqr.js", HTTP_GET, handleJsQr);
+    _server.on("/nacl.js", HTTP_GET, handleNaclJs);
     _server.on("/", HTTP_GET, handleRoot);
     _server.on("/generate_204", HTTP_GET, handleAndroidNoPortal);
     _server.on("/gen_204", HTTP_GET, handleAndroidNoPortal);
@@ -430,6 +629,8 @@ label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_OFF);
     _running = false;
+    memset(_deviceSecretKey, 0, sizeof(_deviceSecretKey));
+    _keypairReady = false;
     DEBUG_PRINT("Soft AP stopped");
   }
 

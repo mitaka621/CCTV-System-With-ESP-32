@@ -131,4 +131,4 @@ obj/**/staticwebassets.runtime.json
 /ESP32MockClient/ESP32MockClient/footage/*.mp4
 /BlazorCamPortal/BlazorCamPortal/data
 /BlazorCamPortal/BlazorCamPortal/device-type-icons
-/BlazorCamPortal/BlazorCamPortal/exports/7fd9b157-e6de-43db-9fa9-f80cb14facab
+/BlazorCamPortal/BlazorCamPortal/exports
