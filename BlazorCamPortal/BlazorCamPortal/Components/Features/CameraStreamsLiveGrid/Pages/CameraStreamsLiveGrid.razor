@@ -173,7 +173,7 @@ else
         {
             _layoutMatrix = await _userCameraLayoutService.GetLatestLayoutAsync(_userId);
 
-            await _userCameraLayoutService.SaveLayoutAsync(_userId, _layoutMatrix);
+            await _userCameraLayoutService.SaveNewLayoutAsync(_userId, _layoutMatrix);
 
             UpdateCells();
         }

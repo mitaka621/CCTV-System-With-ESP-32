@@ -118,7 +118,7 @@ namespace CamPortal.Core.Services.Users
             return layoutMatrix;
         }
 
-        public Task SaveLayoutAsync(Guid userId, List<UserCameraLayoutItemDto[]> items)
+        public async Task SaveNewLayoutAsync(Guid userId, List<UserCameraLayoutItemDto[]> items)
         {
             var configurationsToSave = new List<UserCameraLayoutItemDto>();
 
@@ -138,7 +138,9 @@ namespace CamPortal.Core.Services.Users
                 }
             }
 
-            return _userCameraLayoutRepository.SaveLayoutForUserAsync(userId, configurationsToSave);
+            await _userCameraLayoutRepository.DeleteAllLayoutsForUserAsync(userId);
+
+            await _userCameraLayoutRepository.SaveLayoutForUserAsync(userId, configurationsToSave);
         }
 
         public async Task<List<UserCameraLayoutItemDto[]>> SwapLayoutsAsync(Guid userId, List<UserCameraLayoutItemDto[]> layoutMatrix, CameraGridCellDto initialPosition, CameraGridCellDto targetPosition)

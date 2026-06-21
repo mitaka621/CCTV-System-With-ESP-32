@@ -1,137 +1,80 @@
-using ESP32MockClient.Configuration;
+using ESP32MockClient.Models;
 using ESP32MockClient.Services;
 
 namespace ESP32MockClient;
 
 public class MockEsp32Client : IDisposable
 {
-    private readonly CryptoService _cryptoService;
-    private readonly AuthenticationService _authService;
     private readonly VideoFrameLoader _frameLoader;
-    private readonly ChallengeHttpServer _httpServer;
-    private readonly TcpVideoStreamService _tcpService;
+    private readonly PreprovisionClientService _preprovisionService;
+    private readonly SecureSessionService _secureSessionService;
 
-    private bool _isPaired;
+    private PreprovisionCredentials? _credentials;
     private CancellationTokenSource? _cts;
 
     public MockEsp32Client()
     {
-        _cryptoService = new CryptoService();
-        _authService = new AuthenticationService(_cryptoService);
         _frameLoader = new VideoFrameLoader();
-        _httpServer = new ChallengeHttpServer(_authService);
-        _tcpService = new TcpVideoStreamService(_cryptoService, _frameLoader);
-        _httpServer.PairingCompleted += (_, success) => _isPaired = success;
+        _preprovisionService = new PreprovisionClientService();
+        _secureSessionService = new SecureSessionService(_frameLoader);
     }
 
     public async Task RunAsync(CancellationToken ct = default)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
-        if (!Setup())
+        if (!await SetupAsync(_cts.Token))
         {
             Console.WriteLine("[Main] Setup failed");
             return;
         }
 
-        await MainLoopAsync(_cts.Token);
+        await _secureSessionService.RunStreamingLoopAsync(_credentials!, _cts.Token);
     }
 
-    private bool Setup()
+    private async Task<bool> SetupAsync(CancellationToken ct)
     {
         Console.WriteLine("[Setup] Initializing...");
         _frameLoader.Initialize();
 
-        _isPaired = !string.IsNullOrEmpty(MockClientConfiguration.SessionToken);
-
-        if (_isPaired)
-        {
-            try
-            {
-                _cryptoService.SetSessionToken(MockClientConfiguration.SessionToken!);
-            }
-            catch
-            {
-                _isPaired = false;
-                MockClientConfiguration.SessionToken = null;
-            }
-        }
-
-        if (!_isPaired)
-        {
-            try
-            {
-                _httpServer.Start();
-                Console.WriteLine("[Setup] Waiting for server handshake on port 77...");
-
-                while (!_isPaired && !_cts!.Token.IsCancellationRequested)
-                    Thread.Sleep(100);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        if (!_isPaired)
-            return false;
-
-        _httpServer.Stop();
-        Console.WriteLine("[Setup] Complete");
-        return true;
-    }
-
-    private async Task MainLoopAsync(CancellationToken ct)
-    {
-        var failedPairingAttempts = 0;
-
         while (!ct.IsCancellationRequested)
         {
-            if (!_isPaired)
+            var credentials = PromptForCredentials();
+            if (credentials == null)
             {
-                if (string.IsNullOrEmpty(MockClientConfiguration.BaseServerUrl))
-                    break;
-
-                _isPaired = await _authService.GetSessionTokenFromServerAsync();
-
-                if (!_isPaired)
-                {
-                    failedPairingAttempts++;
-                    if (failedPairingAttempts >= MockClientConfiguration.MaxFailedPairingAttempts)
-                    {
-                        ForgetServer();
-                        break;
-                    }
-                    await Task.Delay(5000, ct);
-                    continue;
-                }
-                failedPairingAttempts = 0;
+                Console.WriteLine("[Setup] That URL did not contain valid preprovision credentials. Try again.");
+                continue;
             }
 
-            await _tcpService.RunStreamingLoopAsync(ct);
+            Console.WriteLine($"[Setup] Extracted credentials for device {credentials.DeviceId}. Verifying with {credentials.ServerIp}...");
 
-            if (_tcpService.FailedFrameSends >= MockClientConfiguration.MaxFailedFrameSends)
-                _isPaired = false;
-
-            if (_tcpService.FailedConnectionAttempts >= MockClientConfiguration.MaxFailedConnectionAttempts)
+            if (await _preprovisionService.VerifyAsync(credentials))
             {
-                ForgetServer();
-                break;
+                _credentials = credentials;
+                Console.WriteLine("[Setup] Preprovision verification accepted by server");
+                return true;
             }
+
+            Console.WriteLine("[Setup] Preprovision verification rejected. Start a fresh wizard attempt and paste the new QR URL to retry.");
         }
+
+        return false;
     }
 
-    private static void ForgetServer()
+    private static PreprovisionCredentials? PromptForCredentials()
     {
-        MockClientConfiguration.SessionToken = null;
-        MockClientConfiguration.ServerAddress = null;
-        MockClientConfiguration.BaseServerUrl = null;
+        Console.WriteLine();
+        Console.WriteLine("Reach step 4 of the pairing wizard, then paste the preprovision QR code URL here:");
+        Console.Write("> ");
+
+        var input = Console.ReadLine();
+        return PreprovisionCredentials.TryParseFromUrl(input, out var credentials) ? credentials : null;
     }
 
     public void Dispose()
     {
         _cts?.Cancel();
-        _httpServer.Dispose();
+        _secureSessionService.Dispose();
         _frameLoader.Dispose();
     }
 }

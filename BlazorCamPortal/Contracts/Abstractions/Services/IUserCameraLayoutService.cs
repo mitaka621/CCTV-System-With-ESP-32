@@ -6,7 +6,7 @@ namespace CamPortal.Contracts.Abstractions.Services
     {
         Task<List<UserCameraLayoutItemDto[]>> GetLatestLayoutAsync(Guid userId);
 
-        Task SaveLayoutAsync(Guid userId, List<UserCameraLayoutItemDto[]> items);
+        Task SaveNewLayoutAsync(Guid userId, List<UserCameraLayoutItemDto[]> items);
 
         Task<List<UserCameraLayoutItemDto[]>> SwapLayoutsAsync(Guid userId, List<UserCameraLayoutItemDto[]> layoutMatrix, CameraGridCellDto initialPosition, CameraGridCellDto targetPosition);
 

@@ -4,6 +4,8 @@
 
 #define DOMAIN_TAG "campr-provision-v1"
 
+#define CAMERA_RESOLUTION FRAMESIZE_QXGA
+
 #define RESET_BUTTON_PIN 14
 #define RESET_BUTTON_HOLD_MS 5000
 
