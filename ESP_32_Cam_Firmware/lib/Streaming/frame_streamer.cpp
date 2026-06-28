@@ -3,6 +3,7 @@
 #include "secrets.h"
 #include "secure_session.h"
 #include "camera_pins.h"
+#include "ir_cut_controller.h"
 #include <esp_camera.h>
 
 namespace frame_streamer
@@ -43,6 +44,15 @@ namespace frame_streamer
     _stats.windowStartMs = now;
   }
 
+  static void logLightStatus()
+  {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "[LIGHT] %d -> %s",
+             ir_cut_controller::lastValue(),
+             ir_cut_controller::isNight() ? "NIGHTTIME" : "DAYTIME");
+    DEBUG_PRINT(buf);
+  }
+
   static void maybeLogStats()
   {
     if (!DEBUG_ON)
@@ -66,6 +76,7 @@ namespace frame_streamer
                _stats.captureFailures,
                STREAM_CAMERA_FB_COUNT);
       DEBUG_PRINT(buf);
+      logLightStatus();
       resetStats(now);
       return;
     }
@@ -96,6 +107,7 @@ namespace frame_streamer
              _stats.failedSends,
              _stats.captureFailures);
     DEBUG_PRINT(buf);
+    logLightStatus();
 
     resetStats(now);
   }
@@ -158,6 +170,8 @@ namespace frame_streamer
       sensor->set_lenc(sensor, 1);
       sensor->set_dcw(sensor, 1);
     }
+
+    ir_cut_controller::applyColorMode();
 
     return true;
   }

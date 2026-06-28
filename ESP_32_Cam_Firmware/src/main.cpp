@@ -7,6 +7,7 @@
 #include "provision_ap.h"
 #include "preprovision_client.h"
 #include "frame_streamer.h"
+#include "ir_cut_controller.h"
 #include <Arduino.h>
 #include <nvs_flash.h>
 
@@ -117,6 +118,7 @@ void setup()
   led_indicator::begin();
   led_indicator::setState(led_indicator::BOOTING);
   status_led::begin();
+  ir_cut_controller::begin();
 
   if (!secret_store::begin())
   {
@@ -304,6 +306,7 @@ void loop()
     led_indicator::tick();
 
   status_led::tick();
+  ir_cut_controller::tick();
 
   switch (_state)
   {
