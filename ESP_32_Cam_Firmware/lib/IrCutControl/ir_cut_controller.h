@@ -6,5 +6,6 @@ namespace ir_cut_controller
   void tick();
   void applyColorMode();
   bool isNight();
+  bool sensorPresent();
   int lastValue();
 }

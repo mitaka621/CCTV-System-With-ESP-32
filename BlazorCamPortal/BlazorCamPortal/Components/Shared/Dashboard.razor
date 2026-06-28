@@ -15,10 +15,11 @@
             <div style="position:absolute; top:4px; right:4px;">
                 <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenActiveDuration" />
             </div>
-
-            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">@activeCameras</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.h4" Color="Color.Inherit">@activeCameras</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
+            </MudStack>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
@@ -27,10 +28,11 @@
             <div style="position:absolute; top:4px; right:4px;">
                 <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenTotalDuration" />
             </div>
-
-            <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">@totalCameras</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Total Cameras</MudText>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.h4" Color="Color.Inherit">@totalCameras</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Inherit">Total Cameras</MudText>
+            </MudStack>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
@@ -39,17 +41,20 @@
             <div style="position:absolute; top:4px; right:4px;">
                 <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenStorageDuration" />
             </div>
-
-            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">@(storageUsedInGB.ToString("0.##"))GB</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Storage Used</MudText>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.h4" Color="Color.Inherit">@(storageUsedInGB.ToString("0.##"))GB</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Inherit">Storage Used</MudText>
+            </MudStack>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="4" Class="pa-4 text-center" Style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-            <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Color="Color.Inherit">@totalUsers</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Inherit">Users</MudText>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.h4" Color="Color.Inherit">@totalUsers</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Inherit">Users</MudText>
+            </MudStack>
         </MudPaper>
     </MudItem>
 </MudGrid>

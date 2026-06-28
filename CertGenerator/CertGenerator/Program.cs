@@ -325,6 +325,8 @@ void ImportCaToTrustedRoot(string caCertFile)
 
         Console.WriteLine($"\nImporting CA certificate into Trusted Root store: {caCertFullPath}");
 
+        RemoveExistingCaFromTrustedRoot("MyLocalCA");
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -360,6 +362,52 @@ void ImportCaToTrustedRoot(string caCertFile)
     catch (Exception ex)
     {
         Console.WriteLine($"Error importing CA certificate: {ex.Message}");
+    }
+}
+
+void RemoveExistingCaFromTrustedRoot(string commonName)
+{
+    try
+    {
+        Console.WriteLine($"Removing existing '{commonName}' certificates from Trusted Root store...");
+
+        string command = $"Get-ChildItem Cert:\\LocalMachine\\Root | Where-Object {{ $_.Subject -eq 'CN={commonName}' }} | Remove-Item";
+
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"{command}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            }
+        };
+
+        process.Start();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (!string.IsNullOrEmpty(output))
+            Console.WriteLine(output);
+        if (!string.IsNullOrEmpty(error))
+            Console.WriteLine(error);
+
+        if (process.ExitCode == 0)
+        {
+            Console.WriteLine($"Existing '{commonName}' certificates removed.");
+        }
+        else
+        {
+            Console.WriteLine($"Could not remove existing '{commonName}' certificates. Run this app as Administrator.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error removing existing CA certificates: {ex.Message}");
     }
 }
 

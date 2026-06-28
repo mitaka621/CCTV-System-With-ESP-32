@@ -47,6 +47,11 @@ namespace frame_streamer
   static void logLightStatus()
   {
     char buf[64];
+    if (!ir_cut_controller::sensorPresent())
+    {
+      DEBUG_PRINT("[LIGHT] no sensor -> COLOR");
+      return;
+    }
     snprintf(buf, sizeof(buf), "[LIGHT] %d -> %s",
              ir_cut_controller::lastValue(),
              ir_cut_controller::isNight() ? "NIGHTTIME" : "DAYTIME");

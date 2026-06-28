@@ -11,6 +11,7 @@ namespace ir_cut_controller
 
   static bool _isNight = false;
   static bool _stateKnown = false;
+  static bool _sensorPresent = false;
   static int _lastValue = 0;
 
   static unsigned long _lastSampleMs = 0;
@@ -27,6 +28,28 @@ namespace ir_cut_controller
     }
     _pulseActive = false;
     _pulsePin = -1;
+  }
+
+  static bool detectSensor()
+  {
+    pinMode(LIGHT_SENSOR_PIN, INPUT_PULLDOWN);
+    delay(10);
+    int pulledLow = analogRead(LIGHT_SENSOR_PIN);
+
+    pinMode(LIGHT_SENSOR_PIN, INPUT_PULLUP);
+    delay(10);
+    int pulledHigh = analogRead(LIGHT_SENSOR_PIN);
+
+    pinMode(LIGHT_SENSOR_PIN, INPUT);
+    analogSetPinAttenuation(LIGHT_SENSOR_PIN, ADC_11db);
+
+    int delta = pulledHigh - pulledLow;
+    if (DEBUG_ON)
+    {
+      Serial.printf("IR-cut: sensor probe low=%d high=%d delta=%d (threshold=%d)\n",
+                    pulledLow, pulledHigh, delta, LIGHT_SENSOR_PRESENCE_DELTA);
+    }
+    return delta < LIGHT_SENSOR_PRESENCE_DELTA;
   }
 
   static int readSensor()
@@ -111,7 +134,16 @@ namespace ir_cut_controller
       return;
     }
 
-    analogSetPinAttenuation(LIGHT_SENSOR_PIN, ADC_11db);
+    _sensorPresent = detectSensor();
+    if (!_sensorPresent)
+    {
+      DEBUG_PRINT("IR-cut: no light sensor detected - relays idle, color mode forced");
+      _isNight = false;
+      _stateKnown = true;
+      applyColorMode();
+      return;
+    }
+
     int value = readSensor();
     _lastValue = value;
     bool night = value < LIGHT_SENSOR_NIGHT_THRESHOLD;
@@ -122,6 +154,11 @@ namespace ir_cut_controller
 
   void tick()
   {
+    if (!_sensorPresent)
+    {
+      return;
+    }
+
     if ((millis() - _lastSampleMs) < LIGHT_SENSOR_SAMPLE_INTERVAL_MS)
     {
       return;
@@ -150,6 +187,11 @@ namespace ir_cut_controller
   bool isNight()
   {
     return _isNight;
+  }
+
+  bool sensorPresent()
+  {
+    return _sensorPresent;
   }
 
   int lastValue()
