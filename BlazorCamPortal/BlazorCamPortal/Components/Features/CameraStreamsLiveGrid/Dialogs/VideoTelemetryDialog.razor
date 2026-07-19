@@ -1,0 +1,125 @@
+@using CamPortal.Contracts.Dtos.TelemetryDtos
+
+@implements IDisposable
+
+@inject ICameraLiveTelemetry _liveTelemetry
+@inject ICameraStatusNotifier _statusNotifier
+@inject ICameraTelemetryQueryService _telemetryQueryService
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.QueryStats" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Video Telemetry - @CameraName</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudSimpleTable Dense="true" Hover="true" Bordered="true" Class="mb-2">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th style="text-align:right">Last 2h (avg)</th>
+                    <th style="text-align:right">Realtime</th>
+                </tr>
+            </thead>
+            <tbody>
+                @RenderRow("Frames per second", $"{_averages.AvgFps:0.0}", _latest != null ? $"{_latest.Fps:0.0}" : "-")
+                @RenderRow("Capture (ms)", $"{_averages.AvgCaptureMs:0}", _latest != null ? $"{_latest.AvgCaptureMs}/{_latest.MaxCaptureMs}" : "-")
+                @RenderRow("Encrypt (ms)", $"{_averages.AvgEncryptMs:0}", _latest != null ? $"{_latest.AvgEncryptMs}/{_latest.MaxEncryptMs}" : "-")
+                @RenderRow("Send (ms)", $"{_averages.AvgSendMs:0}", _latest != null ? $"{_latest.AvgSendMs}/{_latest.MaxSendMs}" : "-")
+                @RenderRow("Frame size (KB)", $"{_averages.AvgFrameKB:0}", _latest != null ? $"{_latest.AvgFrameKB}/{_latest.MaxFrameKB}" : "-")
+                @RenderRow("Buffer ready (%)", $"{_averages.AvgBufferReadyPercent:0}", _latest != null ? $"{_latest.BufferReadyPercent}" : "-")
+                @RenderRow("Frames sent", "-", _latest != null ? $"{_latest.FrameCount}" : "-")
+                @RenderRow("Failed sends", $"{_averages.TotalFailedSends}", _latest != null ? $"{_latest.FailedSends}" : "-")
+                @RenderRow("Capture failures", $"{_averages.TotalCaptureFailures}", _latest != null ? $"{_latest.CaptureFailures}" : "-")
+                @RenderRow("Day / Night", "-", DayNightRealtime())
+                @RenderRow("Light sensor value", $"{_averages.AvgLightSensorValue:0}", LightSensorRealtime())
+            </tbody>
+        </MudSimpleTable>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Averages computed over @_averages.SampleCount stored sample(s) from the last 2 hours. Realtime values update automatically while streaming.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="ReloadAveragesAsync">Refresh averages</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Guid CameraId { get; set; }
+
+    [Parameter]
+    public string CameraName { get; set; } = string.Empty;
+
+    private CameraTelemetryAveragesDto _averages = new();
+    private CameraTelemetrySampleDto? _latest;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _statusNotifier.StatusChanged += OnCameraStatusChanged;
+        _latest = _liveTelemetry.GetLatest(CameraId);
+        await ReloadAveragesAsync();
+    }
+
+    private async Task ReloadAveragesAsync()
+    {
+        _averages = await _telemetryQueryService.GetLastTwoHoursAveragesAsync(CameraId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCameraStatusChanged(Guid cameraId)
+    {
+        if (cameraId != CameraId)
+        {
+            return;
+        }
+
+        _latest = _liveTelemetry.GetLatest(CameraId);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string DayNightRealtime()
+    {
+        if (_latest == null || !_latest.LightSensorPresent)
+        {
+            return "-";
+        }
+
+        return _latest.IsNight ? "Night" : "Day";
+    }
+
+    private string LightSensorRealtime()
+    {
+        if (_latest == null || !_latest.LightSensorPresent)
+        {
+            return "-";
+        }
+
+        return $"{_latest.LightSensorValue}";
+    }
+
+    private RenderFragment RenderRow(string label, string average, string realtime) => __builder =>
+    {
+        <tr>
+            <td>@label</td>
+            <td style="text-align:right">@average</td>
+            <td style="text-align:right">@realtime</td>
+        </tr>
+    };
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+
+    public void Dispose()
+    {
+        _statusNotifier.StatusChanged -= OnCameraStatusChanged;
+    }
+}

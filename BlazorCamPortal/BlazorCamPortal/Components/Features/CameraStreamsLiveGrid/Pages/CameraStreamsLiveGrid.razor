@@ -75,39 +75,10 @@ else
             </div>
         </ChildContent>
         <ItemRenderer>
-                <MudCard Elevation="6" Class="@(_layoutMatrix[context.Y][context.X].LayoutType == CameraLayoutType.Vertical ? "camera-card camera-card-tall" : "camera-card")">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <div class="d-flex align-center justify-space-between camera-drag-handle">
-                            <div class="camera-info-container">
-                                <MudTooltip Text="@GetCameraDisplayName(_layoutMatrix[context.Y][context.X].CameraInfo!)"
-                                          Placement="Placement.Top"
-                                          ShowOnFocus="false"
-                                          ShowOnHover="true"
-                                          Class="camera-name-tooltip">
-                                    <MudText Typo="Typo.body1" Class="camera-name-text">
-                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-2 camera-drag-indicator" />
-                                        <span class="camera-name-span">@GetCameraDisplayName(_layoutMatrix[context.Y][context.X].CameraInfo!)</span>
-                                    </MudText>
-                                </MudTooltip>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    @_layoutMatrix[context.Y][context.X].CameraInfo!.Ipv4Address
-                                </MudText>
-                            </div>
-                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.FiberManualRecord">
-                                Live
-                            </MudChip>
-                        </div>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent Class="pa-0 camera-card-content">
-                    <CameraStreamComponent CameraId="_layoutMatrix[context.Y][context.X].CameraInfo!.Id" Fill="true" StreamToken="_streamVersion" />
-                </MudCardContent>
-                <MudCardActions>
-                    <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="() => OpenConfigDialog(_layoutMatrix[context.Y][context.X].CameraInfo!.Id)" />
-                </MudCardActions>
-            </MudCard>
+            <CameraGridCard CameraInfo="_layoutMatrix[context.Y][context.X].CameraInfo!"
+                            IsTall="_layoutMatrix[context.Y][context.X].LayoutType == CameraLayoutType.Vertical"
+                            StreamToken="_streamVersion"
+                            OnConfigChanged="ReloadComponent" />
         </ItemRenderer>
     </MudDropContainer>
 }
@@ -210,19 +181,6 @@ else
         _dropContainer?.Refresh();
     }
 
-    private string GetCameraDisplayName(CameraInfoWithConfigurationDto dto)
-    {
-        if (dto==null)
-        {
-            return string.Empty;
-        }
-
-        if (!string.IsNullOrEmpty(dto.Name))
-            return dto.Name;
-
-        return $"{dto.Id}";
-    }
-
     private async Task OpenGridSettingsDialogAsync()
     {
         var options = new DialogOptions
@@ -242,30 +200,6 @@ else
         {
             return;
         }
-
-        await ReloadComponent();
-    }
-
-    private async Task OpenConfigDialog(Guid cameraId)
-    {
-        var parameters = new DialogParameters
-        {
-            ["CameraId"] = cameraId
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Large,
-            FullWidth = true,
-            Position = DialogPosition.TopCenter,
-            BackdropClick = false,
-            BackgroundClass = "blurry-background"
-        };
-
-        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
-
-        await dialog.Result;
 
         await ReloadComponent();
     }

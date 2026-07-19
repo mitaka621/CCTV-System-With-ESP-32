@@ -21,7 +21,7 @@ namespace CamPortal.Controllers
         [HttpHead("chunk/{cameraId}/{chunkName}")]
         public IActionResult GetChunk(string cameraId, string chunkName)
         {
-            if (!_storageLocationService.TryGetChunkFullPath(cameraId, chunkName, out var fullPath))
+            if (!_storageLocationService.TryGetCameraChunkFullPath(cameraId, chunkName, out var fullPath))
             {
                 return BadRequest("Invalid chunk identifier.");
             }

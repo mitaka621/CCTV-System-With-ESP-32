@@ -33,6 +33,7 @@ namespace secure_session
   static constexpr size_t SEQ_LEN = 8;
   static constexpr size_t ENC_POOL_SIZE = 2;
   static constexpr size_t RESOLUTION_HEADER_LEN = 8;
+  static constexpr size_t TELEMETRY_LEN_FIELD = 2;
 
   struct SessionState
   {
@@ -40,6 +41,7 @@ namespace secure_session
     uint8_t deviceIdRaw[DEVICE_ID_LEN];
     uint8_t sessionKey[32];
     uint8_t ivBase[IV_BASE_LEN];
+    uint8_t dnIvBase[IV_BASE_LEN];
     uint8_t sessionId[SESSION_ID_LEN];
     uint64_t seq;
     unsigned long startedAtMs;
@@ -67,6 +69,14 @@ namespace secure_session
   static volatile bool _senderOk = true;
   static volatile bool _senderShouldExit = false;
   static volatile uint32_t _lastSendUs = 0;
+
+  static esp_gcm_context _dnGcm;
+  static bool _dnGcmReady = false;
+  static volatile uint64_t _dnSeq = 0;
+  static TaskHandle_t _receiverTask = nullptr;
+  static SemaphoreHandle_t _receiverExitedSem = nullptr;
+  static volatile bool _receiverShouldExit = false;
+  static CommandHandler _commandHandler = nullptr;
 
   static uint8_t hexValue(char c)
   {
@@ -141,6 +151,12 @@ namespace secure_session
       sent += (size_t)n;
     }
     return true;
+  }
+
+  static void writeBE16(uint8_t *out, uint16_t v)
+  {
+    out[0] = (uint8_t)(v >> 8);
+    out[1] = (uint8_t)v;
   }
 
   static void writeBE32(uint8_t *out, uint32_t v)
@@ -267,6 +283,117 @@ namespace secure_session
     vTaskDelete(nullptr);
   }
 
+  static bool readExactRx(uint8_t *buf, size_t len)
+  {
+    size_t got = 0;
+    while (got < len)
+    {
+      if (_receiverShouldExit) return false;
+      if (!_state.client.connected()) return false;
+      int avail = _state.client.available();
+      if (avail <= 0)
+      {
+        delay(2);
+        continue;
+      }
+      int chunk = _state.client.read(buf + got, len - got);
+      if (chunk <= 0)
+      {
+        delay(2);
+        continue;
+      }
+      got += (size_t)chunk;
+    }
+    return true;
+  }
+
+  static void dispatchCommand(uint8_t code, const uint8_t *payload, size_t payloadLen)
+  {
+    if (_commandHandler != nullptr)
+    {
+      _commandHandler((CameraCommand)code, payload, payloadLen);
+    }
+  }
+
+  static void receiverTaskFn(void *)
+  {
+    const size_t rxHeaderLen = 4 + SEQ_LEN + GCM_TAG_LEN;
+    uint8_t header[4 + SEQ_LEN + GCM_TAG_LEN];
+    uint8_t cipher[STREAM_COMMAND_MAX_PAYLOAD];
+    uint8_t plain[STREAM_COMMAND_MAX_PAYLOAD];
+
+    while (!_receiverShouldExit)
+    {
+      if (!readExactRx(header, rxHeaderLen)) break;
+
+      uint32_t totalLen = ((uint32_t)header[0] << 24) | ((uint32_t)header[1] << 16) |
+                          ((uint32_t)header[2] << 8) | (uint32_t)header[3];
+
+      uint64_t seq = 0;
+      for (int i = 0; i < (int)SEQ_LEN; ++i)
+      {
+        seq = (seq << 8) | header[4 + i];
+      }
+
+      const uint8_t *tag = header + 4 + SEQ_LEN;
+
+      if (totalLen < (uint32_t)(SEQ_LEN + GCM_TAG_LEN + 1))
+      {
+        DEBUG_PRINT("secure_session: downstream frame too small");
+        break;
+      }
+
+      size_t cipherLen = (size_t)(totalLen - SEQ_LEN - GCM_TAG_LEN);
+      if (cipherLen > sizeof(cipher))
+      {
+        DEBUG_PRINT("secure_session: downstream frame too large");
+        break;
+      }
+
+      if (!readExactRx(cipher, cipherLen)) break;
+
+      if (seq == 0 || seq <= _dnSeq)
+      {
+        DEBUG_PRINT("secure_session: downstream replay/out-of-order, dropping");
+        continue;
+      }
+
+      uint8_t iv[GCM_IV_LEN];
+      memcpy(iv, _state.dnIvBase, IV_BASE_LEN);
+      writeBE64(iv + IV_BASE_LEN, seq);
+
+      uint8_t aad[SESSION_ID_LEN + DEVICE_ID_LEN + SEQ_LEN];
+      memcpy(aad, _state.sessionId, SESSION_ID_LEN);
+      memcpy(aad + SESSION_ID_LEN, _state.deviceIdRaw, DEVICE_ID_LEN);
+      writeBE64(aad + SESSION_ID_LEN + DEVICE_ID_LEN, seq);
+
+      int ret = esp_aes_gcm_auth_decrypt(&_dnGcm, cipherLen,
+                                         iv, GCM_IV_LEN,
+                                         aad, sizeof(aad),
+                                         tag, GCM_TAG_LEN,
+                                         cipher, plain);
+      if (ret != 0)
+      {
+        DEBUG_PRINT("secure_session: downstream auth failed, dropping");
+        continue;
+      }
+
+      _dnSeq = seq;
+
+      if (cipherLen >= 2 && plain[0] == STREAM_COMMAND_VERSION)
+      {
+        dispatchCommand(plain[1], plain + 2, cipherLen - 2);
+      }
+    }
+
+    if (_receiverExitedSem != nullptr)
+    {
+      xSemaphoreGive(_receiverExitedSem);
+    }
+
+    vTaskDelete(nullptr);
+  }
+
   static bool initSenderResources()
   {
     for (size_t i = 0; i < ENC_POOL_SIZE; ++i)
@@ -295,11 +422,37 @@ namespace secure_session
 
     BaseType_t taskRes = xTaskCreatePinnedToCore(
         senderTaskFn, "stream-sender", 4096, nullptr, 5, &_senderTask, 0);
-    return taskRes == pdPASS;
+    if (taskRes != pdPASS) return false;
+
+    _receiverShouldExit = false;
+    _receiverExitedSem = xSemaphoreCreateBinary();
+    if (_receiverExitedSem == nullptr) return false;
+
+    BaseType_t rxRes = xTaskCreatePinnedToCore(
+        receiverTaskFn, "stream-receiver", 4096, nullptr, 5, &_receiverTask, 0);
+    return rxRes == pdPASS;
   }
 
   static void teardownSenderResources()
   {
+    if (_receiverTask != nullptr)
+    {
+      _receiverShouldExit = true;
+
+      if (_receiverExitedSem != nullptr)
+      {
+        xSemaphoreTake(_receiverExitedSem, pdMS_TO_TICKS(2000));
+      }
+
+      _receiverTask = nullptr;
+    }
+
+    if (_receiverExitedSem != nullptr)
+    {
+      vSemaphoreDelete(_receiverExitedSem);
+      _receiverExitedSem = nullptr;
+    }
+
     if (_senderTask != nullptr)
     {
       _senderShouldExit = true;
@@ -361,14 +514,22 @@ namespace secure_session
       esp_aes_gcm_free(&_state.gcm);
       _gcmReady = false;
     }
+    if (_dnGcmReady)
+    {
+      esp_aes_gcm_free(&_dnGcm);
+      _dnGcmReady = false;
+    }
     memset(_state.sessionKey, 0, sizeof(_state.sessionKey));
     memset(_state.ivBase, 0, sizeof(_state.ivBase));
+    memset(_state.dnIvBase, 0, sizeof(_state.dnIvBase));
     memset(_state.sessionId, 0, sizeof(_state.sessionId));
     _state.seq = 0;
     _state.active = false;
     _senderOk = true;
     _senderShouldExit = false;
     _lastSendUs = 0;
+    _dnSeq = 0;
+    _receiverShouldExit = false;
   }
 
   static bool performHandshake(const DeviceCredentials &creds)
@@ -639,7 +800,7 @@ namespace secure_session
     memcpy(hkdfSalt, nonceServer, NONCE_LEN);
     memcpy(hkdfSalt + NONCE_LEN, nonceDevice, NONCE_LEN);
 
-    const size_t derivedKeyMaterialLen = 32 + IV_BASE_LEN + SESSION_ID_LEN;
+    const size_t derivedKeyMaterialLen = 32 + IV_BASE_LEN + SESSION_ID_LEN + 32 + IV_BASE_LEN;
     uint8_t derivedKeyMaterial[derivedKeyMaterialLen];
     const char info[] = STREAM_HKDF_INFO;
     int hkdfRet = hkdfSha256(hkdfSalt, sizeof(hkdfSalt),
@@ -657,6 +818,10 @@ namespace secure_session
     memcpy(_state.sessionKey, derivedKeyMaterial, 32);
     memcpy(_state.ivBase, derivedKeyMaterial + 32, IV_BASE_LEN);
     memcpy(_state.sessionId, derivedKeyMaterial + 32 + IV_BASE_LEN, SESSION_ID_LEN);
+
+    uint8_t downstreamKey[32];
+    memcpy(downstreamKey, derivedKeyMaterial + 32 + IV_BASE_LEN + SESSION_ID_LEN, 32);
+    memcpy(_state.dnIvBase, derivedKeyMaterial + 32 + IV_BASE_LEN + SESSION_ID_LEN + 32, IV_BASE_LEN);
     memset(derivedKeyMaterial, 0, sizeof(derivedKeyMaterial));
 
     esp_aes_gcm_init(&_state.gcm);
@@ -664,11 +829,24 @@ namespace secure_session
     {
       DEBUG_PRINT("secure_session: gcm_setkey failed");
       esp_aes_gcm_free(&_state.gcm);
+      memset(downstreamKey, 0, sizeof(downstreamKey));
       return false;
     }
     _gcmReady = true;
 
+    esp_aes_gcm_init(&_dnGcm);
+    if (esp_aes_gcm_setkey(&_dnGcm, MBEDTLS_CIPHER_ID_AES, downstreamKey, 256) != 0)
+    {
+      DEBUG_PRINT("secure_session: downstream gcm_setkey failed");
+      esp_aes_gcm_free(&_dnGcm);
+      memset(downstreamKey, 0, sizeof(downstreamKey));
+      return false;
+    }
+    _dnGcmReady = true;
+    memset(downstreamKey, 0, sizeof(downstreamKey));
+
     _state.seq = 0;
+    _dnSeq = 0;
     _state.startedAtMs = millis();
     _state.active = true;
 
@@ -712,6 +890,11 @@ namespace secure_session
     return true;
   }
 
+  void setCommandHandler(CommandHandler handler)
+  {
+    _commandHandler = handler;
+  }
+
   bool isActive()
   {
     if (!_state.active) return false;
@@ -741,7 +924,8 @@ namespace secure_session
     return true;
   }
 
-  bool sendFrame(const uint8_t *data, size_t len, uint32_t width, uint32_t height, FrameTiming *timing)
+  bool sendFrame(const uint8_t *data, size_t len, uint32_t width, uint32_t height,
+                 const uint8_t *telemetry, uint16_t telemetryLen, FrameTiming *timing)
   {
     if (timing != nullptr)
     {
@@ -751,7 +935,10 @@ namespace secure_session
 
     if (!isActive()) return false;
     if (data == nullptr || len == 0) return false;
-    if (RESOLUTION_HEADER_LEN + len > ENCRYPTION_BUFFER_SIZE) return false;
+    if (telemetry == nullptr) telemetryLen = 0;
+
+    size_t headerLen = RESOLUTION_HEADER_LEN + TELEMETRY_LEN_FIELD + telemetryLen;
+    if (headerLen + len > ENCRYPTION_BUFFER_SIZE) return false;
     if (_freeSlots == nullptr || _readyFrames == nullptr) return false;
 
     size_t slot;
@@ -765,12 +952,17 @@ namespace secure_session
     f.buf = _encPool[slot];
     f.poolIdx = slot;
 
-    size_t plainLen = RESOLUTION_HEADER_LEN + len;
+    size_t plainLen = headerLen + len;
     f.cipherLen = plainLen;
 
     writeBE32(f.buf, width);
     writeBE32(f.buf + 4, height);
-    memcpy(f.buf + RESOLUTION_HEADER_LEN, data, len);
+    writeBE16(f.buf + RESOLUTION_HEADER_LEN, telemetryLen);
+    if (telemetryLen > 0)
+    {
+      memcpy(f.buf + RESOLUTION_HEADER_LEN + TELEMETRY_LEN_FIELD, telemetry, telemetryLen);
+    }
+    memcpy(f.buf + headerLen, data, len);
 
     _state.seq++;
     f.seq = _state.seq;

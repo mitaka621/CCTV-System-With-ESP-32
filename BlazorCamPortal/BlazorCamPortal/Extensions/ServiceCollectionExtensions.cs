@@ -6,8 +6,12 @@ using CamPortal.Contracts.Constants;
 using CamPortal.Core.BackgroundServices;
 using CamPortal.Core.LoggerProviders.DatabaseLogger;
 using CamPortal.Core.Services.Devices;
+using CamPortal.Core.Services.DeviceSessionHandlers;
 using CamPortal.Core.Services.Provisioning;
+using CamPortal.Core.Services.SecureStreaming;
+using CamPortal.Core.Services.Security;
 using CamPortal.Core.Services.SystemSettings;
+using CamPortal.Core.Services.Telemetry;
 using CamPortal.Core.Services.Users;
 using CamPortal.Core.Services.Video;
 using CamPortal.Core.Utilities;
@@ -16,8 +20,11 @@ using CamPortal.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MudBlazor.Services;
+using MudExtensions.Services;
+using System.Net;
 using System.Threading.RateLimiting;
 
 namespace CamPortal.Extensions
@@ -27,6 +34,7 @@ namespace CamPortal.Extensions
         public static IServiceCollection AddServices(this IServiceCollection services)
         {
             services.AddMudServices();
+            services.AddMudExtensions();
 
             services.AddScoped<IUserTimeZoneService, UserTimeZoneService>();
 
@@ -67,11 +75,54 @@ namespace CamPortal.Extensions
             services.AddSingleton<VideoExportEncoderService>();
             services.AddSingleton<IVideoExportCanceller>(sp => sp.GetRequiredService<VideoExportEncoderService>());
 
-            services.AddHostedService<FramesReceiverTcpService>();
+            services.AddSingleton<ISecureHandshake, SecureHandshake>();
+            services.AddSingleton<CameraSessionHandler>();
+            services.AddSingleton<IDeviceSessionHandler>(sp => sp.GetRequiredService<CameraSessionHandler>());
+            services.AddSingleton<ICameraCommandDispatcher>(sp => sp.GetRequiredService<CameraSessionHandler>());
+
+            services.AddSingleton<CameraSecurityCoordinator>();
+            services.AddSingleton<ICameraSecurityCoordinator>(sp => sp.GetRequiredService<CameraSecurityCoordinator>());
+            services.AddSingleton<ICameraSecurityService>(sp => sp.GetRequiredService<CameraSecurityCoordinator>());
+            services.AddSingleton<ICameraLiveTelemetry>(sp => sp.GetRequiredService<CameraSecurityCoordinator>());
+            services.AddSingleton<ICameraStatusNotifier>(sp => sp.GetRequiredService<CameraSecurityCoordinator>());
+
+            services.AddSingleton<ICameraTelemetryRepository, CameraTelemetryRepository>();
+            services.AddSingleton<ICameraTelemetryQueryService, CameraTelemetryQueryService>();
+
+            services.AddSingleton<CameraTelemetryQueue>();
+
+            services.AddHostedService<SecureTcpServer>();
             services.AddHostedService<VideoEncoderService>();
             services.AddHostedService<RawFrameProcessorService>();
             services.AddHostedService(sp => sp.GetRequiredService<VideoExportEncoderService>());
             services.AddHostedService<VideoRetentionCleanupService>();
+            services.AddHostedService<CameraTelemetryWriterService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddForwardedHeaders(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardLimit = 1;
+
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+
+                var knownProxies = configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>();
+                if (knownProxies is not null)
+                {
+                    foreach (var proxy in knownProxies)
+                    {
+                        if (IPAddress.TryParse(proxy, out var proxyAddress))
+                        {
+                            options.KnownProxies.Add(proxyAddress);
+                        }
+                    }
+                }
+            });
 
             return services;
         }

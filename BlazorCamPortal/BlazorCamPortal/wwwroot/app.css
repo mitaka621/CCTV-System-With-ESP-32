@@ -504,3 +504,13 @@ a,
 .mud-drawer-mini:hover {
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
+
+/* MudSelectExtended search box polish (popover renders outside component, so global) */
+.mud-list-subheader-extended {
+  background-color: var(--mud-palette-surface) !important;
+}
+
+.mud-list-subheader-extended > .mud-list-item-extended {
+  padding-top: 0;
+  padding-bottom: 4px;
+}

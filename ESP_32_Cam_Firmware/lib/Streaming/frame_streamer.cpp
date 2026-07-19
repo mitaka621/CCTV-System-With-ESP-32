@@ -4,7 +4,9 @@
 #include "secure_session.h"
 #include "camera_pins.h"
 #include "ir_cut_controller.h"
+#include "sensor_hub.h"
 #include <esp_camera.h>
+#include <math.h>
 
 namespace frame_streamer
 {
@@ -26,6 +28,106 @@ namespace frame_streamer
   };
 
   static StreamStats _stats = {};
+
+  static constexpr size_t TELEMETRY_PAYLOAD_LEN = 44;
+  static constexpr uint8_t TELEMETRY_VERSION = 2;
+
+  static uint8_t _telemetryBuf[TELEMETRY_PAYLOAD_LEN] = {TELEMETRY_VERSION};
+
+  static uint16_t clampU16(uint32_t v)
+  {
+    return v > 0xFFFF ? (uint16_t)0xFFFF : (uint16_t)v;
+  }
+
+  static void putBE16(uint8_t *p, uint16_t v)
+  {
+    p[0] = (uint8_t)(v >> 8);
+    p[1] = (uint8_t)v;
+  }
+
+  static void putBE32(uint8_t *p, uint32_t v)
+  {
+    p[0] = (uint8_t)(v >> 24);
+    p[1] = (uint8_t)(v >> 16);
+    p[2] = (uint8_t)(v >> 8);
+    p[3] = (uint8_t)v;
+  }
+
+  static void buildTelemetry(float fps,
+                             uint32_t avgCaptureMs, uint32_t maxCaptureMs,
+                             uint32_t avgEncryptMs, uint32_t maxEncryptMs,
+                             uint32_t avgSendMs, uint32_t maxSendMs,
+                             uint32_t avgKB, uint32_t maxKB,
+                             uint8_t bufReadyPct)
+  {
+    uint8_t *b = _telemetryBuf;
+    b[0] = TELEMETRY_VERSION;
+    putBE16(b + 1, (uint16_t)(fps * 10.0f + 0.5f));
+    putBE16(b + 3, clampU16(avgCaptureMs));
+    putBE16(b + 5, clampU16(maxCaptureMs));
+    putBE16(b + 7, clampU16(avgEncryptMs));
+    putBE16(b + 9, clampU16(maxEncryptMs));
+    putBE16(b + 11, clampU16(avgSendMs));
+    putBE16(b + 13, clampU16(maxSendMs));
+    putBE16(b + 15, clampU16(avgKB));
+    putBE16(b + 17, clampU16(maxKB));
+    b[19] = bufReadyPct;
+    putBE32(b + 20, _stats.frameCount);
+    putBE32(b + 24, _stats.failedSends);
+    putBE32(b + 28, _stats.captureFailures);
+
+    int16_t lightValue = ir_cut_controller::sensorPresent() ? (int16_t)ir_cut_controller::lastValue() : 0;
+    putBE16(b + 32, (uint16_t)lightValue);
+
+    uint8_t flags = 0;
+    if (ir_cut_controller::isNight())
+      flags |= 0x01;
+    if (ir_cut_controller::sensorPresent())
+      flags |= 0x02;
+    b[34] = flags;
+
+    int16_t tempCenti = 0;
+    uint16_t humCenti = 0;
+    int16_t dewCenti = 0;
+    if (sensor_hub::shtPresent())
+    {
+      tempCenti = (int16_t)lroundf(sensor_hub::temperatureC() * 100.0f);
+      humCenti = (uint16_t)lroundf(sensor_hub::humidityPct() * 100.0f);
+      dewCenti = (int16_t)lroundf(sensor_hub::dewPointC() * 100.0f);
+    }
+    putBE16(b + 35, (uint16_t)tempCenti);
+    putBE16(b + 37, humCenti);
+    putBE16(b + 39, (uint16_t)dewCenti);
+
+    uint8_t sensorFlags = 0;
+    if (sensor_hub::shtPresent())
+      sensorFlags |= 0x01;
+    if (sensor_hub::mpuPresent())
+      sensorFlags |= 0x02;
+    if (sensor_hub::caseSwitchPresent())
+      sensorFlags |= 0x04;
+    b[41] = sensorFlags;
+
+    uint8_t statusFlags = 0;
+    if (sensor_hub::isCaseOpen())
+      statusFlags |= 0x01;
+    if (sensor_hub::isMotionActive())
+      statusFlags |= 0x02;
+    b[42] = statusFlags;
+
+    b[43] = sensor_hub::motionEventMask();
+  }
+
+  static void refreshLiveSecurityTelemetry()
+  {
+    uint8_t statusFlags = 0;
+    if (sensor_hub::isCaseOpen())
+      statusFlags |= 0x01;
+    if (sensor_hub::isMotionActive())
+      statusFlags |= 0x02;
+    _telemetryBuf[42] = statusFlags;
+    _telemetryBuf[43] = sensor_hub::motionEventMask();
+  }
 
   static void resetStats(unsigned long now)
   {
@@ -58,11 +160,8 @@ namespace frame_streamer
     DEBUG_PRINT(buf);
   }
 
-  static void maybeLogStats()
+  static void maybeRefreshTelemetryAndLog()
   {
-    if (!DEBUG_ON)
-      return;
-
     unsigned long now = millis();
     if (_stats.windowStartMs == 0)
     {
@@ -74,14 +173,20 @@ namespace frame_streamer
 
     if (_stats.frameCount == 0)
     {
-      char buf[160];
-      snprintf(buf, sizeof(buf),
-               "[STREAM] no frames sent in last %lums | capture failures %u | fb_count %d",
-               (unsigned long)(now - _stats.windowStartMs),
-               _stats.captureFailures,
-               STREAM_CAMERA_FB_COUNT);
-      DEBUG_PRINT(buf);
-      logLightStatus();
+      buildTelemetry(0.0f, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+      if (DEBUG_ON)
+      {
+        char buf[160];
+        snprintf(buf, sizeof(buf),
+                 "[STREAM] no frames sent in last %lums | capture failures %u | fb_count %d",
+                 (unsigned long)(now - _stats.windowStartMs),
+                 _stats.captureFailures,
+                 STREAM_CAMERA_FB_COUNT);
+        DEBUG_PRINT(buf);
+        logLightStatus();
+      }
+
       resetStats(now);
       return;
     }
@@ -98,21 +203,47 @@ namespace frame_streamer
     uint32_t maxKB = _stats.frameBytesMax / 1024;
     float bufReadyPct = 100.0f * _stats.captureReady / _stats.frameCount;
 
-    char buf[256];
-    snprintf(buf, sizeof(buf),
-             "[STREAM] %.1f FPS | cap %u/%ums | enc %u/%ums | send %u/%ums | %uKB avg %uKB max | fb %d cap, bufReady %.0f%% | frames %u failed %u capFail %u",
-             fps,
-             avgCaptureMs, maxCaptureMs,
-             avgEncryptMs, maxEncryptMs,
-             avgSendMs, maxSendMs,
-             avgKB, maxKB,
-             STREAM_CAMERA_FB_COUNT,
-             bufReadyPct,
-             _stats.frameCount,
-             _stats.failedSends,
-             _stats.captureFailures);
-    DEBUG_PRINT(buf);
-    logLightStatus();
+    buildTelemetry(fps, avgCaptureMs, maxCaptureMs, avgEncryptMs, maxEncryptMs,
+                   avgSendMs, maxSendMs, avgKB, maxKB, (uint8_t)(bufReadyPct + 0.5f));
+
+    if (DEBUG_ON)
+    {
+      char buf[256];
+      snprintf(buf, sizeof(buf),
+               "[STREAM] %.1f FPS | cap %u/%ums | enc %u/%ums | send %u/%ums | %uKB avg %uKB max | fb %d cap, bufReady %.0f%% | frames %u failed %u capFail %u",
+               fps,
+               avgCaptureMs, maxCaptureMs,
+               avgEncryptMs, maxEncryptMs,
+               avgSendMs, maxSendMs,
+               avgKB, maxKB,
+               STREAM_CAMERA_FB_COUNT,
+               bufReadyPct,
+               _stats.frameCount,
+               _stats.failedSends,
+               _stats.captureFailures);
+      DEBUG_PRINT(buf);
+
+      uint8_t evt = sensor_hub::motionEventMask();
+      char sbuf[224];
+      snprintf(sbuf, sizeof(sbuf),
+               "[SENSORS] temp %.1fC | hum %.1f%% | dew %.1fC | case %s | motion %s | evt 0x%02X%s%s%s%s | sht %d mpu %d sw %d",
+               sensor_hub::temperatureC(),
+               sensor_hub::humidityPct(),
+               sensor_hub::dewPointC(),
+               sensor_hub::isCaseOpen() ? "OPEN" : "closed",
+               sensor_hub::isMotionActive() ? "ACTIVE" : "idle",
+               evt,
+               (evt & sensor_hub::EVT_MOVE) ? " MOVE" : "",
+               (evt & sensor_hub::EVT_IMPACT) ? " IMPACT" : "",
+               (evt & sensor_hub::EVT_FALL) ? " FALL" : "",
+               (evt & sensor_hub::EVT_ROTATE) ? " ROTATE" : "",
+               sensor_hub::shtPresent(),
+               sensor_hub::mpuPresent(),
+               sensor_hub::caseSwitchPresent());
+      DEBUG_PRINT(sbuf);
+
+      logLightStatus();
+    }
 
     resetStats(now);
   }
@@ -204,6 +335,8 @@ namespace frame_streamer
       return;
     }
 
+    maybeRefreshTelemetryAndLog();
+
     unsigned long captureStartUs = micros();
     camera_fb_t *fb = esp_camera_fb_get();
     uint32_t captureUs = (uint32_t)(micros() - captureStartUs);
@@ -212,13 +345,15 @@ namespace frame_streamer
     {
       DEBUG_PRINT("Camera capture failed");
       _stats.captureFailures++;
-      maybeLogStats();
       delay(20);
       return;
     }
 
+    refreshLiveSecurityTelemetry();
+
     secure_session::FrameTiming timing = {};
-    bool sendOk = secure_session::sendFrame(fb->buf, fb->len, (uint32_t)fb->width, (uint32_t)fb->height, &timing);
+    bool sendOk = secure_session::sendFrame(fb->buf, fb->len, (uint32_t)fb->width, (uint32_t)fb->height,
+                                            _telemetryBuf, (uint16_t)TELEMETRY_PAYLOAD_LEN, &timing);
     if (!sendOk)
     {
       DEBUG_PRINT("Secure frame send failed");
@@ -242,7 +377,5 @@ namespace frame_streamer
       _stats.frameBytesMax = (uint32_t)fb->len;
 
     esp_camera_fb_return(fb);
-
-    maybeLogStats();
   }
 }

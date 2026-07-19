@@ -1,5 +1,4 @@
 #include "config.h"
-#include "secrets.h"
 #include "led_indicator.h"
 #include "status_led.h"
 #include "secret_store.h"
@@ -8,7 +7,11 @@
 #include "preprovision_client.h"
 #include "frame_streamer.h"
 #include "ir_cut_controller.h"
+#include "sensor_hub.h"
+#include "buzzer.h"
+#include "secure_session.h"
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <nvs_flash.h>
 
 enum AppState
@@ -33,6 +36,51 @@ static bool _resetButtonHeld = false;
 
 static unsigned long _preprovisionRetryAt = 0;
 static unsigned long _sessionRetryAt = 0;
+
+static void applyNewConfig(const uint8_t *json, size_t len)
+{
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, json, len);
+  if (err)
+  {
+    DEBUG_PRINT(String("Config: parse failed ") + err.c_str());
+    return;
+  }
+
+  bool caseSensor = doc["caseSensor"] | true;
+  float moveOffset = doc["moveOffset"] | 0.0f;
+  float rotateOffset = doc["rotateOffset"] | 0.0f;
+
+  DEBUG_PRINT(String("Config: caseSensor=") + (caseSensor ? "1" : "0") +
+              " moveOffset=" + String(moveOffset, 2) +
+              " rotateOffset=" + String(rotateOffset, 2));
+
+  sensor_hub::setCaseSwitchInstalled(caseSensor);
+  sensor_hub::setMotionTuning(moveOffset, rotateOffset);
+}
+
+static void onCameraCommand(secure_session::CameraCommand command, const uint8_t *payload, size_t payloadLen)
+{
+  switch (command)
+  {
+  case secure_session::CameraCommand::ResetSecurityAlarm:
+    DEBUG_PRINT("Command: reset security alarm");
+    sensor_hub::resetMotion();
+    buzzer::setActive(false);
+    break;
+  case secure_session::CameraCommand::ActivateBuzzerAlarm:
+    DEBUG_PRINT("Command: trigger security alarm");
+    buzzer::setActive(true);
+    break;
+  case secure_session::CameraCommand::SaveNewConfig:
+    DEBUG_PRINT("Command: save new config");
+    applyNewConfig(payload, payloadLen);
+    break;
+  default:
+    DEBUG_PRINT(String("Command: unknown code ") + (int)command);
+    break;
+  }
+}
 
 static void handleResetButton()
 {
@@ -119,6 +167,9 @@ void setup()
   led_indicator::setState(led_indicator::BOOTING);
   status_led::begin();
   ir_cut_controller::begin();
+  sensor_hub::begin();
+  buzzer::begin();
+  secure_session::setCommandHandler(onCameraCommand);
 
   if (!secret_store::begin())
   {

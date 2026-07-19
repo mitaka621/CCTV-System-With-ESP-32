@@ -132,3 +132,5 @@ obj/**/staticwebassets.runtime.json
 /BlazorCamPortal/BlazorCamPortal/data
 /BlazorCamPortal/BlazorCamPortal/device-type-icons
 /BlazorCamPortal/BlazorCamPortal/exports
+/ESP_32_Cam_Firmware/.clangd
+/ESP_32_Cam_Firmware/compile_commands.json

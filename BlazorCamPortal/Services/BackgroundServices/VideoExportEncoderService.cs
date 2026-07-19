@@ -69,7 +69,7 @@ namespace CamPortal.Core.BackgroundServices
 
                 if (_userCancelledExportIds.ContainsKey(exportId))
                 {
-                    exportCts.Cancel();
+                    await exportCts.CancelAsync();
                 }
 
                 try

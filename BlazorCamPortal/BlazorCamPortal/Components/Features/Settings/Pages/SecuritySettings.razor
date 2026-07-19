@@ -1,0 +1,98 @@
+@page "/system/settings/security"
+@rendermode InteractiveServer
+
+@using CamPortal.Contracts.Constants
+@using CamPortal.Contracts.Dtos.SystemSettingsDtos
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize(Roles = Roles.Admin)]
+
+@inject ISystemSettingsService _systemSettingsService
+@inject ICameraSecurityService _securityService
+@inject ISnackbar _snackbar
+
+<PageTitle>Security Thresholds - BlazorCam Portal</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Shield" Color="Color.Primary" />
+            <MudText Typo="Typo.h4">Security Thresholds</MudText>
+        </MudStack>
+
+        <MudCard Elevation="4" Style="width:800px;">
+            <MudCardContent>
+                <MudStack Spacing="4">
+                    <MudNumericField T="int"
+                                     Label="Minimum acceptable FPS"
+                                     @bind-Value="_settings.SecurityMinFps"
+                                     Min="0" Max="120"
+                                     HelperText="A camera streaming below this frame rate is flagged with an orange warning." />
+
+                    <MudNumericField T="double"
+                                     Label="Maximum temperature (C)"
+                                     @bind-Value="_settings.SecurityMaxTemperatureC"
+                                     Min="-40" Max="125"
+                                     HelperText="Housing temperature above this value raises a warning." />
+
+                    <MudNumericField T="double"
+                                     Label="Maximum humidity (%)"
+                                     @bind-Value="_settings.SecurityMaxHumidityPercent"
+                                     Min="0" Max="100"
+                                     HelperText="Housing humidity above this value raises a warning." />
+                </MudStack>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="SaveAsync"
+                           Disabled="_isSaving">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Saving</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Save</MudText>
+                    }
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private SystemSettingsDto _settings = new();
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await _systemSettingsService.GetSystemSettingsAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+
+        try
+        {
+            var success = await _systemSettingsService.UpdateSystemSettingsAsync(_settings);
+
+            if (success)
+            {
+                await _securityService.RefreshThresholdsAsync();
+                _snackbar.Add("Security thresholds saved.", Severity.Success);
+            }
+            else
+            {
+                _snackbar.Add("Failed to save security thresholds.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

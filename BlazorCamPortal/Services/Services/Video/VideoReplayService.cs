@@ -119,7 +119,12 @@ namespace CamPortal.Core.Services.Video
             await GeneratePlaceholderChunksForMissingOnesAsync(missingDurations);
 
             return fullTimeline
-                .Select(x => _storageLocationService.GetChunkFullPath(x.CameraFolder!, x.FileName))
+                .Select(x =>
+                {
+                    _storageLocationService.TryGetCameraChunkFullPath(x.CameraFolder!, x.FileName, out var fullPath);
+
+                    return fullPath;
+                })
                 .ToList();
         }
 
@@ -271,7 +276,7 @@ namespace CamPortal.Core.Services.Video
 
                 fullTimeline.Add(new VideoChunkShortInfoDto
                 {
-                    FileName = Path.GetFileName(chunk.FileName),
+                    FileName = chunk.FileName,
                     CameraFolder = cameraId.ToString(),
                     ChunkStartTime = chunk.ChunkStartTime,
                     ChunkEndTime = chunk.ChunkEndTime

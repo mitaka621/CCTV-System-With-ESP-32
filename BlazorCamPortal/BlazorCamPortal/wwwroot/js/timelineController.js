@@ -240,4 +240,35 @@ window.initTimelineForCamera = function (
   slider.addEventListener("pointercancel", () => setScrubbing(cameraId, false));
   syncCheckbox?.addEventListener("change", () => onSyncCheckboxChange(cameraId));
   video.addEventListener("timeupdate", () => onVideoTimeUpdate(cameraId));
+
+  const container = video.closest(".video-container");
+  let loaderTimeout = null;
+
+  const setLoading = (isLoading) => {
+    if (!container) {
+      return;
+    }
+
+    if (isLoading) {
+      if (loaderTimeout === null) {
+        loaderTimeout = setTimeout(() => {
+          container.classList.add("is-loading");
+          loaderTimeout = null;
+        }, 120);
+      }
+      return;
+    }
+
+    if (loaderTimeout !== null) {
+      clearTimeout(loaderTimeout);
+      loaderTimeout = null;
+    }
+    container.classList.remove("is-loading");
+  };
+
+  video.addEventListener("seeking", () => setLoading(true));
+  video.addEventListener("waiting", () => setLoading(true));
+  video.addEventListener("seeked", () => setLoading(false));
+  video.addEventListener("playing", () => setLoading(false));
+  video.addEventListener("canplay", () => setLoading(false));
 };

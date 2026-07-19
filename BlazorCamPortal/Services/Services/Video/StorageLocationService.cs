@@ -49,9 +49,14 @@ namespace CamPortal.Core.Services.Video
             return Path.Combine(_footageRoot, cameraId.ToString());
         }
 
-        public string GetChunkFullPath(string cameraFolder, string chunkName)
+        public string GetCameraChunkStagingDirectory(Guid cameraId)
         {
-            return Path.Combine(_footageRoot, cameraFolder, chunkName);
+            return Path.Combine(GetCameraChunkDirectory(cameraId), "_staging");
+        }
+
+        public string GetCameraChunkDayDirectory(Guid cameraId, DateTime utcDate)
+        {
+            return Path.Combine(GetCameraChunkDirectory(cameraId), utcDate.ToString("yyyy-MM-dd"));
         }
 
         public string GetPlaceholderChunkFileName(double durationSeconds)
@@ -79,23 +84,19 @@ namespace CamPortal.Core.Services.Video
             return $"{_exportBaseApiUrl}{exportFileName}";
         }
 
-        public bool TryGetChunkFullPath(string cameraFolder, string chunkName, out string fullPath)
+        public bool TryGetCameraChunkFullPath(string cameraFolder, string fileName, out string fullPath)
         {
             fullPath = string.Empty;
 
-            if (!IsSafeSegment(cameraFolder) || !IsSafeSegment(chunkName))
+            if (!IsSafeSegment(cameraFolder) || !IsSafeSegment(fileName))
             {
                 return false;
             }
 
-            var candidate = Path.GetFullPath(Path.Combine(_footageRoot, cameraFolder, chunkName));
+            fullPath = cameraFolder == _placeholderFolderName
+                ? Path.Combine(_footageRoot, _placeholderFolderName, fileName)
+                : Path.Combine(_footageRoot, cameraFolder, GetChunkDayFolder(fileName), fileName);
 
-            if (!IsWithin(_footageRoot, candidate))
-            {
-                return false;
-            }
-
-            fullPath = candidate;
             return true;
         }
 
@@ -108,15 +109,16 @@ namespace CamPortal.Core.Services.Video
                 return false;
             }
 
-            var candidate = Path.GetFullPath(Path.Combine(_exportsRoot, exportFileName));
-
-            if (!IsWithin(_exportsRoot, candidate))
-            {
-                return false;
-            }
-
-            fullPath = candidate;
+            fullPath = Path.Combine(_exportsRoot, exportFileName);
             return true;
+        }
+
+        private static string GetChunkDayFolder(string fileName)
+        {
+            const string marker = "_=";
+            var start = fileName.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
+
+            return fileName.Substring(start, 10);
         }
 
         private static string ResolveRoot(string configuredRoot)
@@ -131,17 +133,7 @@ namespace CamPortal.Core.Services.Video
 
         private static bool IsSafeSegment(string segment)
         {
-            if (string.IsNullOrWhiteSpace(segment))
-            {
-                return false;
-            }
-
-            if (segment.Contains("..", StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (segment.IndexOf('/') >= 0 || segment.IndexOf('\\') >= 0)
+            if (string.IsNullOrWhiteSpace(segment) || segment.Contains("..", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -152,15 +144,6 @@ namespace CamPortal.Core.Services.Video
             }
 
             return Path.GetFileName(segment) == segment;
-        }
-
-        private static bool IsWithin(string root, string candidate)
-        {
-            var normalizedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-            var normalizedCandidate = Path.GetFullPath(candidate);
-
-            return string.Equals(normalizedCandidate, normalizedRoot, StringComparison.OrdinalIgnoreCase)
-                || normalizedCandidate.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

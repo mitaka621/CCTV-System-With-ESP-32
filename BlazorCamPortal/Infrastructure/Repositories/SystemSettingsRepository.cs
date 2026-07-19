@@ -31,7 +31,10 @@ namespace CamPortal.Infrastructure.Repositories
             return new SystemSettingsDto
             {
                 EncodedVideoRetention = settings.EncodedVideoRetention,
-                CameraChunkRetention = settings.CameraChunkRetention
+                CameraChunkRetention = settings.CameraChunkRetention,
+                SecurityMinFps = settings.SecurityMinFps,
+                SecurityMaxTemperatureC = settings.SecurityMaxTemperatureC,
+                SecurityMaxHumidityPercent = settings.SecurityMaxHumidityPercent
             };
         }
 
@@ -43,7 +46,10 @@ namespace CamPortal.Infrastructure.Repositories
                 .Where(x => x.Id == CamPortalDBContext.SystemSettingsId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.EncodedVideoRetention, systemSettingsDto.EncodedVideoRetention)
-                    .SetProperty(x => x.CameraChunkRetention, systemSettingsDto.CameraChunkRetention));
+                    .SetProperty(x => x.CameraChunkRetention, systemSettingsDto.CameraChunkRetention)
+                    .SetProperty(x => x.SecurityMinFps, systemSettingsDto.SecurityMinFps)
+                    .SetProperty(x => x.SecurityMaxTemperatureC, systemSettingsDto.SecurityMaxTemperatureC)
+                    .SetProperty(x => x.SecurityMaxHumidityPercent, systemSettingsDto.SecurityMaxHumidityPercent));
 
             if (updated > 0)
             {
@@ -54,7 +60,10 @@ namespace CamPortal.Infrastructure.Repositories
             {
                 Id = CamPortalDBContext.SystemSettingsId,
                 EncodedVideoRetention = systemSettingsDto.EncodedVideoRetention,
-                CameraChunkRetention = systemSettingsDto.CameraChunkRetention
+                CameraChunkRetention = systemSettingsDto.CameraChunkRetention,
+                SecurityMinFps = systemSettingsDto.SecurityMinFps,
+                SecurityMaxTemperatureC = systemSettingsDto.SecurityMaxTemperatureC,
+                SecurityMaxHumidityPercent = systemSettingsDto.SecurityMaxHumidityPercent
             });
 
             return await db.SaveChangesAsync() > 0;

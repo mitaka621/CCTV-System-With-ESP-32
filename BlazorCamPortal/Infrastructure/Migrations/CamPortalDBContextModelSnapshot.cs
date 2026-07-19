@@ -33,6 +33,9 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<int>("CameraAspectRatio")
                         .HasColumnType("int");
 
+                    b.Property<bool>("CaseSensorInstalled")
+                        .HasColumnType("bit");
+
                     b.Property<float>("Contrast")
                         .HasColumnType("real");
 
@@ -42,11 +45,20 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<float>("FrameRotation")
                         .HasColumnType("real");
 
+                    b.Property<double>("MovementThresholdOffset")
+                        .HasColumnType("float");
+
                     b.Property<int>("ResolutionHeight")
                         .HasColumnType("int");
 
                     b.Property<int>("ResolutionWidth")
                         .HasColumnType("int");
+
+                    b.Property<double>("RotationThresholdOffset")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("SecurityArmed")
+                        .HasColumnType("bit");
 
                     b.Property<float>("SharpenFactor")
                         .HasColumnType("real");
@@ -63,6 +75,97 @@ namespace CamPortal.Infrastructure.Migrations
                     b.HasKey("DeviceId");
 
                     b.ToTable("CameraConfigurations");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.CameraTelemetry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AvgCaptureMs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AvgEncryptMs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AvgFrameKB")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AvgSendMs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BufferReadyPercent")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("CameraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("CaptureFailures")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("CaseOpen")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("DewPointC")
+                        .HasColumnType("float");
+
+                    b.Property<long>("FailedSends")
+                        .HasColumnType("bigint");
+
+                    b.Property<double>("Fps")
+                        .HasColumnType("float");
+
+                    b.Property<long>("FrameCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<double>("HumidityPercent")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsNight")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("LightSensorPresent")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LightSensorValue")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxCaptureMs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxEncryptMs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxFrameKB")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxSendMs")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("MotionActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MotionEvents")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("MotionSensorPresent")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TempHumiditySensorPresent")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("TemperatureC")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CameraId", "TimestampUtc");
+
+                    b.ToTable("CameraTelemetry");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
@@ -322,6 +425,15 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<int>("EncodedVideoRetention")
                         .HasColumnType("int");
 
+                    b.Property<double>("SecurityMaxHumidityPercent")
+                        .HasColumnType("float");
+
+                    b.Property<double>("SecurityMaxTemperatureC")
+                        .HasColumnType("float");
+
+                    b.Property<int>("SecurityMinFps")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemSettings");
@@ -331,7 +443,10 @@ namespace CamPortal.Infrastructure.Migrations
                         {
                             Id = new Guid("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d"),
                             CameraChunkRetention = 3,
-                            EncodedVideoRetention = 5
+                            EncodedVideoRetention = 5,
+                            SecurityMaxHumidityPercent = 70.0,
+                            SecurityMaxTemperatureC = 90.0,
+                            SecurityMinFps = 4
                         });
                 });
 
@@ -475,6 +590,17 @@ namespace CamPortal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Device");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.CameraTelemetry", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Camera")
+                        .WithMany()
+                        .HasForeignKey("CameraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Camera");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>

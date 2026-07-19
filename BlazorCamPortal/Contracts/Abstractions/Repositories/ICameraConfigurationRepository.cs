@@ -1,5 +1,6 @@
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
+using CamPortal.Contracts.Dtos.SecurityDtos;
 using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Contracts.Abstractions.Repositories
@@ -17,5 +18,13 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<CameraStreamingConfigurationDto?> GetCameraConfigurationAsync(Guid deviceId);
 
         Task<CameraResolutionDto?> GetCameraResolutionAsync(Guid deviceId);
+
+        Task<bool> SetSecurityArmedAsync(Guid deviceId, bool armed);
+
+        Task<bool> SetCaseSensorInstalledAsync(Guid deviceId, bool installed);
+
+        Task<bool> SetMovementThresholdsAsync(Guid deviceId, double movementThresholdOffset, double rotationThresholdOffset);
+
+        Task<DeviceSecurityConfigDto?> GetDeviceSecurityConfigAsync(Guid deviceId);
     }
 }

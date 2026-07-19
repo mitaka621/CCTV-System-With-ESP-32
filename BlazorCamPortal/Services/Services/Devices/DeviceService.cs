@@ -14,13 +14,11 @@ namespace CamPortal.Core.Services.Devices
     {
         private readonly IDeviceRepository _deviceRepository;
         private readonly IMapper _mapper;
-        private readonly IDeviceAuthenticatorService _deviceAuthenticatorService;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly IActiveCameraConnections _activeCameraConnections;
         private readonly IDeviceTypeRepository _deviceTypeRepository;
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
-
-        private readonly int _sessionTokenDurationInMinutes;
+        private readonly ICameraCommandDispatcher _cameraCommandDispatcher;
 
         public DeviceService(
             IDeviceRepository cameraRepository,
@@ -30,19 +28,16 @@ namespace CamPortal.Core.Services.Devices
             ICameraFramesManagerService cameraFramesManagerService,
             IActiveCameraConnections activeCameraConnections,
             IDeviceTypeRepository deviceTypeRepository,
-            ICameraConfigurationRepository cameraConfigurationRepository)
+            ICameraConfigurationRepository cameraConfigurationRepository,
+            ICameraCommandDispatcher cameraCommandDispatcher)
         {
             _deviceRepository = cameraRepository;
             _mapper = mapper;
-            _deviceAuthenticatorService = deviceAuthenticatorService;
             _cameraFramesManagerService = cameraFramesManagerService;
             _activeCameraConnections = activeCameraConnections;
             _deviceTypeRepository = deviceTypeRepository;
             _cameraConfigurationRepository = cameraConfigurationRepository;
-
-            _sessionTokenDurationInMinutes = int.Parse(configuration
-                .GetSection("ESPCamera")["SessionTokenDurationInMinutes"]
-                    ?? throw new ArgumentNullException("SessionTokenDurationInMinutes not set in config"));
+            _cameraCommandDispatcher = cameraCommandDispatcher;
         }
 
 
@@ -110,6 +105,11 @@ namespace CamPortal.Core.Services.Devices
             //and avoid the case where the camera is still considered paired in some services but not in others,
             //which can cause issues with the camera connection and pairing process
             InvalidateCamera(cameraId);
+
+            if (newStatus == DevicePairStatus.Removed)
+            {
+                _cameraCommandDispatcher.RemoveCamera(cameraId);
+            }
         }
 
         public async Task<List<NameAndIdWithStatusModel>> GetAllCameraNameAndIdAsync()
@@ -140,6 +140,7 @@ namespace CamPortal.Core.Services.Devices
         public async Task<bool> DeleteDeviceAsync(Guid deviceId)
         {
             InvalidateCamera(deviceId);
+            _cameraCommandDispatcher.RemoveCamera(deviceId);
             return await _deviceRepository.DeleteDeviceAsync(deviceId);
         }
 

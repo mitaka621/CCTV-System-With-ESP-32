@@ -8,7 +8,9 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         string GetCameraChunkDirectory(Guid cameraId);
 
-        string GetChunkFullPath(string cameraFolder, string chunkName);
+        string GetCameraChunkStagingDirectory(Guid cameraId);
+
+        string GetCameraChunkDayDirectory(Guid cameraId, DateTime utcDate);
 
         string GetPlaceholderChunkFileName(double durationSeconds);
 
@@ -20,7 +22,7 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         string BuildExportUrl(string exportFileName);
 
-        bool TryGetChunkFullPath(string cameraFolder, string chunkName, out string fullPath);
+        bool TryGetCameraChunkFullPath(string cameraFolder, string fileName, out string fullPath);
 
         bool TryGetExportFullPath(string exportFileName, out string fullPath);
     }

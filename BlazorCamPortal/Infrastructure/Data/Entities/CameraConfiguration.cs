@@ -33,5 +33,13 @@ namespace CamPortal.Infrastructure.Data.Entities
         public int ResolutionWidth { get; set; } = 0;
 
         public int ResolutionHeight { get; set; } = 0;
+
+        public bool SecurityArmed { get; set; }
+
+        public bool CaseSensorInstalled { get; set; } = true;
+
+        public double MovementThresholdOffset { get; set; }
+
+        public double RotationThresholdOffset { get; set; }
     }
 }

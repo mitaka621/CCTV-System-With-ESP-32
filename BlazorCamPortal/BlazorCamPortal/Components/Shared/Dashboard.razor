@@ -62,10 +62,12 @@
 @code {
     [Inject] IDialogService _dialogService { get; set; } = default!;
 
-    int activeCameras = 0;
-    int totalCameras = 0;
-    double storageUsedInGB = 0;
-    int totalUsers = 0;
+    private int defaultRefreshInterval = 5;
+
+    private int activeCameras = 0;
+    private int totalCameras = 0;
+    private double storageUsedInGB = 0;
+    private int totalUsers = 0;
 
     private Dictionary<string, (PeriodicTimer timer, CancellationTokenSource cts)> _timers = new();
     private Dictionary<string, int> _refreshIntervalsInMinutes = new();
@@ -76,6 +78,10 @@
         await RefreshTotalCameras();
         await RefreshStorageUsed();
         totalUsers = await _userManagementService.GetTotalUsersAsync();
+
+        SetInterval(nameof(activeCameras), defaultRefreshInterval);
+        SetInterval(nameof(totalCameras), defaultRefreshInterval);
+        SetInterval(nameof(storageUsedInGB), defaultRefreshInterval);
     }
 
     private async Task RefreshActiveCameras()

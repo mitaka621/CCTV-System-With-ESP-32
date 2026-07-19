@@ -6,9 +6,6 @@
 
 namespace ir_cut_controller
 {
-  static const int RELAY_ACTIVE = IR_CUT_RELAY_ACTIVE_HIGH ? HIGH : LOW;
-  static const int RELAY_IDLE = IR_CUT_RELAY_ACTIVE_HIGH ? LOW : HIGH;
-
   static bool _isNight = false;
   static bool _stateKnown = false;
   static bool _sensorPresent = false;
@@ -17,17 +14,18 @@ namespace ir_cut_controller
   static unsigned long _lastSampleMs = 0;
 
   static volatile bool _pulseActive = false;
-  static volatile int _pulsePin = -1;
   static esp_timer_handle_t _pulseTimer = nullptr;
+
+  static void driveIdle()
+  {
+    digitalWrite(IR_CUT_IN1_PIN, LOW);
+    digitalWrite(IR_CUT_IN2_PIN, LOW);
+  }
 
   static void endPulse(void *arg)
   {
-    if (_pulsePin >= 0)
-    {
-      digitalWrite(_pulsePin, RELAY_IDLE);
-    }
+    driveIdle();
     _pulseActive = false;
-    _pulsePin = -1;
   }
 
   static bool detectSensor()
@@ -62,23 +60,29 @@ namespace ir_cut_controller
     return (int)(sum / 8);
   }
 
-  static void startPulse(int pin)
+  static void startPulse(bool night)
   {
     esp_timer_stop(_pulseTimer);
+    driveIdle();
 
-    if (_pulseActive && _pulsePin != pin && _pulsePin >= 0)
+    if (night)
     {
-      digitalWrite(_pulsePin, RELAY_IDLE);
+      digitalWrite(IR_CUT_IN2_PIN, HIGH);
+    }
+    else
+    {
+      digitalWrite(IR_CUT_IN1_PIN, HIGH);
     }
 
-    _pulsePin = pin;
     _pulseActive = true;
-    digitalWrite(pin, RELAY_ACTIVE);
-    esp_timer_start_once(_pulseTimer, (uint64_t)IR_CUT_RELAY_PULSE_MS * 1000ULL);
+    esp_timer_start_once(_pulseTimer, (uint64_t)IR_CUT_PULSE_MS * 1000ULL);
 
     if (DEBUG_ON)
     {
-      Serial.printf("IR-cut: pulsing relay GPIO%d -> level %d for %dms\n", pin, RELAY_ACTIVE, IR_CUT_RELAY_PULSE_MS);
+      Serial.printf("IR-cut: pulsing MX1508 %s (GPIO%d) for %dms\n",
+                    night ? "NIGHT/IN2" : "DAY/IN1",
+                    night ? IR_CUT_IN2_PIN : IR_CUT_IN1_PIN,
+                    IR_CUT_PULSE_MS);
     }
   }
 
@@ -96,40 +100,36 @@ namespace ir_cut_controller
   {
     _isNight = night;
     _stateKnown = true;
-    startPulse(night ? IR_CUT_NIGHT_RELAY_PIN : IR_CUT_DAY_RELAY_PIN);
+    startPulse(night);
     applyColorMode();
   }
 
   static void relayTestTask(void *param)
   {
-    bool level = false;
+    bool night = false;
     for (;;)
     {
-      int out = level ? HIGH : LOW;
-      digitalWrite(IR_CUT_NIGHT_RELAY_PIN, out);
-      digitalWrite(IR_CUT_DAY_RELAY_PIN, out);
-      Serial.printf("IR-cut TEST: GPIO%d & GPIO%d -> %s\n",
-                    IR_CUT_NIGHT_RELAY_PIN, IR_CUT_DAY_RELAY_PIN, out == HIGH ? "HIGH (3.3V)" : "LOW (0V)");
-      level = !level;
-      vTaskDelay(pdMS_TO_TICKS(IR_CUT_RELAY_TEST_INTERVAL_MS));
+      startPulse(night);
+      Serial.printf("IR-cut TEST: pulsing %s\n", night ? "NIGHT/IN2" : "DAY/IN1");
+      night = !night;
+      vTaskDelay(pdMS_TO_TICKS(IR_CUT_TEST_INTERVAL_MS));
     }
   }
 
   void begin()
   {
-    pinMode(IR_CUT_NIGHT_RELAY_PIN, OUTPUT);
-    pinMode(IR_CUT_DAY_RELAY_PIN, OUTPUT);
-    digitalWrite(IR_CUT_NIGHT_RELAY_PIN, RELAY_IDLE);
-    digitalWrite(IR_CUT_DAY_RELAY_PIN, RELAY_IDLE);
+    pinMode(IR_CUT_IN1_PIN, OUTPUT);
+    pinMode(IR_CUT_IN2_PIN, OUTPUT);
+    driveIdle();
 
     esp_timer_create_args_t timerArgs = {};
     timerArgs.callback = &endPulse;
     timerArgs.name = "ircut_pulse";
     esp_timer_create(&timerArgs, &_pulseTimer);
 
-    if (IR_CUT_RELAY_TEST_MODE)
+    if (IR_CUT_TEST_MODE)
     {
-      DEBUG_PRINT("IR-cut: TEST MODE - background task toggling both relays every 3s");
+      DEBUG_PRINT("IR-cut: TEST MODE - background task pulsing MX1508 directions");
       xTaskCreate(relayTestTask, "relayTest", 3072, NULL, 1, NULL);
       return;
     }

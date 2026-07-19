@@ -1,0 +1,333 @@
+@using CamPortal.Contracts.Dtos.SecurityDtos
+@using CamPortal.Contracts.Dtos.SystemSettingsDtos
+@using CamPortal.Contracts.Enums
+
+@implements IDisposable
+
+@inject ICameraSecurityService _securityService
+@inject ICameraStatusNotifier _statusNotifier
+@inject ISnackbar _snackbar
+@inject ISystemSettingsService _systemSettings
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Security" Color="@(_status.AlarmActive ? Color.Error : Color.Primary)" />
+            <MudText Typo="Typo.h6">Security Telemetry - @CameraName</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.End" Class="mb-2">
+            <MudStack Row="true">
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.NotificationsActive" Style="height: 40px;"
+                           OnClick="TriggerAsync">
+                    Test alarm
+                </MudButton>
+                <MudButton Disabled="!_status.AlarmActive" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.NotificationsOff" Style="height: 40px;"
+                           OnClick="ResetAsync">
+                    Reset alarm
+                </MudButton>
+            </MudStack>
+            <div class="border-solid border-2 @(!_status.SecurityArmed ? "mud-border-error" : "mud-border-success") pa-1" style="min-width:320px; width: fit-content; border-radius:5px">
+                <MudSwitch T="bool" Value="_status.SecurityArmed" ValueChanged="OnArmChanged" Color="Color.Primary"
+                           Label="@(_status.SecurityArmed ? "Security armed" : "Security disarmed (maintenance)")" />
+            </div>
+        </MudStack>
+        @if (_status.AlarmActive)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3" Icon="@Icons.Material.Filled.GppBad">
+                Tampering detected. All camera buzzers are sounding until this alarm is reset.
+            </MudAlert>
+        }
+        <MudStack Spacing="3">
+            <MudPaper Height="20" Outlined="true" Style="position:relative; height:200px">
+                <MudStack Justify="Justify.Center" Style="height:100%">
+                    <MudStack Row="true" Class="mx-4" Spacing="5">
+                        <MudPaper Style="background-color: var(--mud-palette-success); height:150px; width:230px; border-radius: 20px">
+                            <MudStack Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mx-2" style="height:100%; position:relative">
+                                <MudIcon Size="Size.Large" Icon="@Icons.Material.Filled.DeviceThermostat" Style="font-size: 4em;"></MudIcon>
+                                <MudText style="font-size: 1.1rem; font-weight: 800; text-align:center">Environment Inside Camera Enclosure</MudText>
+                                <MudTooltip Placement="Placement.Top">
+                                    <ChildContent>
+                                        <MudIconButton Size="Size.Small" Color="Color.Inherit" Style="position:absolute; top:7px; right:0" Icon="@Icons.Material.Outlined.Info" />
+                                    </ChildContent>
+                                    <TooltipContent>
+                                        <MudText Typo="Typo.body2"><b>SHT31-D sensor placed inside the camera enclosure.</b></MudText>
+                                        <MudText Typo="Typo.body2">Used to monitor the camera's internal envoronment</MudText>
+                                        <MudText Typo="Typo.body2">in order to detect water leaks in the sealent and </MudText>
+                                        <MudText Typo="Typo.body2">monitor tempreture anomalyies.</MudText>
+                                    </TooltipContent>
+                                </MudTooltip>
+                            </MudStack>
+                        </MudPaper>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width:100%;">
+                            @if (!_status.HasTelemetry || !_status.TempHumiditySensorPresent)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Temperature/humidity sensor not detected.</MudText>
+                            }
+                            else
+                            {
+                                <MudStack Style="flex:1; height:100%" Class="mt-2">
+                                    <MudText Color="Color.Success">Tempreture</MudText>
+                                    <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Start">
+                                        <MudText Style="font-size: 1.4rem; font-weight: 500;">@($"{_status.TemperatureC:0.0} C")</MudText>
+                                        @if (_status.TemperatureC>=_settings.SecurityMaxTemperatureC)
+                                        {
+                                            <MudTooltip Color="Color.Error" Text="Check the camera enclosure for overheating and turn the camera off if possible">
+                                                <MudIcon Style="font-size:1.3rem" Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error"></MudIcon>
+                                            </MudTooltip>
+                                        }
+                                    </MudStack>
+                                    <MudText Typo="Typo.caption">Threashold tempreture warning at: <b style="color:var(--mud-palette-warning)">@($"{_settings.SecurityMaxTemperatureC:0.0} C")</b></MudText>
+                                </MudStack>
+                                <MudDivider Style="border-color: white;" DividerType="DividerType.FullWidth" Vertical="true" FlexItem="true" />
+                                <MudStack Style="flex:1; height:100%" Class="mt-2">
+                                    <MudText Color="Color.Success">Humidity</MudText>
+                                    <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Start">
+                                        <MudText Style="font-size: 1.4rem; font-weight: 500;">@($"{_status.HumidityPercent:0.0} %")</MudText>
+                                        @if (_status.HumidityPercent >= _settings.SecurityMaxHumidityPercent)
+                                        {
+                                            <MudTooltip Color="Color.Error" Text="Possible enclosure gasket failure. Check immediately the enclosure for water leakage.">
+                                                <MudIcon Style="font-size:1.3rem" Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error"></MudIcon>
+                                            </MudTooltip>
+                                        }
+                                    </MudStack>          
+                                    <MudText Typo="Typo.caption">Threashold humidity warning at: <b style="color:var(--mud-palette-warning)">@($"{_settings.SecurityMaxHumidityPercent:0.0} %")</b></MudText>
+                                </MudStack>
+                                <MudDivider Style="border-color: white;" Vertical="true" FlexItem="true" />
+                                <MudStack Style="flex:1; height:100%" Class="mt-2">
+                                    <MudText Color="Color.Success">Dew point</MudText>
+                                    <MudText Style="font-size: 1.4rem; font-weight: 500;">@($"{_status.DewPointC:0.0} C")</MudText>
+                                    <MudText Typo="Typo.caption">Tempreture at which fogging of the front camera lens could occur.</MudText>
+                                </MudStack>
+                            }
+
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+                <MudIconButton Href="/system/settings/security" Size="Size.Small" Icon="@Icons.Material.Filled.Settings" Style="position:absolute; top:2px; right:2px;" />
+            </MudPaper>
+            <MudPaper Height="20" Outlined="true" Style="position:relative; height:300px">
+                <MudStack Justify="Justify.Center" Style="height:100%">
+                    <MudStack Row="true" Class="mx-4" Spacing="5">
+                        <MudStack Justify="Justify.Center">
+                            <MudPaper Style="background-color: var(--mud-palette-primary); height:150px; border-radius: 20px">
+                                <MudStack Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mx-2" style="height:100%; position:relative">
+                                    <MudIcon Size="Size.Large" Icon="@Icons.Material.Filled.SportsHandball" Style="font-size: 4em;"></MudIcon>
+                                    <MudText style="font-size: 1.1rem; font-weight: 800; text-align:center">Physical Camera Movement</MudText>
+                                    <MudTooltip Placement="Placement.Top">
+                                        <ChildContent>
+                                            <MudIconButton Size="Size.Small" Color="Color.Inherit" Style="position:absolute; top:7px; right:0" Icon="@Icons.Material.Outlined.Info" />
+                                        </ChildContent>
+                                        <TooltipContent>
+                                            <MudText Typo="Typo.body2"><b>MPU6050 sensor placed inside the camera enclosure.</b></MudText>
+                                            <MudText Typo="Typo.body2">Used to detect physical movement of the camera.</MudText>
+                                            <MudText Typo="Typo.body2">It can detect small movemets, rotations, impacts</MudText>
+                                            <MudText Typo="Typo.body2">and when the camera is in a free fall.</MudText>
+                                        </TooltipContent>
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudPaper>
+                        </MudStack>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width:100%;">
+                            @if (!_status.HasTelemetry || !_status.MotionSensorPresent)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Motion sensor not detected.</MudText>
+                            }
+                            else
+                            {
+                                <MudStack Style="flex:1; height:100%" Spacing="0" Class="mt-2">
+                                    <MudText Color="Color.Primary">Detected Movement Events</MudText>
+                                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Row="true" Wrap="Wrap.Wrap">
+                                        @if (_status.MotionEvents == CameraMotionEvents.None && !_status.MotionActive)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Idle</MudChip>
+                                        }
+                                        else
+                                        {
+                                            @if (_status.MotionEvents.HasFlag(CameraMotionEvents.Movement))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Movement</MudChip>
+                                            }
+                                            @if (_status.MotionEvents.HasFlag(CameraMotionEvents.Impact))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Impact</MudChip>
+                                            }
+                                            @if (_status.MotionEvents.HasFlag(CameraMotionEvents.Fall))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Fall</MudChip>
+                                            }
+                                            @if (_status.MotionEvents.HasFlag(CameraMotionEvents.Rotation))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Rotation</MudChip>
+                                            }
+                                        }
+                                    </MudStack>    
+                                    <MudSpacer></MudSpacer>
+                                    <MudText Typo="Typo.caption" Style="text-align:justify">When movement events are detected, they will stack and continue to accumulate until the camera alarm is reset.</MudText>
+                                </MudStack>
+                                <MudDivider Style="border-color: white;" DividerType="DividerType.FullWidth" Vertical="true" FlexItem="true" />
+                                <MudStack Style="flex:2; height:100%" Class="mt-2">
+                                    <MudText Color="Color.Primary">Movement Thresholds Adjustments (per camera)</MudText>
+                                    <MudNumericField T="double" Label="Increased Movement Threshold (g)" Variant="Variant.Outlined" Min="0" Step="0.2"
+                                                     Value="_movementThresholdOffset" ValueChanged="OnMovementThresholdChanged" />
+                                    <MudNumericField T="double" Label="Increased Rotation Threshold (deg/s)" Variant="Variant.Outlined" Min="0" Step="5"
+                                                     Value="_rotationThresholdOffset" ValueChanged="OnRotationThresholdChanged" />
+                                    <MudText Typo="Typo.caption">Increase these to widen the movement dead zone and suppress false detections. 0 = no dead zone.</MudText>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+            <MudPaper Height="20" Outlined="true" Style="position:relative; height:200px">
+                <MudStack Justify="Justify.Center" Style="height:100%">
+                    <MudStack Row="true" Class="mx-4" Spacing="5">
+                        <MudPaper Style="background-color: var(--mud-palette-error); height:150px; width:230px; border-radius: 20px">
+                            <MudStack Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mx-2" style="height:100%; position:relative">
+                                <MudIcon Size="Size.Large" Icon="@Icons.Material.Filled.BrokenImage" Style="font-size: 4em;"></MudIcon>
+                                <MudText style="font-size: 1.1rem; font-weight: 800; text-align:center">Camera Lid Removal Detection</MudText>
+                                <MudTooltip Placement="Placement.Top">
+                                    <ChildContent>
+                                        <MudIconButton Size="Size.Small" Color="Color.Inherit" Style="position:absolute; top:7px; right:0" Icon="@Icons.Material.Outlined.Info" />
+                                    </ChildContent>
+                                    <TooltipContent>
+                                        <MudText Typo="Typo.body2"><b>Magnetic detecion switch with a magnet inside the camera lid</b></MudText>
+                                        <MudText Typo="Typo.body2">Used to detect unauthorized camera disasembly.</MudText>
+                                    </TooltipContent>
+                                </MudTooltip>
+                            </MudStack>
+                        </MudPaper>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width:100%;">
+                            <MudStack Style="flex:1; height:100%" Class="mt-2">
+                                <MudText Color="Color.Success">Lid Status</MudText>
+                                <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Start">
+                                    @if (!_status.CaseSensorInstalled)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Disabled</MudChip>
+                                    }
+                                    else if (_status.CaseOpen)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.LockOpen">Open</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.Lock">Closed</MudChip>
+                                    }
+                                </MudStack>
+                                <MudText Typo="Typo.caption">If this switch is not installed, it can be disabled.</MudText>
+                            </MudStack>
+                            <MudDivider Style="border-color: white;" DividerType="DividerType.FullWidth" Vertical="true" FlexItem="true" />
+                            <MudStack Style="flex:2; height:100%" Class="mt-2">
+                                <MudText Color="Color.Success">Configuration</MudText>
+                                <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Start">
+                                    <MudSwitch T="bool" Value="_status.CaseSensorInstalled" ValueChanged="OnCaseSensorChanged" Color="Color.Secondary"
+                                               Label="@(_status.CaseSensorInstalled ? "Case sensor installed" : "Case sensor disabled")" />
+                                </MudStack>
+                            </MudStack>
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public Guid CameraId { get; set; }
+
+    [Parameter]
+    public string CameraName { get; set; } = string.Empty;
+
+    private CameraSecurityStatusDto _status = new();
+    private SystemSettingsDto _settings = new();
+    private double _movementThresholdOffset;
+    private double _rotationThresholdOffset;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _statusNotifier.StatusChanged += OnCameraStatusChanged;
+        await RefreshStatus();
+    }
+
+    private async void OnCameraStatusChanged(Guid cameraId)
+    {
+        if (cameraId != CameraId)
+        {
+            return;
+        }
+
+        await RefreshStatus();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshStatus()
+    {
+        _settings = await _systemSettings.GetSystemSettingsAsync();
+        _status = _securityService.GetStatus(CameraId);
+
+        _movementThresholdOffset = _status.MovementThresholdOffset;
+        _rotationThresholdOffset = _status.RotationThresholdOffset;
+    }
+
+    private async Task OnArmChanged(bool armed)
+    {
+        await _securityService.ArmAsync(CameraId, armed);
+        await RefreshStatus();
+        _snackbar.Add(armed ? "Camera security armed." : "Camera security disarmed.", Severity.Info);
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCaseSensorChanged(bool installed)
+    {
+        await _securityService.SetCaseSensorInstalledAsync(CameraId, installed);
+        await RefreshStatus();
+        _snackbar.Add(installed ? "Case sensor enabled." : "Case sensor disabled.", Severity.Info);
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnMovementThresholdChanged(double value)
+    {
+        _movementThresholdOffset = value < 0 ? 0 : value;
+        await _securityService.SetMovementThresholdsAsync(CameraId, _movementThresholdOffset, _rotationThresholdOffset);
+        _snackbar.Add("Movement thresholds updated.", Severity.Info);
+    }
+
+    private async Task OnRotationThresholdChanged(double value)
+    {
+        _rotationThresholdOffset = value < 0 ? 0 : value;
+        await _securityService.SetMovementThresholdsAsync(CameraId, _movementThresholdOffset, _rotationThresholdOffset);
+        _snackbar.Add("Movement thresholds updated.", Severity.Info);
+    }
+
+    private async Task TriggerAsync()
+    {
+        await _securityService.TriggerAsync(CameraId);
+        await RefreshStatus();
+    }
+
+    private async Task ResetAsync()
+    {
+        await _securityService.ResetAsync(CameraId);
+        await RefreshStatus();
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+
+    public void Dispose()
+    {
+        _statusNotifier.StatusChanged -= OnCameraStatusChanged;
+    }
+}

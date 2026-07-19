@@ -1,0 +1,212 @@
+@using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
+@using CamPortal.Contracts.Dtos.CameraConfigurationDtos
+@using CamPortal.Contracts.Dtos.SecurityDtos
+
+@implements IDisposable
+
+@inject ICameraStatusNotifier _statusNotifier
+@inject ICameraLiveTelemetry _liveTelemetry
+@inject ICameraSecurityService _securityService
+@inject IDialogService _dialogService
+
+<MudCard Elevation="6" Class="@GetCardClass()">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <div class="d-flex align-center justify-space-between camera-drag-handle">
+                <div class="camera-info-container">
+                    <MudTooltip Text="@DisplayName"
+                                Placement="Placement.Top"
+                                ShowOnFocus="false"
+                                ShowOnHover="true"
+                                Class="camera-name-tooltip">
+                        <MudText Typo="Typo.body1" Class="camera-name-text">
+                            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-2 camera-drag-indicator" />
+                            <span class="camera-name-span">@DisplayName</span>
+                        </MudText>
+                    </MudTooltip>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @CameraInfo.Ipv4Address
+                    </MudText>
+                </div>
+                @if (_status.AlarmActive)
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Icon="@Icons.Material.Filled.GppBad">
+                        Tampering detected
+                    </MudChip>
+                }
+                else if (!_status.Online)
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Icon="@Icons.Material.Filled.CloudOff">
+                        Offline
+                    </MudChip>
+                }
+                else if (_status.Warning)
+                {
+                    <MudTooltip Text="@_status.WarningReason" Placement="Placement.Top">
+                        <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.WarningAmber">
+                            Warning
+                        </MudChip>
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.FiberManualRecord">
+                        Live
+                    </MudChip>
+                }
+            </div>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent Class="pa-0 camera-card-content">
+        <CameraStreamComponent CameraId="CameraInfo.Id" Fill="true" StreamToken="StreamToken" />
+    </MudCardContent>
+    <MudCardActions>
+        <MudStack Spacing="2" Row="true">
+            <MudButton OnClick="OpenTelemetryDialog"
+                       Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.QueryStats"
+                       Color="Color.Warning"
+                       Size="Size.Small"
+                       Style="text-transform:none">
+                Video Telemetry
+            </MudButton>
+            <MudButton OnClick="OpenSecurityDialog"
+                       Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.Security"
+                       Color="@(_status.SecurityArmed ? Color.Success : Color.Secondary)"
+                       Size="Size.Small"
+                       Style="text-transform:none">
+                Security Telemetry
+            </MudButton>
+        </MudStack>   
+        @if (_status.AlarmActive)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Filled" Size="Size.Small" StartIcon="@Icons.Material.Filled.NotificationsOff" OnClick="ResetSecurityAsync">
+                Reset
+            </MudButton>
+        }
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="OpenConfigDialog" />
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public CameraInfoWithConfigurationDto CameraInfo { get; set; } = null!;
+
+    [Parameter]
+    public bool IsTall { get; set; }
+
+    [Parameter]
+    public Guid StreamToken { get; set; }
+
+    [Parameter]
+    public EventCallback OnConfigChanged { get; set; }
+
+    private CameraLiveStatusDto _status = new();
+
+    private string DisplayName => string.IsNullOrEmpty(CameraInfo.Name) ? CameraInfo.Id.ToString() : CameraInfo.Name;
+
+    protected override void OnInitialized()
+    {
+        _statusNotifier.StatusChanged += OnStatusChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _status = _liveTelemetry.GetLiveStatus(CameraInfo.Id);
+    }
+
+    private void OnStatusChanged(Guid cameraId)
+    {
+        if (cameraId != CameraInfo.Id)
+        {
+            return;
+        }
+
+        _status = _liveTelemetry.GetLiveStatus(CameraInfo.Id);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string GetCardClass()
+    {
+        var baseClass = IsTall ? "camera-card camera-card-tall" : "camera-card";
+
+        if (_status.AlarmActive)
+        {
+            baseClass += " camera-card-alert";
+        }
+
+        return baseClass;
+    }
+
+    private async Task OpenTelemetryDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CameraId"] = CameraInfo.Id,
+            ["CameraName"] = DisplayName
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await _dialogService.ShowAsync<VideoTelemetryDialog>("Camera Telemetry", parameters, options);
+    }
+
+    private async Task OpenSecurityDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CameraId"] = CameraInfo.Id,
+            ["CameraName"] = DisplayName
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await _dialogService.ShowAsync<SecurityTelemetryDialog>("Camera Security", parameters, options);
+    }
+
+    private async Task ResetSecurityAsync()
+    {
+        await _securityService.ResetAsync(CameraInfo.Id);
+    }
+
+    private async Task OpenConfigDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CameraId"] = CameraInfo.Id
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            Position = DialogPosition.TopCenter,
+            BackdropClick = false,
+            BackgroundClass = "blurry-background"
+        };
+
+        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
+
+        await dialog.Result;
+
+        await OnConfigChanged.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _statusNotifier.StatusChanged -= OnStatusChanged;
+    }
+}

@@ -13,17 +13,26 @@ public class SecureSessionService : IDisposable
     private const string _streamHkdfInfo = "CAMPR-STREAM-V1-derived";
     private const int _handshakeTimeoutMs = 10000;
     private const int _serverHelloLength = 32 + 65 + 64;
+    private const int _maxCommandCipherBytes = 4096;
+    private const byte _commandVersion = 1;
+    private const byte _commandResetSecurityAlarm = 1;
 
     private readonly VideoFrameLoader _frameLoader;
 
     private TcpClient? _tcpClient;
     private NetworkStream? _stream;
     private AesGcm? _aesGcm;
+    private AesGcm? _downstreamAesGcm;
 
     private byte[] _deviceIdRaw = [];
     private byte[] _ivBase = [];
+    private byte[] _downstreamIvBase = [];
     private byte[] _sessionId = [];
     private ulong _seq;
+    private ulong _receiveSeq;
+
+    private CancellationTokenSource? _receiveCts;
+    private Task? _receiveTask;
 
     private int _failedConnectionAttempts;
 
@@ -104,6 +113,9 @@ public class SecureSessionService : IDisposable
                 return false;
             }
 
+            _stream.ReadTimeout = Timeout.Infinite;
+            StartReceiveLoop();
+
             Console.WriteLine("[Stream] Secure session established");
             return true;
         }
@@ -159,15 +171,21 @@ public class SecureSessionService : IDisposable
 
         var salt = Concat(nonceServer, nonceDevice);
         var info = Encoding.ASCII.GetBytes(_streamHkdfInfo);
-        var keyMaterial = HKDF.DeriveKey(HashAlgorithmName.SHA256, sharedSecret, 32 + 4 + 16, salt, info);
+        var keyMaterial = HKDF.DeriveKey(HashAlgorithmName.SHA256, sharedSecret, 32 + 4 + 16 + 32 + 4, salt, info);
 
         var sessionKey = keyMaterial[..32];
         _ivBase = keyMaterial[32..36];
         _sessionId = keyMaterial[36..52];
+        var downstreamKey = keyMaterial[52..84];
+        _downstreamIvBase = keyMaterial[84..88];
         _seq = 0;
+        _receiveSeq = 0;
 
         _aesGcm?.Dispose();
         _aesGcm = new AesGcm(sessionKey, 16);
+
+        _downstreamAesGcm?.Dispose();
+        _downstreamAesGcm = new AesGcm(downstreamKey, 16);
 
         return true;
     }
@@ -181,10 +199,14 @@ public class SecureSessionService : IDisposable
 
         try
         {
-            var plaintext = new byte[8 + jpeg.Length];
+            var telemetry = BuildTelemetry();
+
+            var plaintext = new byte[10 + telemetry.Length + jpeg.Length];
             BinaryPrimitives.WriteUInt32BigEndian(plaintext.AsSpan(0, 4), width);
             BinaryPrimitives.WriteUInt32BigEndian(plaintext.AsSpan(4, 4), height);
-            Buffer.BlockCopy(jpeg, 0, plaintext, 8, jpeg.Length);
+            BinaryPrimitives.WriteUInt16BigEndian(plaintext.AsSpan(8, 2), (ushort)telemetry.Length);
+            Buffer.BlockCopy(telemetry, 0, plaintext, 10, telemetry.Length);
+            Buffer.BlockCopy(jpeg, 0, plaintext, 10 + telemetry.Length, jpeg.Length);
 
             _seq++;
 
@@ -220,20 +242,177 @@ public class SecureSessionService : IDisposable
         }
     }
 
+    private static byte[] BuildTelemetry()
+    {
+        var telemetry = new byte[44];
+        telemetry[0] = 2;
+
+        var fpsX10 = (ushort)(1000.0 / Math.Max(1, MockClientConfiguration.FrameDelayMs) * 10);
+        BinaryPrimitives.WriteUInt16BigEndian(telemetry.AsSpan(1, 2), fpsX10);
+
+        telemetry[34] = 0x02;
+
+        BinaryPrimitives.WriteInt16BigEndian(telemetry.AsSpan(35, 2), 2200);
+        BinaryPrimitives.WriteUInt16BigEndian(telemetry.AsSpan(37, 2), 5000);
+        BinaryPrimitives.WriteInt16BigEndian(telemetry.AsSpan(39, 2), 1110);
+        telemetry[41] = 0x07;
+        telemetry[42] = 0x00;
+        telemetry[43] = 0x00;
+
+        return telemetry;
+    }
+
     private bool IsSessionActive()
     {
         return _aesGcm != null && (_tcpClient?.Connected ?? false);
     }
 
+    private void StartReceiveLoop()
+    {
+        _receiveCts = new CancellationTokenSource();
+        var token = _receiveCts.Token;
+        _receiveTask = Task.Run(() => ReceiveLoop(token));
+    }
+
+    private void ReceiveLoop(CancellationToken token)
+    {
+        var header = new byte[4 + 8 + 16];
+
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                if (!TryReadExact(header, token))
+                {
+                    break;
+                }
+
+                var totalLen = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(0, 4));
+                var seq = BinaryPrimitives.ReadUInt64BigEndian(header.AsSpan(4, 8));
+
+                if (totalLen < 8 + 16 + 1)
+                {
+                    break;
+                }
+
+                var cipherLen = (int)(totalLen - 8 - 16);
+                if (cipherLen > _maxCommandCipherBytes)
+                {
+                    break;
+                }
+
+                var tag = header[12..28];
+                var cipher = new byte[cipherLen];
+                if (!TryReadExact(cipher, token))
+                {
+                    break;
+                }
+
+                if (seq == 0 || seq <= _receiveSeq)
+                {
+                    continue;
+                }
+
+                var iv = new byte[12];
+                Buffer.BlockCopy(_downstreamIvBase, 0, iv, 0, 4);
+                BinaryPrimitives.WriteUInt64BigEndian(iv.AsSpan(4, 8), seq);
+
+                var aad = new byte[16 + 16 + 8];
+                Buffer.BlockCopy(_sessionId, 0, aad, 0, 16);
+                Buffer.BlockCopy(_deviceIdRaw, 0, aad, 16, 16);
+                BinaryPrimitives.WriteUInt64BigEndian(aad.AsSpan(32, 8), seq);
+
+                var plain = new byte[cipherLen];
+                try
+                {
+                    _downstreamAesGcm!.Decrypt(iv, cipher, tag, plain, aad);
+                }
+                catch (CryptographicException)
+                {
+                    Console.WriteLine("[Command] Auth failed, dropping");
+                    continue;
+                }
+
+                _receiveSeq = seq;
+
+                if (cipherLen >= 2 && plain[0] == _commandVersion)
+                {
+                    HandleCommand(plain[1]);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // stream closed or session ended
+        }
+    }
+
+    private bool TryReadExact(byte[] buffer, CancellationToken token)
+    {
+        var offset = 0;
+        while (offset < buffer.Length)
+        {
+            if (token.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            int read;
+            try
+            {
+                read = _stream!.Read(buffer, offset, buffer.Length - offset);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+
+            if (read <= 0)
+            {
+                return false;
+            }
+
+            offset += read;
+        }
+
+        return true;
+    }
+
+    private void HandleCommand(byte code)
+    {
+        switch (code)
+        {
+            case _commandResetSecurityAlarm:
+                Console.WriteLine("[Command] Reset security alarm");
+                break;
+            default:
+                Console.WriteLine($"[Command] Unknown code {code}");
+                break;
+        }
+    }
+
     private void EndSession()
     {
+        _receiveCts?.Cancel();
+
         _aesGcm?.Dispose();
         _aesGcm = null;
+
+        _downstreamAesGcm?.Dispose();
+        _downstreamAesGcm = null;
 
         _stream?.Close();
         _tcpClient?.Close();
         _stream = null;
         _tcpClient = null;
+
+        _receiveCts?.Dispose();
+        _receiveCts = null;
+        _receiveTask = null;
     }
 
     private void WriteAll(byte[] data)

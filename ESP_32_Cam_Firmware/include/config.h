@@ -21,13 +21,39 @@
 #define LIGHT_SENSOR_DAY_THRESHOLD 500
 #define LIGHT_SENSOR_PRESENCE_DELTA 2800
 
-#define IR_CUT_NIGHT_RELAY_PIN 41
-#define IR_CUT_DAY_RELAY_PIN 42
-#define IR_CUT_RELAY_PULSE_MS 1000
-#define IR_CUT_RELAY_ACTIVE_HIGH false
+#define IR_CUT_IN1_PIN 41
+#define IR_CUT_IN2_PIN 42
+#define IR_CUT_PULSE_MS 250
 
-#define IR_CUT_RELAY_TEST_MODE false
-#define IR_CUT_RELAY_TEST_INTERVAL_MS 3000
+#define IR_CUT_TEST_MODE false
+#define IR_CUT_TEST_INTERVAL_MS 3000
+
+#define I2C_SDA_PIN 38
+#define I2C_SCL_PIN 39
+#define I2C_CLOCK_HZ 400000
+
+// temperature and humidity sensor
+#define SHT3X_I2C_ADDR 0x44
+#define SHT3X_SAMPLE_INTERVAL_MS 2000
+
+// accelerometer and gyroscope sensor
+#define MPU6050_I2C_ADDR 0x68
+#define MPU6050_SAMPLE_INTERVAL_MS 10
+#define MOTION_MOVE_G 0.12f
+#define MOTION_IMPACT_G 2.5f
+#define MOTION_FREEFALL_G 0.45f
+#define MOTION_FREEFALL_MS 100
+#define MOTION_ROTATE_DPS 45.0f
+#define MOTION_WARMUP_MS 1500
+
+#define CASE_SWITCH_INSTALLED true
+#define CASE_SWITCH_PIN 2
+#define CASE_SWITCH_DEBOUNCE_MS 50
+
+// alarm buzzer on MX1508 motor B channel (IN3 driven, IN4 tied to GND)
+#define BUZZER_PIN 40
+#define BUZZER_ON_MS 80
+#define BUZZER_OFF_MS 50
 
 #define NVS_NAMESPACE "settings"
 
@@ -56,6 +82,9 @@
 #define STREAM_CAMERA_FB_COUNT 3
 #define STREAM_STATS_LOG_INTERVAL_MS 5000
 #define STREAM_CAPTURE_READY_THRESHOLD_US 2000
+
+#define STREAM_COMMAND_VERSION 1
+#define STREAM_COMMAND_MAX_PAYLOAD 256
 
 #define ServerHttpsPort 7010
 #define ServerTcpPort 7000

@@ -72,6 +72,25 @@
                     </MudCardActions>
                 </MudCard>
             </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="4">
+                    <MudCardContent>
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.h6">Security Thresholds</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                Set the FPS, temperature and humidity limits that raise camera warnings.
+                            </MudText>
+                        </MudStack>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/security">
+                            Open
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
         </MudGrid>
     </MudStack>
 </MudContainer>

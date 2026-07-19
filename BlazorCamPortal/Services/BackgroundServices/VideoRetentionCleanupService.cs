@@ -127,9 +127,13 @@ namespace CamPortal.Core.BackgroundServices
 
             foreach (var expiredChunk in expiredChunks)
             {
-                TryDeleteFile(_storageLocationService.GetChunkFullPath(
-                    expiredChunk.DeviceId.ToString(),
-                    Path.GetFileName(expiredChunk.FileName)));
+                if (_storageLocationService.TryGetCameraChunkFullPath(
+                        expiredChunk.DeviceId.ToString(),
+                        expiredChunk.FileName,
+                        out var chunkPath))
+                {
+                    TryDeleteFile(chunkPath);
+                }
             }
 
             await _videoChunkRepository.DeleteVideoChunksAsync(expiredChunks.Select(x => x.Id).ToList());

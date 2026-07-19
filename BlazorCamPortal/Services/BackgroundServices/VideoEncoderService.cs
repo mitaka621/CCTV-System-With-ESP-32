@@ -23,6 +23,9 @@ namespace CamPortal.Core.BackgroundServices
         private readonly byte[] _placeholderFrame;
         private readonly int _encodedVideoOutputFps;
         private readonly int _videoChunksSizeInS;
+        private readonly int _videoBitrateKbps;
+        private readonly int _maxVideoBitrateKbps;
+        private readonly int _videoBitrateBufferSizeKbps;
         private readonly int _timeoutInS;
         private readonly VideoHardwareEncoder _activeEncoder;
 
@@ -62,6 +65,21 @@ namespace CamPortal.Core.BackgroundServices
                 ?? throw new ArgumentNullException("Video chunk size not configured")
             );
 
+            _videoBitrateKbps = int.Parse(
+                configuration.GetSection("VideoEncoderConfig")["VideoBitrateKbps"]
+                ?? throw new ArgumentNullException("Video bitrate not configured")
+            );
+
+            _maxVideoBitrateKbps = int.Parse(
+                configuration.GetSection("VideoEncoderConfig")["MaxVideoBitrateKbps"]
+                ?? throw new ArgumentNullException("Max video bitrate not configured")
+            );
+
+            _videoBitrateBufferSizeKbps = int.Parse(
+                configuration.GetSection("VideoEncoderConfig")["VideoBitrateBufferSizeKbps"]
+                ?? throw new ArgumentNullException("Video bitrate buffer size not configured")
+            );
+
             var requestedEncoder = ParseConfiguredEncoder(configuration);
             _activeEncoder = VideoChunkUtilities.ResolveHardwareEncoder(requestedEncoder, _logger);
         }
@@ -88,7 +106,7 @@ namespace CamPortal.Core.BackgroundServices
                 var framesChannel = _framesManager.GetOrCreateProcessedFramesCameraChannel(cameraId);
                 DateTime segmentStartTime = DateTime.UtcNow;
 
-                string outputDir = _storageLocationService.GetCameraChunkDirectory(cameraId);
+                string outputDir = _storageLocationService.GetCameraChunkStagingDirectory(cameraId);
                 Directory.CreateDirectory(outputDir);
 
                 string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
@@ -137,12 +155,14 @@ namespace CamPortal.Core.BackgroundServices
             return "unknown.mp4";
         }
 
-        private async Task<string> RenameProducedChunkFromFFMPEGAsync(string filename, DateTime dateCreated, string outputDir, Guid cameraId)
+        private async Task<string> RenameProducedChunkFromFFMPEGAsync(string filename, DateTime dateCreated, Guid cameraId)
         {
             var segmentEndTime = DateTime.UtcNow;
+            var dayDir = _storageLocationService.GetCameraChunkDayDirectory(cameraId, dateCreated);
+            Directory.CreateDirectory(dayDir);
 
             string newFileName = Path.Combine(
-                outputDir,
+                dayDir,
                 $"{cameraId}_={dateCreated:yyyy-MM-dd_HH-mm-ss}__{segmentEndTime:yyyy-MM-dd_HH-mm-ss}=.ts"
             );
 
@@ -211,7 +231,7 @@ namespace CamPortal.Core.BackgroundServices
 
                         if (lastFileName != null && lastFileStartTime != null)
                         {
-                            var fileName = await RenameProducedChunkFromFFMPEGAsync(lastFileName, lastFileStartTime.Value, outputDir, cameraId);
+                            var fileName = await RenameProducedChunkFromFFMPEGAsync(lastFileName, lastFileStartTime.Value, cameraId);
 
                             lastFileDto = new CreateVideoChunkDto
                             {
@@ -248,14 +268,20 @@ namespace CamPortal.Core.BackgroundServices
 
                 if (lastFileName != null)
                 {
-                    var startTime = File.GetCreationTime(lastFileName);
+                    var startTime = lastFileStartTime ?? File.GetCreationTimeUtc(lastFileName);
 
-                    var fileName = await RenameProducedChunkFromFFMPEGAsync(lastFileName, startTime, outputDir, cameraId);
+                    var fileName = await RenameProducedChunkFromFFMPEGAsync(lastFileName, startTime, cameraId);
 
-                    if (lastFileDto != null)
+                    lastFileDto = new CreateVideoChunkDto
                     {
-                        await _videoChunkService.SaveVideoChunkInfoAsync(lastFileDto);
-                    }
+                        DeviceId = cameraId,
+                        ChunkStartTime = startTime,
+                        ChunkEndTime = DateTime.UtcNow,
+                        FileName = Path.GetFileName(fileName),
+                        SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
+                    };
+
+                    await _videoChunkService.SaveVideoChunkInfoAsync(lastFileDto);
                 }
 
             }, stoppingToken);
@@ -447,7 +473,7 @@ namespace CamPortal.Core.BackgroundServices
             };
 
             string rateSection =
-                $"-pix_fmt yuv420p -r {fps} -b:v 1500k -maxrate 2000k -bufsize 4000k ";
+                $"-pix_fmt yuv420p -r {fps} -b:v {_videoBitrateKbps}k -maxrate {_maxVideoBitrateKbps}k -bufsize {_videoBitrateBufferSizeKbps}k ";
 
             string outputSection =
                 $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts \"{filePath}\"";

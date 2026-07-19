@@ -46,16 +46,19 @@
                 Class="mb-3" />
         </MudItem>
         <MudItem xs="12" md="6" lg="3">
-            <MudSelect T="NameAndIdWithStatusModel" Label="Camera Filter"
+            <MudSelectExtended T="NameAndIdWithStatusModel" Label="Camera Filter"
                 Class="mb-3"
                 MultiSelection="true"
-                ToStringFunc="@((x)=>x.Name)"
+                ItemCollection="_allCamerasNameAndId"
+                SearchBox="true"
+                SearchBoxAutoFocus="true"
+                SearchBoxClearable="true"
+                SearchBoxVariant="Variant.Text"
+                SearchBoxPlaceholder="Search cameras..."
+                SearchFunc="@CameraFilterSearch"
+                ToStringFunc="@(camera => GetCameraLabel(camera))"
                 @bind-SelectedValues="_selectedCameraIds">
-                @foreach (var camera in _allCamerasNameAndId)
-                {
-                    <MudSelectItem Value="@camera">@($"{(string.IsNullOrEmpty(camera.Name) ? camera.Id : camera.Name)} - ({camera.PairStatus})")</MudSelectItem>
-                }
-            </MudSelect>
+            </MudSelectExtended>
         </MudItem>
         <MudItem xs="12" md="6" lg="3">
             <MudSelect T="CameraEvents" Label="Event Type Filter"
@@ -135,6 +138,9 @@ else
                                 <div class="video-container" @onclick="() => OpenFullScreen(camera.Id)">
                                     <!-- player -->
                                     <video id="video-@camera.Id"></video>
+                                    <div class="video-loader">
+                                        <div class="video-loader-spinner"></div>
+                                    </div>
                                     <div class="camera-info-overlay">
                                         <MudText Typo="Typo.subtitle2" Color="Color.Primary">@camera.Name</MudText>
                                     </div>
@@ -367,6 +373,28 @@ else
             await _startDatePicker.GoToDate(_userTimeZoneService.ToLocal(DateTime.UtcNow));
             await _endDatePicker.GoToDate(_userTimeZoneService.ToLocal(DateTime.UtcNow));
         }
+    }
+
+    private string GetCameraLabel(NameAndIdWithStatusModel? camera)
+    {
+        if (camera == null)
+        {
+            return string.Empty;
+        }
+
+        var name = string.IsNullOrEmpty(camera.Name) ? camera.Id.ToString() : camera.Name;
+
+        return $"{name} - ({camera.PairStatus})";
+    }
+
+    private bool CameraFilterSearch(NameAndIdWithStatusModel camera, string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return true;
+        }
+
+        return GetCameraLabel(camera).Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     private void OnFilterDateRangeChange()

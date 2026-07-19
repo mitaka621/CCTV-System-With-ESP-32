@@ -2,6 +2,7 @@ using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
+using CamPortal.Contracts.Dtos.SecurityDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -99,6 +100,56 @@ namespace CamPortal.Infrastructure.Repositories
                     Height = x.ResolutionHeight
                 })
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> SetSecurityArmedAsync(Guid deviceId, bool armed)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.CameraConfigurations
+                .Where(x => x.DeviceId == deviceId)
+                .ExecuteUpdateAsync(x => x.SetProperty(c => c.SecurityArmed, armed));
+
+            return result != 0;
+        }
+
+        public async Task<bool> SetCaseSensorInstalledAsync(Guid deviceId, bool installed)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.CameraConfigurations
+                .Where(x => x.DeviceId == deviceId)
+                .ExecuteUpdateAsync(x => x.SetProperty(c => c.CaseSensorInstalled, installed));
+
+            return result != 0;
+        }
+
+        public async Task<bool> SetMovementThresholdsAsync(Guid deviceId, double movementThresholdOffset, double rotationThresholdOffset)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.CameraConfigurations
+                .Where(x => x.DeviceId == deviceId)
+                .ExecuteUpdateAsync(x => x
+                    .SetProperty(c => c.MovementThresholdOffset, movementThresholdOffset)
+                    .SetProperty(c => c.RotationThresholdOffset, rotationThresholdOffset));
+
+            return result != 0;
+        }
+
+        public async Task<DeviceSecurityConfigDto?> GetDeviceSecurityConfigAsync(Guid deviceId)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.CameraConfigurations
+                .AsNoTracking()
+                .Where(x => x.DeviceId == deviceId)
+                .Select(x => new DeviceSecurityConfigDto
+                {
+                    SecurityArmed = x.SecurityArmed,
+                    CaseSensorInstalled = x.CaseSensorInstalled,
+                    MovementThresholdOffset = x.MovementThresholdOffset,
+                    RotationThresholdOffset = x.RotationThresholdOffset
+                })
+                .FirstOrDefaultAsync();
+
+            return result;
         }
     }
 }

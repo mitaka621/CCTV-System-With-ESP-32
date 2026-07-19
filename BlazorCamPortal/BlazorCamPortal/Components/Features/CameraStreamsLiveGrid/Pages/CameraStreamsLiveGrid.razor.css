@@ -48,6 +48,19 @@
     flex-direction: column;
 }
 
+.camera-board ::deep .camera-card-alert {
+    outline: 3px solid var(--mud-palette-error);
+    outline-offset: -3px;
+    box-shadow: 0 0 14px rgba(244, 67, 54, 0.65);
+    animation: camera-alert-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes camera-alert-pulse {
+    0% { box-shadow: 0 0 6px rgba(244, 67, 54, 0.45); }
+    50% { box-shadow: 0 0 18px rgba(244, 67, 54, 0.85); }
+    100% { box-shadow: 0 0 6px rgba(244, 67, 54, 0.45); }
+}
+
 .camera-board ::deep .camera-card-content {
     flex: 1 1 auto;
     width: 100%;
