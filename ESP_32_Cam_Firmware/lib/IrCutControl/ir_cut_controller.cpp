@@ -9,6 +9,7 @@ namespace ir_cut_controller
   static bool _isNight = false;
   static bool _stateKnown = false;
   static bool _sensorPresent = false;
+  static bool _forceBlackAndWhite = IR_CUT_FORCE_BLACK_AND_WHITE;
   static int _lastValue = 0;
 
   static unsigned long _lastSampleMs = 0;
@@ -93,7 +94,8 @@ namespace ir_cut_controller
     {
       return;
     }
-    sensor->set_special_effect(sensor, _isNight ? 2 : 0);
+    bool blackAndWhite = _forceBlackAndWhite || _isNight;
+    sensor->set_special_effect(sensor, blackAndWhite ? 2 : 0);
   }
 
   static void applyState(bool night)
@@ -134,6 +136,15 @@ namespace ir_cut_controller
       return;
     }
 
+    if (_forceBlackAndWhite)
+    {
+      DEBUG_PRINT("IR-cut: forced black & white mode - sensor and relays disabled");
+      _isNight = true;
+      _stateKnown = true;
+      applyColorMode();
+      return;
+    }
+
     _sensorPresent = detectSensor();
     if (!_sensorPresent)
     {
@@ -154,7 +165,7 @@ namespace ir_cut_controller
 
   void tick()
   {
-    if (!_sensorPresent)
+    if (_forceBlackAndWhite || !_sensorPresent)
     {
       return;
     }
@@ -186,7 +197,12 @@ namespace ir_cut_controller
 
   bool isNight()
   {
-    return _isNight;
+    return _forceBlackAndWhite || _isNight;
+  }
+
+  bool isForceBlackAndWhite()
+  {
+    return _forceBlackAndWhite;
   }
 
   bool sensorPresent()

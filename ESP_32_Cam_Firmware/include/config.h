@@ -24,6 +24,7 @@
 #define IR_CUT_IN1_PIN 41
 #define IR_CUT_IN2_PIN 42
 #define IR_CUT_PULSE_MS 250
+#define IR_CUT_FORCE_BLACK_AND_WHITE false
 
 #define IR_CUT_TEST_MODE false
 #define IR_CUT_TEST_INTERVAL_MS 3000

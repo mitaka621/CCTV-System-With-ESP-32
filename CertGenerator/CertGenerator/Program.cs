@@ -8,22 +8,19 @@ const string blazorAppCertificatePath = @"..\..\..\..\..\BlazorCamPortal\BlazorC
 const string blazorAppSettingsRelativePath = @"..\..\..\..\..\BlazorCamPortal\BlazorCamPortal\appsettings.json";
 const string esp32SecretsRelativePath = @"..\..\..\..\..\ESP_32_Cam_Firmware\include\secrets.h";
 
-if (!IsOpenSslAvailable())
+string opensslPath = GetOpenSslPath();
+
+if (!IsOpenSslAvailable(opensslPath))
 {
-    Console.WriteLine("\nOpenSSL was not found on your system.");
-    Console.WriteLine("Please install OpenSSL and add it to your PATH environment variable.");
-    Console.WriteLine("Instructions:");
-    Console.WriteLine("1. Download Windows OpenSSL (scroll down and download the latested installer): https://slproweb.com/products/Win32OpenSSL.html");
-    Console.WriteLine("2. Install it in the default location (C:\\Program Files\\OpenSSL-Win64).");
-    Console.WriteLine("3. Select \"Copy OpenSSL DLLs to The OpenSSL binaries (/bin) directory\"");
-    Console.WriteLine("4. Search for \"edit environment variables\" in Windows -> Environment Variables -> Select \"Path\" in User Variables for <windows user name> -> Edit -> New -> Put \"C:\\Program Files\\OpenSSL-Win64\\bin\" -> Ok");
-    Console.WriteLine("5. Restart the app");
+    Console.WriteLine("\nBundled OpenSSL was not found.");
+    Console.WriteLine($"Expected location: {opensslPath}");
+    Console.WriteLine("Rebuild the CertGenerator project to restore the bundled OpenSSL binaries.");
 
     Console.ReadLine();
     return;
 }
 
-Console.WriteLine("OpenSSL is available.");
+Console.WriteLine($"OpenSSL is available at: {opensslPath}");
 
 List<string> localIPs = GetLocalIPAddresses();
 Console.WriteLine($"Local IPs detected: {string.Join(", ", localIPs)}");
@@ -77,15 +74,24 @@ Console.WriteLine($"\n\n====================================");
 Console.WriteLine("Operation completed!");
 
 Console.ReadLine();
-bool IsOpenSslAvailable()
+
+string GetOpenSslPath()
 {
+    return Path.Combine(AppContext.BaseDirectory, "openssl", "win-x64", "openssl.exe");
+}
+
+bool IsOpenSslAvailable(string opensslExecutablePath)
+{
+    if (!File.Exists(opensslExecutablePath))
+        return false;
+
     try
     {
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "openssl",
+                FileName = opensslExecutablePath,
                 Arguments = "version",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
@@ -131,7 +137,7 @@ void RunOpenSsl(string arguments)
     {
         StartInfo = new ProcessStartInfo
         {
-            FileName = "openssl",
+            FileName = opensslPath,
             Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

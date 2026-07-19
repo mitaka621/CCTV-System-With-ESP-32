@@ -151,8 +151,10 @@ void setup()
 {
   pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
 
-  Serial.begin(115200);
-  unsigned long serialStart = millis();
+  if(DEBUG_ON)
+    Serial.begin(115200);
+  
+    unsigned long serialStart = millis();
   while (!Serial && (millis() - serialStart) < 3000)
   {
     delay(10);

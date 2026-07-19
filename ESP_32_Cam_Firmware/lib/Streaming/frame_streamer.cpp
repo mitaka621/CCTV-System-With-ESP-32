@@ -149,6 +149,11 @@ namespace frame_streamer
   static void logLightStatus()
   {
     char buf[64];
+    if (ir_cut_controller::isForceBlackAndWhite())
+    {
+      DEBUG_PRINT("[LIGHT] forced -> BLACK & WHITE");
+      return;
+    }
     if (!ir_cut_controller::sensorPresent())
     {
       DEBUG_PRINT("[LIGHT] no sensor -> COLOR");
