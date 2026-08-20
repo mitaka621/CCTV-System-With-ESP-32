@@ -1,0 +1,7 @@
+{
+  "name": "Buzzer",
+  "version": "1.0.0",
+  "description": "Pulsed alarm buzzer driver.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

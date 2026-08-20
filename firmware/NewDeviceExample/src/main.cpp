@@ -1,18 +1,15 @@
 #include "config.h"
+#include "device_command.h"
 #include "led_indicator.h"
 #include "status_led.h"
 #include "secret_store.h"
 #include "wifi_manager.h"
 #include "provision_ap.h"
 #include "preprovision_client.h"
-#include "frame_streamer.h"
-#include "ir_cut_controller.h"
-#include "sensor_hub.h"
+#include "data_channel.h"
 #include "buzzer.h"
-#include "secure_session.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <nvs_flash.h>
 
 enum AppState
 {
@@ -21,21 +18,46 @@ enum AppState
   STATE_AP_PROVISIONING,
   STATE_CONNECT_WIFI,
   STATE_PREPROVISION,
-  STATE_INIT_STREAMING_CAMERA,
-  STATE_STREAMING,
+  STATE_SENDING,
   STATE_NETWORK_RECOVERY,
   STATE_FATAL_ERROR
 };
 
+static constexpr size_t READING_PAYLOAD_LEN = 8;
+
 static AppState _state = STATE_BOOT;
 static DeviceCredentials _creds;
-static bool _credsSource_compileTime = false;
 
 static unsigned long _resetButtonPressStart = 0;
 static bool _resetButtonHeld = false;
 
 static unsigned long _preprovisionRetryAt = 0;
-static unsigned long _sessionRetryAt = 0;
+static unsigned long _channelRetryAt = 0;
+static unsigned long _lastReadingAt = 0;
+
+static uint8_t _readingBuf[READING_PAYLOAD_LEN] = {READING_PAYLOAD_VERSION};
+
+static void putBE16(uint8_t *out, uint16_t value)
+{
+  out[0] = (uint8_t)(value >> 8);
+  out[1] = (uint8_t)value;
+}
+
+static void putBE32(uint8_t *out, uint32_t value)
+{
+  out[0] = (uint8_t)(value >> 24);
+  out[1] = (uint8_t)(value >> 16);
+  out[2] = (uint8_t)(value >> 8);
+  out[3] = (uint8_t)value;
+}
+
+static void buildReading()
+{
+  _readingBuf[0] = READING_PAYLOAD_VERSION;
+  putBE32(_readingBuf + 1, (uint32_t)(millis() / 1000UL));
+  putBE16(_readingBuf + 5, (uint16_t)(ESP.getFreeHeap() / 1024));
+  _readingBuf[7] = buzzer::isActive() ? 0x01 : 0x00;
+}
 
 static void applyNewConfig(const uint8_t *json, size_t len)
 {
@@ -47,38 +69,46 @@ static void applyNewConfig(const uint8_t *json, size_t len)
     return;
   }
 
-  bool caseSensor = doc["caseSensor"] | true;
-  float moveOffset = doc["moveOffset"] | 0.0f;
-  float rotateOffset = doc["rotateOffset"] | 0.0f;
-
-  DEBUG_PRINT(String("Config: caseSensor=") + (caseSensor ? "1" : "0") +
-              " moveOffset=" + String(moveOffset, 2) +
-              " rotateOffset=" + String(rotateOffset, 2));
-
-  sensor_hub::setCaseSwitchInstalled(caseSensor);
-  sensor_hub::setMotionTuning(moveOffset, rotateOffset);
+  const char *label = doc["label"] | "unnamed";
+  DEBUG_PRINT(String("Config: label=") + label);
 }
 
-static void onCameraCommand(secure_session::CameraCommand command, const uint8_t *payload, size_t payloadLen)
+static void handleCommand(DeviceCommand command, const uint8_t *payload, size_t payloadLen)
 {
   switch (command)
   {
-  case secure_session::CameraCommand::ResetSecurityAlarm:
+  case DeviceCommand::ResetSecurityAlarm:
     DEBUG_PRINT("Command: reset security alarm");
-    sensor_hub::resetMotion();
     buzzer::setActive(false);
     break;
-  case secure_session::CameraCommand::ActivateBuzzerAlarm:
+  case DeviceCommand::ActivateBuzzerAlarm:
     DEBUG_PRINT("Command: trigger security alarm");
     buzzer::setActive(true);
     break;
-  case secure_session::CameraCommand::SaveNewConfig:
+  case DeviceCommand::SaveNewConfig:
     DEBUG_PRINT("Command: save new config");
     applyNewConfig(payload, payloadLen);
     break;
   default:
     DEBUG_PRINT(String("Command: unknown code ") + (int)command);
     break;
+  }
+}
+
+static void receiveCommands()
+{
+  uint8_t message[DATA_CHANNEL_MAX_MESSAGE_SIZE];
+  size_t messageLen = 0;
+
+  while (data_channel::Receive(message, sizeof(message), messageLen))
+  {
+    if (messageLen < 2 || message[0] != DEVICE_COMMAND_VERSION)
+    {
+      DEBUG_PRINT("Command: unsupported message envelope");
+      continue;
+    }
+
+    handleCommand((DeviceCommand)message[1], message + 2, messageLen - 2);
   }
 }
 
@@ -99,8 +129,7 @@ static void handleResetButton()
     return;
   }
 
-  if (buttonState == LOW && _resetButtonHeld &&
-      (millis() - _resetButtonPressStart) >= RESET_BUTTON_HOLD_MS)
+  if ((millis() - _resetButtonPressStart) >= RESET_BUTTON_HOLD_MS)
   {
     DEBUG_PRINT("Reset button held: clearing NVS and restarting");
     led_indicator::setState(led_indicator::ERROR_FATAL);
@@ -118,8 +147,6 @@ static void enterState(AppState next)
   switch (next)
   {
   case STATE_BOOT:
-    led_indicator::setState(led_indicator::BOOTING);
-    break;
   case STATE_LOAD_CREDENTIALS:
     led_indicator::setState(led_indicator::BOOTING);
     break;
@@ -132,10 +159,7 @@ static void enterState(AppState next)
   case STATE_PREPROVISION:
     led_indicator::setState(led_indicator::PAIRING);
     break;
-  case STATE_INIT_STREAMING_CAMERA:
-    led_indicator::setState(led_indicator::PAIRED);
-    break;
-  case STATE_STREAMING:
+  case STATE_SENDING:
     led_indicator::setState(led_indicator::STREAMING);
     break;
   case STATE_NETWORK_RECOVERY:
@@ -147,46 +171,11 @@ static void enterState(AppState next)
   }
 }
 
-void setup()
-{
-  pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
-
-  if(DEBUG_ON)
-    Serial.begin(115200);
-  
-    unsigned long serialStart = millis();
-  while (!Serial && (millis() - serialStart) < 3000)
-  {
-    delay(10);
-  }
-  delay(300);
-
-  DEBUG_PRINT("=================================");
-  DEBUG_PRINT("CamPortal device firmware " FIRMWARE_VERSION);
-  DEBUG_PRINT("=================================");
-
-  led_indicator::begin();
-  led_indicator::setState(led_indicator::BOOTING);
-  status_led::begin();
-  ir_cut_controller::begin();
-  sensor_hub::begin();
-  buzzer::begin();
-  secure_session::setCommandHandler(onCameraCommand);
-
-  if (!secret_store::begin())
-  {
-    DEBUG_PRINT("Failed to open NVS namespace");
-  }
-
-  enterState(STATE_LOAD_CREDENTIALS);
-}
-
 static void doLoadCredentials()
 {
   if (secret_store::loadFromCompileTime(_creds))
   {
     DEBUG_PRINT("Loaded credentials from compile-time secrets.h");
-    _credsSource_compileTime = true;
     enterState(STATE_CONNECT_WIFI);
     return;
   }
@@ -194,7 +183,6 @@ static void doLoadCredentials()
   if (secret_store::loadFromNvs(_creds))
   {
     DEBUG_PRINT("Loaded credentials from NVS");
-    _credsSource_compileTime = false;
     enterState(STATE_CONNECT_WIFI);
     return;
   }
@@ -206,6 +194,7 @@ static void doLoadCredentials()
     enterState(STATE_FATAL_ERROR);
     return;
   }
+
   DEBUG_PRINT("Join Wi-Fi: " + provision_ap::apSsid() + " and scan the wizard QR with your phone");
   enterState(STATE_AP_PROVISIONING);
 }
@@ -213,9 +202,7 @@ static void doLoadCredentials()
 static void doApProvisioning()
 {
   DeviceCredentials received;
-  provision_ap::TickResult result = provision_ap::tick(received);
-
-  if (result != provision_ap::RECEIVED)
+  if (provision_ap::tick(received) != provision_ap::RECEIVED)
   {
     status_led::setMode(provision_ap::clientConnected() ? status_led::SOLID : status_led::BLINKING);
     return;
@@ -230,7 +217,6 @@ static void doApProvisioning()
   }
 
   _creds = received;
-  _credsSource_compileTime = false;
 
   if (!secret_store::saveToNvs(_creds))
   {
@@ -246,21 +232,14 @@ static void doApProvisioning()
 
 static void doConnectWifi()
 {
-  if (wifi_manager::connect(_creds.wifiSsid, _creds.wifiPass, WIFI_CONNECT_TIMEOUT_MS))
+  if (!wifi_manager::connect(_creds.wifiSsid, _creds.wifiPass, WIFI_CONNECT_TIMEOUT_MS))
   {
-    if (secret_store::isPaired())
-    {
-      enterState(STATE_INIT_STREAMING_CAMERA);
-    }
-    else
-    {
-      enterState(STATE_PREPROVISION);
-    }
+    DEBUG_PRINT("WiFi connect failed; will retry");
+    enterState(STATE_NETWORK_RECOVERY);
     return;
   }
 
-  DEBUG_PRINT("WiFi connect failed; will retry");
-  enterState(STATE_NETWORK_RECOVERY);
+  enterState(secret_store::isPaired() ? STATE_SENDING : STATE_PREPROVISION);
 }
 
 static void doPreprovision()
@@ -271,13 +250,12 @@ static void doPreprovision()
     return;
   }
 
-  preprovision_client::Result result = preprovision_client::verify(_creds);
-
-  if (result == preprovision_client::SUCCESS)
+  if (preprovision_client::verify(_creds) == preprovision_client::SUCCESS)
   {
     DEBUG_PRINT("Preprovision verification accepted by server");
     secret_store::setPaired(true);
-    enterState(STATE_INIT_STREAMING_CAMERA);
+    _channelRetryAt = 0;
+    enterState(STATE_SENDING);
     return;
   }
 
@@ -285,45 +263,46 @@ static void doPreprovision()
   _preprovisionRetryAt = millis() + PREPROVISION_RETRY_DELAY_MS;
 }
 
-static void doInitStreamingCamera()
-{
-  if (!frame_streamer::beginCamera())
-  {
-    DEBUG_PRINT("Camera init for streaming failed; will retry after reboot");
-    delay(3000);
-    ESP.restart();
-    return;
-  }
-  _sessionRetryAt = 0;
-  enterState(STATE_STREAMING);
-}
-
-static void doStreaming()
+static void doSending()
 {
   if (!wifi_manager::isConnected())
   {
-    frame_streamer::endSession();
+    data_channel::End();
     enterState(STATE_NETWORK_RECOVERY);
     return;
   }
 
-  if (!frame_streamer::isSessionActive())
+  if (!data_channel::IsActive())
   {
-    if (_sessionRetryAt != 0 && millis() < _sessionRetryAt)
+    if (_channelRetryAt != 0 && millis() < _channelRetryAt)
     {
       delay(50);
       return;
     }
-    if (!frame_streamer::startSession(_creds))
+
+    if (!data_channel::Begin(_creds, ServerTcpPort))
     {
-      DEBUG_PRINT("Secure session start failed; backing off");
-      _sessionRetryAt = millis() + STREAM_RETRY_DELAY_MS;
+      DEBUG_PRINT("Data channel start failed; backing off");
+      _channelRetryAt = millis() + CHANNEL_RETRY_DELAY_MS;
       return;
     }
-    _sessionRetryAt = 0;
+    _channelRetryAt = 0;
   }
 
-  frame_streamer::tick();
+  receiveCommands();
+
+  if ((millis() - _lastReadingAt) < READING_INTERVAL_MS)
+  {
+    delay(10);
+    return;
+  }
+  _lastReadingAt = millis();
+
+  buildReading();
+  if (!data_channel::Send(_readingBuf, READING_PAYLOAD_LEN))
+  {
+    DEBUG_PRINT("Reading send failed");
+  }
 }
 
 static void doNetworkRecovery()
@@ -341,14 +320,39 @@ static void doNetworkRecovery()
     return;
   }
 
-  if (secret_store::isPaired())
+  enterState(secret_store::isPaired() ? STATE_SENDING : STATE_PREPROVISION);
+}
+
+void setup()
+{
+  pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
+
+  if (DEBUG_ON)
   {
-    enterState(STATE_STREAMING);
+    Serial.begin(115200);
+    unsigned long serialStart = millis();
+    while (!Serial && (millis() - serialStart) < 3000)
+    {
+      delay(10);
+    }
+    delay(300);
   }
-  else
+
+  DEBUG_PRINT("=================================");
+  DEBUG_PRINT("CamPortal device firmware " FIRMWARE_VERSION);
+  DEBUG_PRINT("=================================");
+
+  led_indicator::begin();
+  led_indicator::setState(led_indicator::BOOTING);
+  status_led::begin();
+  buzzer::begin();
+
+  if (!secret_store::begin())
   {
-    enterState(STATE_PREPROVISION);
+    DEBUG_PRINT("Failed to open NVS namespace");
   }
+
+  enterState(STATE_LOAD_CREDENTIALS);
 }
 
 void loop()
@@ -359,7 +363,6 @@ void loop()
     led_indicator::tick();
 
   status_led::tick();
-  ir_cut_controller::tick();
 
   switch (_state)
   {
@@ -376,11 +379,8 @@ void loop()
   case STATE_PREPROVISION:
     doPreprovision();
     break;
-  case STATE_INIT_STREAMING_CAMERA:
-    doInitStreamingCamera();
-    break;
-  case STATE_STREAMING:
-    doStreaming();
+  case STATE_SENDING:
+    doSending();
     break;
   case STATE_NETWORK_RECOVERY:
     doNetworkRecovery();

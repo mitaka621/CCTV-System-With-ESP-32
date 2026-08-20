@@ -138,7 +138,7 @@ namespace CamPortal.Extensions
                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                        factory: _ => new FixedWindowRateLimiterOptions
                        {
-                           PermitLimit = 500,
+                           PermitLimit = 50,
                            Window = TimeSpan.FromMinutes(1),
                            QueueLimit = 0,
                            AutoReplenishment = true
@@ -161,7 +161,7 @@ namespace CamPortal.Extensions
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
                             PermitLimit = 20,
-                            Window = TimeSpan.FromHours(1),
+                            Window = TimeSpan.FromDays(1),
                             QueueLimit = 0,
                             AutoReplenishment = true
                         }));

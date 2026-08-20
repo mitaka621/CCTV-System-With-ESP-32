@@ -1,0 +1,7 @@
+{
+  "name": "WiFiManager",
+  "version": "1.0.0",
+  "description": "Station-mode Wi-Fi connect and reconnect helper.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

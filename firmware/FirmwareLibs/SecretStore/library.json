@@ -1,0 +1,7 @@
+{
+  "name": "SecretStore",
+  "version": "1.0.0",
+  "description": "Device credential storage in NVS with compile-time secrets fallback.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

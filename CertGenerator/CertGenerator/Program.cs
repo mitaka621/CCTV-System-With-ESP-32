@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 
 const string blazorAppCertificatePath = @"..\..\..\..\..\BlazorCamPortal\BlazorCamPortal\server.pfx";
 const string blazorAppSettingsRelativePath = @"..\..\..\..\..\BlazorCamPortal\BlazorCamPortal\appsettings.json";
-const string esp32SecretsRelativePath = @"..\..\..\..\..\ESP_32_Cam_Firmware\include\secrets.h";
+const string repositoryRootRelativePath = @"..\..\..\..\..";
 
 string opensslPath = GetOpenSslPath();
 
@@ -65,7 +65,7 @@ string cString = ConvertToCString(caContent);
 Console.WriteLine("Generated CA string for esp32:");
 Console.WriteLine(cString);
 
-CopyCaToSecretsFile(esp32SecretsRelativePath, cString);
+UpdateAllFirmwareSecretsFiles(repositoryRootRelativePath, cString);
 
 ImportCaToTrustedRoot(caCert);
 
@@ -286,41 +286,124 @@ void UpdateAppSettingsWithPassword(string appSettingsRelativePath, string passwo
     }
 }
 
-void CopyCaToSecretsFile(string secretsRelativePath, string caCString)
+void UpdateAllFirmwareSecretsFiles(string repositoryRootRelative, string caCString)
+{
+    string repositoryRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), repositoryRootRelative));
+
+    Console.WriteLine($"\nScanning for firmware projects under: {repositoryRoot}");
+
+    List<string> secretsFiles = FindFirmwareSecretsFiles(repositoryRoot);
+
+    if (secretsFiles.Count == 0)
+    {
+        Console.WriteLine("No firmware project found (no platformio.ini under the repository root).");
+        return;
+    }
+
+    foreach (string secretsFile in secretsFiles)
+    {
+        WriteCaToSecretsFile(secretsFile, caCString);
+    }
+
+    Console.WriteLine($"ROOT_CA_CERT updated in {secretsFiles.Count} firmware project(s).");
+}
+
+List<string> FindFirmwareSecretsFiles(string repositoryRoot)
+{
+    var secretsFiles = new List<string>();
+
+    if (!Directory.Exists(repositoryRoot))
+        return secretsFiles;
+
+    foreach (string projectFile in EnumerateFilesSkippingBuildOutput(repositoryRoot, "platformio.ini"))
+    {
+        string? projectDirectory = Path.GetDirectoryName(projectFile);
+        if (projectDirectory == null)
+            continue;
+
+        secretsFiles.Add(Path.Combine(projectDirectory, "include", "secrets.h"));
+    }
+
+    return secretsFiles;
+}
+
+IEnumerable<string> EnumerateFilesSkippingBuildOutput(string directory, string fileName)
+{
+    string[] skippedDirectories = [".git", ".pio", ".vs", ".vscode", ".cache", "bin", "obj", "node_modules"];
+
+    if (skippedDirectories.Contains(Path.GetFileName(directory), StringComparer.OrdinalIgnoreCase))
+        yield break;
+
+    string candidate = Path.Combine(directory, fileName);
+    if (File.Exists(candidate))
+        yield return candidate;
+
+    foreach (string subDirectory in Directory.EnumerateDirectories(directory))
+    {
+        foreach (string match in EnumerateFilesSkippingBuildOutput(subDirectory, fileName))
+            yield return match;
+    }
+}
+
+void WriteCaToSecretsFile(string secretsFullPath, string caCString)
 {
     try
     {
-        string currentDir = Directory.GetCurrentDirectory();
-        string secretsFullPath = Path.Combine(currentDir, secretsRelativePath);
-
-        Console.WriteLine($"\nUpdating secrets.h at: {secretsFullPath}");
+        Console.WriteLine($"Updating secrets.h at: {secretsFullPath}");
 
         if (!File.Exists(secretsFullPath))
         {
-            Console.WriteLine("secrets.h not found. Creating a new one.");
-            File.WriteAllText(secretsFullPath, caCString + Environment.NewLine);
-            Console.WriteLine("secrets.h created with CA certificate.");
+            string? secretsDirectory = Path.GetDirectoryName(secretsFullPath);
+            if (secretsDirectory != null)
+                Directory.CreateDirectory(secretsDirectory);
+
+            Console.WriteLine("  not found, creating a new one.");
+            File.WriteAllText(secretsFullPath, "#pragma once" + Environment.NewLine + Environment.NewLine + caCString);
             return;
         }
 
         var lines = File.ReadAllLines(secretsFullPath).ToList();
+        int removedDefines = RemoveRootCaCertDefines(lines);
 
-        int index = lines.FindLastIndex(line => line.TrimStart().StartsWith("#define ROOT_CA_CERT"));
-        if (index != -1)
-        {
-            lines.RemoveRange(index, lines.Count - index);
-        }
+        while (lines.Count > 0 && lines[^1].Trim().Length == 0)
+            lines.RemoveAt(lines.Count - 1);
 
-        lines.AddRange(caCString.Split('\n'));
+        lines.Add(string.Empty);
+        lines.AddRange(caCString.Split('\n').Select(line => line.TrimEnd('\r')));
 
         File.WriteAllLines(secretsFullPath, lines);
 
-        Console.WriteLine("secrets.h updated successfully with new CA certificate.");
+        Console.WriteLine(removedDefines > 0
+            ? $"  replaced {removedDefines} existing ROOT_CA_CERT define(s)."
+            : "  appended ROOT_CA_CERT define.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error updating secrets.h: {ex.Message}");
+        Console.WriteLine($"  Error updating {secretsFullPath}: {ex.Message}");
     }
+}
+
+int RemoveRootCaCertDefines(List<string> lines)
+{
+    int removedDefines = 0;
+
+    for (int i = lines.Count - 1; i >= 0; i--)
+    {
+        if (!lines[i].TrimStart().StartsWith("#define ROOT_CA_CERT"))
+            continue;
+
+        int lastLine = i;
+        while (lastLine < lines.Count && lines[lastLine].TrimEnd().EndsWith('\\'))
+            lastLine++;
+
+        if (lastLine < lines.Count)
+            lastLine++;
+
+        lines.RemoveRange(i, lastLine - i);
+        removedDefines++;
+    }
+
+    return removedDefines;
 }
 
 void ImportCaToTrustedRoot(string caCertFile)

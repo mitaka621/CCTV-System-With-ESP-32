@@ -1,7 +1,7 @@
 #include "frame_streamer.h"
 #include "config.h"
 #include "secrets.h"
-#include "secure_session.h"
+#include "data_channel.h"
 #include "camera_pins.h"
 #include "ir_cut_controller.h"
 #include "sensor_hub.h"
@@ -32,7 +32,12 @@ namespace frame_streamer
   static constexpr size_t TELEMETRY_PAYLOAD_LEN = 44;
   static constexpr uint8_t TELEMETRY_VERSION = 2;
 
+  static constexpr size_t RESOLUTION_HEADER_LEN = 8;
+  static constexpr size_t TELEMETRY_LEN_FIELD = 2;
+  static constexpr size_t FRAME_HEADER_LEN = RESOLUTION_HEADER_LEN + TELEMETRY_LEN_FIELD;
+
   static uint8_t _telemetryBuf[TELEMETRY_PAYLOAD_LEN] = {TELEMETRY_VERSION};
+  static uint8_t _frameHeader[FRAME_HEADER_LEN] = {};
 
   static uint16_t clampU16(uint32_t v)
   {
@@ -319,22 +324,22 @@ namespace frame_streamer
 
   bool startSession(const DeviceCredentials &creds)
   {
-    return secure_session::begin(creds, ServerTcpPort);
+    return data_channel::Begin(creds, ServerTcpPort);
   }
 
   bool isSessionActive()
   {
-    return secure_session::isActive();
+    return data_channel::IsActive();
   }
 
   void endSession()
   {
-    secure_session::end();
+    data_channel::End();
   }
 
   void tick()
   {
-    if (!secure_session::isActive())
+    if (!data_channel::IsActive())
     {
       delay(50);
       return;
@@ -356,9 +361,17 @@ namespace frame_streamer
 
     refreshLiveSecurityTelemetry();
 
-    secure_session::FrameTiming timing = {};
-    bool sendOk = secure_session::sendFrame(fb->buf, fb->len, (uint32_t)fb->width, (uint32_t)fb->height,
-                                            _telemetryBuf, (uint16_t)TELEMETRY_PAYLOAD_LEN, &timing);
+    putBE32(_frameHeader, (uint32_t)fb->width);
+    putBE32(_frameHeader + 4, (uint32_t)fb->height);
+    putBE16(_frameHeader + RESOLUTION_HEADER_LEN, (uint16_t)TELEMETRY_PAYLOAD_LEN);
+
+    data_channel::Segment segments[3] = {
+        {_frameHeader, FRAME_HEADER_LEN},
+        {_telemetryBuf, TELEMETRY_PAYLOAD_LEN},
+        {fb->buf, fb->len}};
+
+    data_channel::SendTiming timing = {};
+    bool sendOk = data_channel::SendSegments(segments, 3, &timing);
     if (!sendOk)
     {
       DEBUG_PRINT("Secure frame send failed");

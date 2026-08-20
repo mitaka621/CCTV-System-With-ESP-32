@@ -1,4 +1,4 @@
-#include "secure_session.h"
+#include "data_channel.h"
 #include "config.h"
 #include <WiFi.h>
 #include <esp_system.h>
@@ -20,7 +20,7 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 
-namespace secure_session
+namespace data_channel
 {
   static constexpr size_t DEVICE_ID_LEN = 16;
   static constexpr size_t NONCE_LEN = 32;
@@ -32,8 +32,7 @@ namespace secure_session
   static constexpr size_t GCM_IV_LEN = 12;
   static constexpr size_t SEQ_LEN = 8;
   static constexpr size_t ENC_POOL_SIZE = 2;
-  static constexpr size_t RESOLUTION_HEADER_LEN = 8;
-  static constexpr size_t TELEMETRY_LEN_FIELD = 2;
+  static constexpr size_t RX_QUEUE_DEPTH = 2;
 
   struct SessionState
   {
@@ -49,7 +48,7 @@ namespace secure_session
     bool active;
   };
 
-  struct EncryptedFrame
+  struct OutgoingMessage
   {
     uint8_t *buf;
     size_t poolIdx;
@@ -58,12 +57,18 @@ namespace secure_session
     uint8_t tag[GCM_TAG_LEN];
   };
 
+  struct ReceivedMessage
+  {
+    uint16_t len;
+    uint8_t data[DATA_CHANNEL_MAX_MESSAGE_SIZE];
+  };
+
   static SessionState _state = {};
   static bool _gcmReady = false;
 
   static uint8_t *_encPool[ENC_POOL_SIZE] = {nullptr, nullptr};
   static QueueHandle_t _freeSlots = nullptr;
-  static QueueHandle_t _readyFrames = nullptr;
+  static QueueHandle_t _readyMessages = nullptr;
   static TaskHandle_t _senderTask = nullptr;
   static SemaphoreHandle_t _senderExitedSem = nullptr;
   static volatile bool _senderOk = true;
@@ -76,7 +81,8 @@ namespace secure_session
   static TaskHandle_t _receiverTask = nullptr;
   static SemaphoreHandle_t _receiverExitedSem = nullptr;
   static volatile bool _receiverShouldExit = false;
-  static CommandHandler _commandHandler = nullptr;
+  static MessageHandler _messageHandler = nullptr;
+  static QueueHandle_t _receivedMessages = nullptr;
 
   static uint8_t hexValue(char c)
   {
@@ -242,8 +248,8 @@ namespace secure_session
   {
     while (!_senderShouldExit)
     {
-      EncryptedFrame f;
-      if (xQueueReceive(_readyFrames, &f, portMAX_DELAY) != pdTRUE) continue;
+      OutgoingMessage f;
+      if (xQueueReceive(_readyMessages, &f, portMAX_DELAY) != pdTRUE) continue;
 
       if (_senderShouldExit) break;
       if (f.poolIdx == SIZE_MAX) break;
@@ -307,11 +313,26 @@ namespace secure_session
     return true;
   }
 
-  static void dispatchCommand(uint8_t code, const uint8_t *payload, size_t payloadLen)
+  static void deliverMessage(const uint8_t *data, size_t len)
   {
-    if (_commandHandler != nullptr)
+    if (_messageHandler != nullptr)
     {
-      _commandHandler((CameraCommand)code, payload, payloadLen);
+      _messageHandler(data, len);
+      return;
+    }
+
+    if (_receivedMessages == nullptr || len > DATA_CHANNEL_MAX_MESSAGE_SIZE) return;
+
+    ReceivedMessage message;
+    message.len = (uint16_t)len;
+    memcpy(message.data, data, len);
+
+    if (xQueueSend(_receivedMessages, &message, 0) != pdTRUE)
+    {
+      ReceivedMessage dropped;
+      xQueueReceive(_receivedMessages, &dropped, 0);
+      xQueueSend(_receivedMessages, &message, 0);
+      DEBUG_PRINT("data_channel: receive queue full, dropped oldest message");
     }
   }
 
@@ -319,8 +340,8 @@ namespace secure_session
   {
     const size_t rxHeaderLen = 4 + SEQ_LEN + GCM_TAG_LEN;
     uint8_t header[4 + SEQ_LEN + GCM_TAG_LEN];
-    uint8_t cipher[STREAM_COMMAND_MAX_PAYLOAD];
-    uint8_t plain[STREAM_COMMAND_MAX_PAYLOAD];
+    uint8_t cipher[DATA_CHANNEL_MAX_MESSAGE_SIZE];
+    uint8_t plain[DATA_CHANNEL_MAX_MESSAGE_SIZE];
 
     while (!_receiverShouldExit)
     {
@@ -339,14 +360,14 @@ namespace secure_session
 
       if (totalLen < (uint32_t)(SEQ_LEN + GCM_TAG_LEN + 1))
       {
-        DEBUG_PRINT("secure_session: downstream frame too small");
+        DEBUG_PRINT("data_channel: downstream message too small");
         break;
       }
 
       size_t cipherLen = (size_t)(totalLen - SEQ_LEN - GCM_TAG_LEN);
       if (cipherLen > sizeof(cipher))
       {
-        DEBUG_PRINT("secure_session: downstream frame too large");
+        DEBUG_PRINT("data_channel: downstream message too large");
         break;
       }
 
@@ -354,7 +375,7 @@ namespace secure_session
 
       if (seq == 0 || seq <= _dnSeq)
       {
-        DEBUG_PRINT("secure_session: downstream replay/out-of-order, dropping");
+        DEBUG_PRINT("data_channel: downstream replay/out-of-order, dropping");
         continue;
       }
 
@@ -374,16 +395,13 @@ namespace secure_session
                                          cipher, plain);
       if (ret != 0)
       {
-        DEBUG_PRINT("secure_session: downstream auth failed, dropping");
+        DEBUG_PRINT("data_channel: downstream auth failed, dropping");
         continue;
       }
 
       _dnSeq = seq;
 
-      if (cipherLen >= 2 && plain[0] == STREAM_COMMAND_VERSION)
-      {
-        dispatchCommand(plain[1], plain + 2, cipherLen - 2);
-      }
+      deliverMessage(plain, cipherLen);
     }
 
     if (_receiverExitedSem != nullptr)
@@ -398,18 +416,22 @@ namespace secure_session
   {
     for (size_t i = 0; i < ENC_POOL_SIZE; ++i)
     {
-      _encPool[i] = (uint8_t *)heap_caps_malloc(ENCRYPTION_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
+      _encPool[i] = (uint8_t *)heap_caps_malloc(DATA_CHANNEL_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
       if (_encPool[i] == nullptr)
       {
-        DEBUG_PRINT("secure_session: failed to allocate cipher pool slot in PSRAM");
+        _encPool[i] = (uint8_t *)heap_caps_malloc(DATA_CHANNEL_BUFFER_SIZE, MALLOC_CAP_DEFAULT);
+      }
+      if (_encPool[i] == nullptr)
+      {
+        DEBUG_PRINT("data_channel: failed to allocate cipher pool slot");
         return false;
       }
     }
 
     _freeSlots = xQueueCreate(ENC_POOL_SIZE, sizeof(size_t));
-    _readyFrames = xQueueCreate(ENC_POOL_SIZE + 1, sizeof(EncryptedFrame));
+    _readyMessages = xQueueCreate(ENC_POOL_SIZE + 1, sizeof(OutgoingMessage));
     _senderExitedSem = xSemaphoreCreateBinary();
-    if (_freeSlots == nullptr || _readyFrames == nullptr || _senderExitedSem == nullptr) return false;
+    if (_freeSlots == nullptr || _readyMessages == nullptr || _senderExitedSem == nullptr) return false;
 
     for (size_t i = 0; i < ENC_POOL_SIZE; ++i)
     {
@@ -421,15 +443,21 @@ namespace secure_session
     _lastSendUs = 0;
 
     BaseType_t taskRes = xTaskCreatePinnedToCore(
-        senderTaskFn, "stream-sender", 4096, nullptr, 5, &_senderTask, 0);
+        senderTaskFn, "channel-sender", 4096, nullptr, 5, &_senderTask, 0);
     if (taskRes != pdPASS) return false;
 
     _receiverShouldExit = false;
     _receiverExitedSem = xSemaphoreCreateBinary();
     if (_receiverExitedSem == nullptr) return false;
 
+    if (_receivedMessages == nullptr)
+    {
+      _receivedMessages = xQueueCreate(RX_QUEUE_DEPTH, sizeof(ReceivedMessage));
+      if (_receivedMessages == nullptr) return false;
+    }
+
     BaseType_t rxRes = xTaskCreatePinnedToCore(
-        receiverTaskFn, "stream-receiver", 4096, nullptr, 5, &_receiverTask, 0);
+        receiverTaskFn, "channel-receiver", 4096, nullptr, 5, &_receiverTask, 0);
     return rxRes == pdPASS;
   }
 
@@ -453,15 +481,21 @@ namespace secure_session
       _receiverExitedSem = nullptr;
     }
 
+    if (_receivedMessages != nullptr)
+    {
+      vQueueDelete(_receivedMessages);
+      _receivedMessages = nullptr;
+    }
+
     if (_senderTask != nullptr)
     {
       _senderShouldExit = true;
 
-      if (_readyFrames != nullptr)
+      if (_readyMessages != nullptr)
       {
-        EncryptedFrame sentinel = {};
+        OutgoingMessage sentinel = {};
         sentinel.poolIdx = SIZE_MAX;
-        xQueueSend(_readyFrames, &sentinel, 0);
+        xQueueSend(_readyMessages, &sentinel, 0);
       }
 
       if (_senderExitedSem != nullptr)
@@ -478,10 +512,10 @@ namespace secure_session
       _senderExitedSem = nullptr;
     }
 
-    if (_readyFrames != nullptr)
+    if (_readyMessages != nullptr)
     {
-      vQueueDelete(_readyFrames);
-      _readyFrames = nullptr;
+      vQueueDelete(_readyMessages);
+      _readyMessages = nullptr;
     }
     if (_freeSlots != nullptr)
     {
@@ -536,20 +570,20 @@ namespace secure_session
   {
     if (!deviceIdToRawBytes(creds.deviceId, _state.deviceIdRaw))
     {
-      DEBUG_PRINT("secure_session: deviceId parse failed");
+      DEBUG_PRINT("data_channel: deviceId parse failed");
       return false;
     }
 
     if (!writeAll(_state.client, _state.deviceIdRaw, DEVICE_ID_LEN))
     {
-      DEBUG_PRINT("secure_session: failed to send deviceId");
+      DEBUG_PRINT("data_channel: failed to send deviceId");
       return false;
     }
 
     uint8_t serverHello[NONCE_LEN + EPHEMERAL_PUB_LEN + SIGNATURE_LEN];
-    if (!readExact(_state.client, serverHello, sizeof(serverHello), STREAM_HANDSHAKE_TIMEOUT_MS))
+    if (!readExact(_state.client, serverHello, sizeof(serverHello), DATA_CHANNEL_HANDSHAKE_TIMEOUT_MS))
     {
-      DEBUG_PRINT("secure_session: failed to read server hello");
+      DEBUG_PRINT("data_channel: failed to read server hello");
       return false;
     }
 
@@ -559,13 +593,13 @@ namespace secure_session
 
     if (ephemeralServerPub[0] != 0x04)
     {
-      DEBUG_PRINT("secure_session: server ephemeral pub format byte invalid");
+      DEBUG_PRINT("data_channel: server ephemeral pub format byte invalid");
       return false;
     }
 
     uint8_t serverSignatureHash[32];
     {
-      const char domain[] = STREAM_DOMAIN_TAG;
+      const char domain[] = DATA_CHANNEL_DOMAIN_TAG;
       const size_t domainLen = sizeof(domain);
       mbedtls_sha256_context sha;
       mbedtls_sha256_init(&sha);
@@ -586,7 +620,7 @@ namespace secure_session
       size_t spkiLen = 0;
       if (!base64Decode(creds.serverIdentityPubKey, spkiDer, spkiCap, spkiLen))
       {
-        DEBUG_PRINT("secure_session: server identity pub key base64 decode failed");
+        DEBUG_PRINT("data_channel: server identity pub key base64 decode failed");
         free(spkiDer);
         return false;
       }
@@ -597,7 +631,7 @@ namespace secure_session
       free(spkiDer);
       if (ret != 0)
       {
-        DEBUG_PRINT(String("secure_session: parse server pub key failed: ") + ret);
+        DEBUG_PRINT(String("data_channel: parse server pub key failed: ") + ret);
         mbedtls_pk_free(&serverPk);
         return false;
       }
@@ -621,7 +655,7 @@ namespace secure_session
 
       if (ret != 0)
       {
-        DEBUG_PRINT(String("secure_session: server signature INVALID: ") + ret);
+        DEBUG_PRINT(String("data_channel: server signature INVALID: ") + ret);
         return false;
       }
       serverSignatureOk = true;
@@ -637,7 +671,7 @@ namespace secure_session
     if (mbedtls_ctr_drbg_seed(&ctrDrbg, mbedtls_entropy_func, &entropy,
                               (const unsigned char *)pers, sizeof(pers) - 1) != 0)
     {
-      DEBUG_PRINT("secure_session: drbg seed failed");
+      DEBUG_PRINT("data_channel: drbg seed failed");
       mbedtls_ctr_drbg_free(&ctrDrbg);
       mbedtls_entropy_free(&entropy);
       return false;
@@ -690,7 +724,7 @@ namespace secure_session
 
     if (!ecdhOk)
     {
-      DEBUG_PRINT("secure_session: ECDH failed");
+      DEBUG_PRINT("data_channel: ECDH failed");
       mbedtls_ctr_drbg_free(&ctrDrbg);
       mbedtls_entropy_free(&entropy);
       return false;
@@ -701,7 +735,7 @@ namespace secure_session
 
     uint8_t deviceSignatureHash[32];
     {
-      const char domain[] = STREAM_DOMAIN_TAG;
+      const char domain[] = DATA_CHANNEL_DOMAIN_TAG;
       const size_t domainLen = sizeof(domain);
       mbedtls_sha256_context sha;
       mbedtls_sha256_init(&sha);
@@ -731,7 +765,7 @@ namespace secure_session
       size_t derLen = 0;
       if (!base64Decode(creds.privateKey, derBuf, derCap, derLen))
       {
-        DEBUG_PRINT("secure_session: device private key base64 decode failed");
+        DEBUG_PRINT("data_channel: device private key base64 decode failed");
         free(derBuf);
         mbedtls_ctr_drbg_free(&ctrDrbg);
         mbedtls_entropy_free(&entropy);
@@ -745,7 +779,7 @@ namespace secure_session
       free(derBuf);
       if (ret != 0)
       {
-        DEBUG_PRINT(String("secure_session: device private key parse failed: ") + ret);
+        DEBUG_PRINT(String("data_channel: device private key parse failed: ") + ret);
         mbedtls_pk_free(&devicePk);
         mbedtls_ctr_drbg_free(&ctrDrbg);
         mbedtls_entropy_free(&entropy);
@@ -779,7 +813,7 @@ namespace secure_session
 
     if (!signOk)
     {
-      DEBUG_PRINT("secure_session: device sign failed");
+      DEBUG_PRINT("data_channel: device sign failed");
       memset(sharedSecretBytes, 0, sizeof(sharedSecretBytes));
       return false;
     }
@@ -791,7 +825,7 @@ namespace secure_session
 
     if (!writeAll(_state.client, deviceHello, sizeof(deviceHello)))
     {
-      DEBUG_PRINT("secure_session: failed to send device hello");
+      DEBUG_PRINT("data_channel: failed to send device hello");
       memset(sharedSecretBytes, 0, sizeof(sharedSecretBytes));
       return false;
     }
@@ -802,7 +836,7 @@ namespace secure_session
 
     const size_t derivedKeyMaterialLen = 32 + IV_BASE_LEN + SESSION_ID_LEN + 32 + IV_BASE_LEN;
     uint8_t derivedKeyMaterial[derivedKeyMaterialLen];
-    const char info[] = STREAM_HKDF_INFO;
+    const char info[] = DATA_CHANNEL_HKDF_INFO;
     int hkdfRet = hkdfSha256(hkdfSalt, sizeof(hkdfSalt),
                               sharedSecretBytes, sizeof(sharedSecretBytes),
                               (const unsigned char *)info, sizeof(info) - 1,
@@ -810,7 +844,7 @@ namespace secure_session
     memset(sharedSecretBytes, 0, sizeof(sharedSecretBytes));
     if (hkdfRet != 0)
     {
-      DEBUG_PRINT(String("secure_session: HKDF failed: ") + hkdfRet);
+      DEBUG_PRINT(String("data_channel: HKDF failed: ") + hkdfRet);
       memset(derivedKeyMaterial, 0, sizeof(derivedKeyMaterial));
       return false;
     }
@@ -827,7 +861,7 @@ namespace secure_session
     esp_aes_gcm_init(&_state.gcm);
     if (esp_aes_gcm_setkey(&_state.gcm, MBEDTLS_CIPHER_ID_AES, _state.sessionKey, 256) != 0)
     {
-      DEBUG_PRINT("secure_session: gcm_setkey failed");
+      DEBUG_PRINT("data_channel: gcm_setkey failed");
       esp_aes_gcm_free(&_state.gcm);
       memset(downstreamKey, 0, sizeof(downstreamKey));
       return false;
@@ -837,7 +871,7 @@ namespace secure_session
     esp_aes_gcm_init(&_dnGcm);
     if (esp_aes_gcm_setkey(&_dnGcm, MBEDTLS_CIPHER_ID_AES, downstreamKey, 256) != 0)
     {
-      DEBUG_PRINT("secure_session: downstream gcm_setkey failed");
+      DEBUG_PRINT("data_channel: downstream gcm_setkey failed");
       esp_aes_gcm_free(&_dnGcm);
       memset(downstreamKey, 0, sizeof(downstreamKey));
       return false;
@@ -850,26 +884,26 @@ namespace secure_session
     _state.startedAtMs = millis();
     _state.active = true;
 
-    DEBUG_PRINT("secure_session: handshake complete");
+    DEBUG_PRINT("data_channel: handshake complete");
     return true;
   }
 
-  bool begin(const DeviceCredentials &creds, uint16_t serverPort)
+  bool Begin(const DeviceCredentials &creds, uint16_t serverPort)
   {
-    end();
+    End();
 
     if (creds.serverIp.length() == 0 || creds.deviceId.length() == 0
         || creds.privateKey.length() == 0 || creds.serverIdentityPubKey.length() == 0)
     {
-      DEBUG_PRINT("secure_session: incomplete credentials");
+      DEBUG_PRINT("data_channel: incomplete credentials");
       return false;
     }
 
-    DEBUG_PRINT("secure_session: connecting to " + creds.serverIp + ":" + String(serverPort));
+    DEBUG_PRINT("data_channel: connecting to " + creds.serverIp + ":" + String(serverPort));
     _state.client.setNoDelay(true);
     if (!_state.client.connect(creds.serverIp.c_str(), serverPort))
     {
-      DEBUG_PRINT("secure_session: TCP connect failed");
+      DEBUG_PRINT("data_channel: TCP connect failed");
       return false;
     }
     _state.client.setNoDelay(true);
@@ -882,7 +916,7 @@ namespace secure_session
 
     if (!initSenderResources())
     {
-      DEBUG_PRINT("secure_session: failed to init sender resources");
+      DEBUG_PRINT("data_channel: failed to init sender resources");
       resetState();
       return false;
     }
@@ -890,17 +924,17 @@ namespace secure_session
     return true;
   }
 
-  void setCommandHandler(CommandHandler handler)
+  void SetMessageHandler(MessageHandler handler)
   {
-    _commandHandler = handler;
+    _messageHandler = handler;
   }
 
-  bool isActive()
+  bool IsActive()
   {
     if (!_state.active) return false;
     if (!_senderOk)
     {
-      DEBUG_PRINT("secure_session: sender task reported failure");
+      DEBUG_PRINT("data_channel: sender task reported failure");
       resetState();
       return false;
     }
@@ -909,23 +943,22 @@ namespace secure_session
       resetState();
       return false;
     }
-    if (millis() - _state.startedAtMs > STREAM_MAX_SESSION_DURATION_MS)
+    if (millis() - _state.startedAtMs > DATA_CHANNEL_MAX_SESSION_DURATION_MS)
     {
-      DEBUG_PRINT("secure_session: session expired by time");
+      DEBUG_PRINT("data_channel: session expired by time");
       resetState();
       return false;
     }
-    if (_state.seq >= STREAM_MAX_SESSION_FRAMES)
+    if (_state.seq >= DATA_CHANNEL_MAX_SESSION_MESSAGES)
     {
-      DEBUG_PRINT("secure_session: session expired by frame count");
+      DEBUG_PRINT("data_channel: session expired by frame count");
       resetState();
       return false;
     }
     return true;
   }
 
-  bool sendFrame(const uint8_t *data, size_t len, uint32_t width, uint32_t height,
-                 const uint8_t *telemetry, uint16_t telemetryLen, FrameTiming *timing)
+  bool SendSegments(const Segment *segments, size_t segmentCount, SendTiming *timing)
   {
     if (timing != nullptr)
     {
@@ -933,56 +966,58 @@ namespace secure_session
       timing->sendUs = 0;
     }
 
-    if (!isActive()) return false;
-    if (data == nullptr || len == 0) return false;
-    if (telemetry == nullptr) telemetryLen = 0;
+    if (!IsActive()) return false;
+    if (segments == nullptr || segmentCount == 0) return false;
+    if (_freeSlots == nullptr || _readyMessages == nullptr) return false;
 
-    size_t headerLen = RESOLUTION_HEADER_LEN + TELEMETRY_LEN_FIELD + telemetryLen;
-    if (headerLen + len > ENCRYPTION_BUFFER_SIZE) return false;
-    if (_freeSlots == nullptr || _readyFrames == nullptr) return false;
+    size_t plainLen = 0;
+    for (size_t i = 0; i < segmentCount; ++i)
+    {
+      if (segments[i].len == 0) continue;
+      if (segments[i].data == nullptr) return false;
+      plainLen += segments[i].len;
+    }
+    if (plainLen == 0 || plainLen > DATA_CHANNEL_BUFFER_SIZE) return false;
 
     size_t slot;
-    if (xQueueReceive(_freeSlots, &slot, pdMS_TO_TICKS(STREAM_FRAME_TCP_TIMEOUT_MS)) != pdTRUE)
+    if (xQueueReceive(_freeSlots, &slot, pdMS_TO_TICKS(DATA_CHANNEL_SEND_TIMEOUT_MS)) != pdTRUE)
     {
-      DEBUG_PRINT("secure_session: timed out waiting for free encryption slot");
+      DEBUG_PRINT("data_channel: timed out waiting for free encryption slot");
       return false;
     }
 
-    EncryptedFrame f;
-    f.buf = _encPool[slot];
-    f.poolIdx = slot;
+    OutgoingMessage message;
+    message.buf = _encPool[slot];
+    message.poolIdx = slot;
+    message.cipherLen = plainLen;
 
-    size_t plainLen = headerLen + len;
-    f.cipherLen = plainLen;
-
-    writeBE32(f.buf, width);
-    writeBE32(f.buf + 4, height);
-    writeBE16(f.buf + RESOLUTION_HEADER_LEN, telemetryLen);
-    if (telemetryLen > 0)
+    size_t offset = 0;
+    for (size_t i = 0; i < segmentCount; ++i)
     {
-      memcpy(f.buf + RESOLUTION_HEADER_LEN + TELEMETRY_LEN_FIELD, telemetry, telemetryLen);
+      if (segments[i].len == 0) continue;
+      memcpy(message.buf + offset, segments[i].data, segments[i].len);
+      offset += segments[i].len;
     }
-    memcpy(f.buf + headerLen, data, len);
 
     _state.seq++;
-    f.seq = _state.seq;
+    message.seq = _state.seq;
 
     uint8_t iv[GCM_IV_LEN];
     memcpy(iv, _state.ivBase, IV_BASE_LEN);
-    writeBE64(iv + IV_BASE_LEN, f.seq);
+    writeBE64(iv + IV_BASE_LEN, message.seq);
 
     uint8_t aad[SESSION_ID_LEN + DEVICE_ID_LEN + SEQ_LEN];
     memcpy(aad, _state.sessionId, SESSION_ID_LEN);
     memcpy(aad + SESSION_ID_LEN, _state.deviceIdRaw, DEVICE_ID_LEN);
-    writeBE64(aad + SESSION_ID_LEN + DEVICE_ID_LEN, f.seq);
+    writeBE64(aad + SESSION_ID_LEN + DEVICE_ID_LEN, message.seq);
 
     unsigned long encryptStartUs = micros();
     int ret = esp_aes_gcm_crypt_and_tag(&_state.gcm, MBEDTLS_GCM_ENCRYPT,
                                         plainLen,
                                         iv, GCM_IV_LEN,
                                         aad, sizeof(aad),
-                                        f.buf, f.buf,
-                                        GCM_TAG_LEN, f.tag);
+                                        message.buf, message.buf,
+                                        GCM_TAG_LEN, message.tag);
     if (timing != nullptr)
     {
       timing->encryptUs = (uint32_t)(micros() - encryptStartUs);
@@ -990,15 +1025,15 @@ namespace secure_session
     if (ret != 0)
     {
       xQueueSend(_freeSlots, &slot, 0);
-      DEBUG_PRINT(String("secure_session: gcm encrypt failed: ") + ret);
+      DEBUG_PRINT(String("data_channel: gcm encrypt failed: ") + ret);
       resetState();
       return false;
     }
 
-    if (xQueueSend(_readyFrames, &f, pdMS_TO_TICKS(STREAM_FRAME_TCP_TIMEOUT_MS)) != pdTRUE)
+    if (xQueueSend(_readyMessages, &message, pdMS_TO_TICKS(DATA_CHANNEL_SEND_TIMEOUT_MS)) != pdTRUE)
     {
       xQueueSend(_freeSlots, &slot, 0);
-      DEBUG_PRINT("secure_session: failed to enqueue encrypted frame");
+      DEBUG_PRINT("data_channel: failed to enqueue encrypted message");
       return false;
     }
 
@@ -1009,7 +1044,33 @@ namespace secure_session
     return true;
   }
 
-  void end()
+  bool Send(const uint8_t *data, size_t len, SendTiming *timing)
+  {
+    Segment segment = {data, len};
+    return SendSegments(&segment, 1, timing);
+  }
+
+  bool Receive(uint8_t *out, size_t outCap, size_t &outLen)
+  {
+    outLen = 0;
+
+    if (out == nullptr || _receivedMessages == nullptr) return false;
+
+    ReceivedMessage message;
+    if (xQueueReceive(_receivedMessages, &message, 0) != pdTRUE) return false;
+
+    if (message.len > outCap)
+    {
+      DEBUG_PRINT("data_channel: receive buffer too small, dropping message");
+      return false;
+    }
+
+    memcpy(out, message.data, message.len);
+    outLen = message.len;
+    return true;
+  }
+
+  void End()
   {
     resetState();
   }

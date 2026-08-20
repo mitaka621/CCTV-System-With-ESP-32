@@ -1,0 +1,7 @@
+{
+  "name": "Crypto",
+  "version": "1.0.0",
+  "description": "Ed25519 signing helpers used for pairing (TweetNaCl).",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

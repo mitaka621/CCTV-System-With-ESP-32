@@ -1,0 +1,10 @@
+{
+  "name": "DataChannel",
+  "version": "1.0.0",
+  "description": "Mutually authenticated encrypted TCP channel to the portal server. Sends and receives arbitrary payloads.",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "SecretStore": "*"
+  }
+}

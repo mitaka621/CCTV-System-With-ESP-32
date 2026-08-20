@@ -1,0 +1,59 @@
+#pragma once
+
+#define FIRMWARE_VERSION "1.0.0"
+
+#define RESET_BUTTON_PIN 14
+#define RESET_BUTTON_HOLD_MS 5000
+
+#define RGB_LED_PIN 48
+#define RGB_LED_COUNT 1
+
+#define STATUS_LED_PIN 21
+#define STATUS_LED_BLINK_INTERVAL_MS 400
+
+#define BUZZER_PIN 40
+#define BUZZER_ON_MS 80
+#define BUZZER_OFF_MS 50
+
+#define NVS_NAMESPACE "settings"
+
+#define WIFI_CONNECT_TIMEOUT_MS 20000
+#define WIFI_RETRY_DELAY_MS 5000
+
+#define PREPROVISION_RETRY_DELAY_MS 30000
+#define CHANNEL_RETRY_DELAY_MS 10000
+
+#define PROVISION_AP_SSID_PREFIX "NewDevice-Setup-"
+#define PROVISION_AP_PASSWORD "devsetup1234"
+#define PROVISION_AP_CHANNEL 6
+#define PROVISION_AP_HIDDEN false
+#define PROVISION_AP_MAX_CLIENTS 4
+#define PROVISION_HTTP_PORT 80
+
+// must match the server, do not change per device
+#define DOMAIN_TAG "campr-provision-v1"
+#define DATA_CHANNEL_DOMAIN_TAG "CAMPR-STREAM-V1"
+#define DATA_CHANNEL_HKDF_INFO "CAMPR-STREAM-V1-derived"
+
+#define DATA_CHANNEL_BUFFER_SIZE 4096
+#define DATA_CHANNEL_HANDSHAKE_TIMEOUT_MS 10000
+#define DATA_CHANNEL_SEND_TIMEOUT_MS 5000
+#define DATA_CHANNEL_MAX_SESSION_MESSAGES 4000000000ULL
+#define DATA_CHANNEL_MAX_SESSION_DURATION_MS (120UL * 60UL * 1000UL)
+#define DATA_CHANNEL_MAX_MESSAGE_SIZE 256
+
+#define DEVICE_COMMAND_VERSION 1
+#define READING_PAYLOAD_VERSION 1
+#define READING_INTERVAL_MS 1000
+
+#define ServerHttpsPort 7010
+#define ServerTcpPort 7000
+
+#define DEBUG_ON true
+
+#define DEBUG_PRINT(x)   \
+  do                     \
+  {                      \
+    if (DEBUG_ON)        \
+      Serial.println(x); \
+  } while (0)
