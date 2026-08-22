@@ -1,0 +1,7 @@
+{
+  "name": "AlarmSensor",
+  "version": "1.0.0",
+  "description": "Counts smoke alarm piezo bursts through an optocoupler and classifies them.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

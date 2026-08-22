@@ -1,0 +1,7 @@
+{
+  "name": "BatteryGauge",
+  "version": "1.0.0",
+  "description": "Single cell lithium battery voltage, percentage and charge sense with a switched divider.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}
