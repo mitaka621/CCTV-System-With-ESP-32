@@ -18,7 +18,7 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<DevicePairStatus?> GetDeviceStatusAsync(Guid deviceId);
 
-        Task<bool> SetDeviceNameAsync(Guid deviceId, string name);
+        Task<bool> SetDeviceNameAsync(Guid deviceId, string name, IUnitOfWork? uow = null);
 
         Task<string?> GetDeviceNameAsync(Guid deviceId);
 
@@ -26,13 +26,13 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> UpdateDeviceIpAsync(Guid deviceId, string newIpv4, IUnitOfWork? uow = null);
 
-        Task<List<DeviceDto>> GetAllDevicesAsync(params List<Guid> ids);
+        Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllDevicesAsync(params List<Guid> ids);
 
         Task<List<CameraDisplayModel>> GetAllCameraDisplayModelsAsync();
 
         Task<bool> UpdateDeviceAsync(UpdateDeviceDto dto, IUnitOfWork? uow = null);
 
-        Task<List<DeviceDto>> GetAllDevicesWithStatusesAsync(params DevicePairStatus[] withStatuses);
+        Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllDevicesWithStatusesAsync(params DevicePairStatus[] withStatuses);
 
         Task<bool> SetSessionTokenAsync(SetESPSessionTokenDto dto);
 
@@ -42,10 +42,12 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> DoesDeviceExistAsync(Guid id);
 
-        Task<DeviceDto?> GetDeviceByIdWithStatusAsync(Guid deviceId, DevicePairStatus status);
+        Task<DeviceWithPreprovisionAttemptsDto?> GetDeviceByIdWithStatusAsync(Guid deviceId, DevicePairStatus status);
 
         Task<DeviceStreamingHandshakeDto?> GetDeviceForStreamingHandshakeAsync(Guid deviceId);
 
         Task<Dictionary<Guid, CameraInfoWithConfigurationDto>> GetAllCamerasWithConfigurationAsync();
+
+        Task<int> CountAllDevicesFromCategoryAsync(DeviceTypeCategories category);
     }
 }

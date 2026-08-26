@@ -12,7 +12,7 @@ namespace CamPortal.Contracts.Models
 
         public required DateTime IconUpdatedAt { get; set; }
 
-        public DeviceTypeCategories DeviceVariant { get; set; }
+        public DeviceTypeCategories DeviceCategory { get; set; }
 
         public string IconUrl { get; set; } = string.Empty;
     }

@@ -1,0 +1,154 @@
+﻿@using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
+@inject ISmokeAlarmDetectorManagerService _smokeAlarmDetectorManagerService;
+@inject ISmokeAlarmDetectorConfigurationService _smokeAlarmDetectorConfigurationService;
+
+<MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
+
+<MudStack Row="true">
+    <MudPaper style="position:relative">
+        <MudTooltip Placement="Placement.Top">
+            <ChildContent>
+                <MudIconButton Size="Size.Small" Color="Color.Inherit" Style="position:absolute; top:7px; right:0" Icon="@Icons.Material.Filled.CompareArrows" />
+                <MudText>
+                    @MiscUtilities.TimeElapsedUntilNowInWords(_latestSmokeAlarmData.LoggedTimeUTC)
+                </MudText>
+            </ChildContent>
+            <TooltipContent>
+                <MudText Typo="Typo.body2">Last time when the smoke alarm detector sent telemetry to the server.</MudText>
+                <MudText Typo="Typo.body2">The detector does not stay on all the time. It wakes periodically</MudText>
+                <MudText Typo="Typo.body2">on a timer or by alarm trigger and only then it sends the telemetry data.</MudText>
+            </TooltipContent>
+        </MudTooltip>
+        <MudStack>
+            <MudText style="width:100%" Align="Align.Center" Typo="Typo.caption">Device Info</MudText>
+            <MudPaper Style=$"background-color: {GetStatusDisplayColor()}; height:150px; width:230px; border-radius: 20px">
+                <MudStack Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mx-2" style="height:100%; position:relative">
+                    <MudIcon Size="Size.Large" Icon="@Icons.Material.Filled.LocalFireDepartment" Style="font-size: 4em;"></MudIcon>
+                    <MudText style="font-size: 1.1rem; font-weight: 800; text-align:center">@GetStatusDisplayDescription()</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+        <MudStack Row="true">
+            <MudStack>
+                <MudTooltip Placement="Placement.Top">
+                    <ChildContent>
+                        <MudIcon Icon="@Icons.Material.Filled.Battery6Bar"></MudIcon>
+                    </ChildContent>
+                    <TooltipContent>
+                        <MudText Typo="Typo.body2">Latest reported battery state of charge</MudText>
+                    </TooltipContent>
+                </MudTooltip>
+                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BatterySOCPercent %</MudText>
+            </MudStack>
+            <MudStack>
+                <MudTooltip Placement="Placement.Top">
+                    <ChildContent>
+                        <MudIcon Icon="@Icons.Material.Filled.ElectricBolt"></MudIcon>
+                    </ChildContent>
+                    <TooltipContent>
+                        <MudText Typo="Typo.body2">Latest reported battery voltage</MudText>
+                    </TooltipContent>
+                </MudTooltip>    
+                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BatteryVoltage V</MudText>
+            </MudStack>
+            <MudStack>
+                <MudTooltip Placement="Placement.Top">
+                    <ChildContent>
+                        <MudIcon Icon="@Icons.Material.Filled.RestartAlt"></MudIcon>
+                    </ChildContent>
+                    <TooltipContent>
+                        <MudText Typo="Typo.body2">Number of times the smoke alarm detector (esp32 s3) </MudText>
+                        <MudText Typo="Typo.body2">has gone to deep sleep and then started back up again </MudText>
+                        <MudText Typo="Typo.body2">for reporting its current status</MudText>
+                    </TooltipContent>
+                </MudTooltip>
+                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BootCount</MudText>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+    <MudPaper>
+        <MudStack Spacing="5">
+            <MudText style="width:100%" Align="Align.Center" Typo="Typo.caption">Device Configuration</MudText>
+            <MudStack>
+                <MudTextField @bind-Value="_configurationModel.DeviceName"
+                              @bind-Value:after="OnConfigurationChanged"
+                              Immediate="true"
+                              DebounceInterval="500"
+                              Variant="Variant.Outlined"
+                              For="()=>_configurationModel.DeviceName" />
+                <MudTextField @bind-Value="_configurationModel.MinBatterySOCForAlert"
+                              @bind-Value:after="OnConfigurationChanged"
+                              Immediate="true"
+                              DebounceInterval="500"
+                              Variant="Variant.Outlined"
+                              For="()=>_configurationModel.MinBatterySOCForAlert" />
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+</MudStack>
+
+@code {
+    private SmokeAlarmDetectorPayloadDto _latestSmokeAlarmData = new();
+    private SmokeAlarmConfigurationModel _configurationModel = new();    
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid SmokeAlarmId { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback ModelChanged { get; set; }
+
+    [Parameter]
+    public bool LoadExistingConfiguration { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var configuration = await _smokeAlarmDetectorConfigurationService.GetSmokeAlarmConfigurationAsync(SmokeAlarmId);
+
+        _configurationModel = configuration;
+
+
+        var latestTelemetry = await _smokeAlarmDetectorManagerService.GetLatestTelemetryAsync(SmokeAlarmId);
+        if (latestTelemetry != null)
+        {
+            _latestSmokeAlarmData = latestTelemetry;
+        }
+
+        _smokeAlarmDetectorManagerService.OnNewTelemetryAdded += OnNewSmokeAlarmData;
+
+        await base.OnInitializedAsync();
+    }
+
+    private void OnNewSmokeAlarmData(SmokeAlarmDetectorPayloadDto data)
+    {
+        _latestSmokeAlarmData = data;
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string GetStatusDisplayColor() => _latestSmokeAlarmData.Event switch
+    {
+        SmokeAlarmEvent.FireAlarm => "var(--mud-palette-error)",
+        SmokeAlarmEvent.AlarmLowBatteryChirp => "var(--mud-palette-warning)",
+        SmokeAlarmEvent.BatteryCharging => "var(--mud-palette-primary)",
+        SmokeAlarmEvent.BatteryWelfare => _latestSmokeAlarmData.BatterySOCPercent < _configurationModel.MinBatterySOCForAlert ? "var(--mud-palette-warning)" : "var(--mud-palette-success)",
+        _ => "var(--mud-palette-success)"
+    };
+
+    private string GetStatusDisplayDescription() => _latestSmokeAlarmData.Event switch
+    {
+        SmokeAlarmEvent.FireAlarm => "Smoke alarm is active!",
+        SmokeAlarmEvent.AlarmLowBatteryChirp => "Change battery of the smoke alarm",
+        SmokeAlarmEvent.BatteryCharging => "Smoke alarm detector is charging",
+        SmokeAlarmEvent.BatteryWelfare => _latestSmokeAlarmData.BatterySOCPercent < _configurationModel.MinBatterySOCForAlert ? "Smoke alarm detector needs charging" : "Smoke alarm not active",
+        _ => "Smoke alarm not active"
+    };
+
+    private async Task OnConfigurationChanged()
+    {
+        await _smokeAlarmDetectorConfigurationService.UpdateConfigurationAsync(_configurationModel);
+    }
+}

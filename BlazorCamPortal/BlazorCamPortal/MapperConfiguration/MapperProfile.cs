@@ -3,6 +3,7 @@ using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
 using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
+using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
 using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Contracts.Models;
@@ -14,13 +15,13 @@ namespace CamPortal.MapperConfiguration
     {
         public MapperProfile()
         {
-            CreateMap<Device, DeviceDto>()
+            CreateMap<Device, DeviceWithPreprovisionAttemptsDto>()
                 .ReverseMap();
 
             CreateMap<Device, CreateDeviceDto>()
                 .ReverseMap();
 
-            CreateMap<CameraDisplayModel, DeviceDto>()
+            CreateMap<CameraDisplayModel, DeviceWithPreprovisionAttemptsDto>()
                 .ReverseMap();
 
             CreateMap<CameraResponseModel, CreateDeviceDto>()
@@ -61,6 +62,15 @@ namespace CamPortal.MapperConfiguration
                 .ReverseMap();
 
             CreateMap<UserCameraPositionLayout, UserCameraLayoutItemDto>()
+                .ReverseMap();
+
+            CreateMap<SmokeAlarmConfigurationDto, SmokeAlarmDetectorConfiguration>()
+                .ReverseMap();
+
+            CreateMap<SmokeAlarmDetectorPayloadDto, SmokeAlarmTelemetry>()
+                .ReverseMap();
+
+            CreateMap<SmokeAlarmConfigurationDto, SmokeAlarmConfigurationModel>()
                 .ReverseMap();
         }
     }

@@ -49,5 +49,7 @@ namespace CamPortal.Infrastructure.Data.Entities
         public List<PreprovisionAttempt> PreprovisionAttempts { get; set; } = new();
 
         public CameraConfiguration? CameraConfiguration { get; set; }
+
+        public List<SmokeAlarmTelemetry>? SmokeAlarmTelemetries { get; set; }
     }
 }

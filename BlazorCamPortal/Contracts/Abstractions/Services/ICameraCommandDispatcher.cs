@@ -5,7 +5,7 @@ namespace CamPortal.Contracts.Abstractions.Services
 {
     public interface ICameraCommandDispatcher
     {
-        bool TryEnqueueCommand(Guid cameraId, CameraCommand command);
+        bool TryEnqueueCommand(Guid cameraId, DeviceCommand command);
 
         bool TryEnqueueConfig(Guid cameraId, DeviceEspConfigDto config);
 

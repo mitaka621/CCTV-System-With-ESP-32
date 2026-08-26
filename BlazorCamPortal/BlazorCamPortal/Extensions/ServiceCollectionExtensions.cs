@@ -71,13 +71,19 @@ namespace CamPortal.Extensions
             services.AddSingleton<IVideoExportJobQueue, VideoExportJobQueue>();
             services.AddSingleton<IVideoExportNotifier, VideoExportNotifier>();
             services.AddSingleton<IVideoExportService, VideoExportService>();
+            services.AddSingleton<ISmokeAlarmDetectorConfigurationRepository, SmokeAlarmDetectorConfigurationRepository>();
+            services.AddSingleton<ISmokeAlarmDetectorManagerService, SmokeAlarmDetectorManagerService>();
+            services.AddSingleton<ISmokeAlarmTelemetryRepository, SmokeAlarmTelemetryRepository>();
+            services.AddSingleton<ISmokeAlarmDetectorConfigurationService, SmokeAlarmDetectorConfigurationService>();
 
             services.AddSingleton<VideoExportEncoderService>();
             services.AddSingleton<IVideoExportCanceller>(sp => sp.GetRequiredService<VideoExportEncoderService>());
 
             services.AddSingleton<ISecureHandshake, SecureHandshake>();
             services.AddSingleton<CameraSessionHandler>();
+            services.AddSingleton<SmokeAlarmSessionHandler>();
             services.AddSingleton<IDeviceSessionHandler>(sp => sp.GetRequiredService<CameraSessionHandler>());
+            services.AddSingleton<IDeviceSessionHandler>(sp => sp.GetRequiredService<SmokeAlarmSessionHandler>());
             services.AddSingleton<ICameraCommandDispatcher>(sp => sp.GetRequiredService<CameraSessionHandler>());
 
             services.AddSingleton<CameraSecurityCoordinator>();

@@ -413,6 +413,58 @@ namespace CamPortal.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.SmokeAlarmDetectorConfiguration", b =>
+                {
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double>("MinBatterySOCForAlert")
+                        .HasColumnType("float");
+
+                    b.HasKey("DeviceId");
+
+                    b.ToTable("SmokeAlarmDetectorConfigurations");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.SmokeAlarmTelemetry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double>("BatterySOCPercent")
+                        .HasColumnType("float");
+
+                    b.Property<double>("BatteryVoltage")
+                        .HasColumnType("float");
+
+                    b.Property<int>("BootCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DetectedAlarmBeepCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Event")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCharging")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LoggedTimeUTC")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("LoggedTimeUTC");
+
+                    b.ToTable("SmokeAlarmTelemetry");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.SystemSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -644,6 +696,28 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Navigation("Device");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.SmokeAlarmDetectorConfiguration", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.SmokeAlarmTelemetry", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Device")
+                        .WithMany("SmokeAlarmTelemetries")
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.UserCameraPositionLayout", b =>
                 {
                     b.HasOne("CamPortal.Infrastructure.Data.Entities.Device", "Camera")
@@ -709,6 +783,8 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Navigation("CameraConfiguration");
 
                     b.Navigation("PreprovisionAttempts");
+
+                    b.Navigation("SmokeAlarmTelemetries");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Role", b =>

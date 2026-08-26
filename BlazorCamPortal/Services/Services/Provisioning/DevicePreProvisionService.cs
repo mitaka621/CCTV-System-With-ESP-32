@@ -336,6 +336,7 @@ namespace CamPortal.Core.Services.Provisioning
             {
                 DeviceId = deviceId,
                 DeviceTypeId = device.DeviceTypeId,
+                DeviceCategory = device.DeviceCategory,
                 PairStatus = device.PairStatus,
                 LocalNetworkInfo = localNetworkInfo,
             };

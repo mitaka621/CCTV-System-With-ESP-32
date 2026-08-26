@@ -5,7 +5,7 @@ namespace CamPortal.Contracts.Dtos.DeviceDtos
 {
     public class OutboundDeviceMessageDto
     {
-        public CameraCommand Command { get; init; }
+        public DeviceCommand Command { get; init; }
 
         public DeviceEspConfigDto? Config { get; init; }
     }

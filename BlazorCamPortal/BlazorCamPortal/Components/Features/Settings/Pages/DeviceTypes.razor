@@ -62,9 +62,9 @@
                                         <MudText Typo="Typo.h6" Class="mb-1">@deviceType.Name</MudText>
                                         <MudChip T="string"
                                                  Size="Size.Small"
-                                                 Color="@GetCategoryColor(deviceType.DeviceVariant)"
-                                                 Icon="@GetCategoryIcon(deviceType.DeviceVariant)">
-                                            @deviceType.DeviceVariant
+                                                 Color="@GetCategoryColor(deviceType.DeviceCategory)"
+                                                 Icon="@GetCategoryIcon(deviceType.DeviceCategory)">
+                                            @deviceType.DeviceCategory
                                         </MudChip>
                                     </MudCardContent>
 
@@ -209,7 +209,7 @@
         {
             DeviceTypeCategories.Camera => Color.Primary,
             DeviceTypeCategories.Sensor => Color.Info,
-            DeviceTypeCategories.Alarm => Color.Warning,
+            DeviceTypeCategories.SecurityAlarm => Color.Warning,
             DeviceTypeCategories.BlindsOpener => Color.Secondary,
             _ => Color.Default,
         };
@@ -221,7 +221,7 @@
         {
             DeviceTypeCategories.Camera => Icons.Material.Filled.Videocam,
             DeviceTypeCategories.Sensor => Icons.Material.Filled.Sensors,
-            DeviceTypeCategories.Alarm => Icons.Material.Filled.Notifications,
+            DeviceTypeCategories.SecurityAlarm => Icons.Material.Filled.Notifications,
             DeviceTypeCategories.BlindsOpener => Icons.Material.Filled.Blinds,
             _ => Icons.Material.Filled.DeviceHub,
         };

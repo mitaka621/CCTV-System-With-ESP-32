@@ -18,8 +18,7 @@ static constexpr size_t DETECTOR_PAYLOAD_LEN = 12;
 RTC_DATA_ATTR static uint32_t _bootCount = 0;
 RTC_DATA_ATTR static uint32_t _secondsSinceReport = 0;
 RTC_DATA_ATTR static uint32_t _secondsSinceAlarm = 0;
-RTC_DATA_ATTR static bool _alarmEverReported = false;
-RTC_DATA_ATTR static bool _alarmOngoing = false;
+RTC_DATA_ATTR static bool _alarmActive = false;
 
 static DeviceCredentials _creds;
 static uint8_t _payload[DETECTOR_PAYLOAD_LEN];
@@ -79,13 +78,13 @@ static void HandleCommand(DeviceCommand command, const uint8_t *payload, size_t 
   }
 }
 
-static void PollCommands()
+static bool WaitForAck(uint32_t timeoutMs)
 {
   uint8_t message[DATA_CHANNEL_MAX_MESSAGE_SIZE];
   size_t messageLen = 0;
   const uint32_t start = millis();
 
-  while ((millis() - start) < COMMAND_POLL_MS)
+  while ((millis() - start) < timeoutMs)
   {
     while (data_channel::Receive(message, sizeof(message), messageLen))
     {
@@ -94,10 +93,28 @@ static void PollCommands()
         DEBUG_PRINT("Command: unsupported message envelope");
         continue;
       }
-      HandleCommand((DeviceCommand)message[1], message + 2, messageLen - 2);
+
+      const DeviceCommand command = (DeviceCommand)message[1];
+      if (command == DeviceCommand::PayloadAck)
+      {
+        DEBUG_PRINT(String("Server acknowledged the payload after ") + (millis() - start) + " ms");
+        return true;
+      }
+
+      HandleCommand(command, message + 2, messageLen - 2);
     }
-    delay(10);
+
+    if (!data_channel::IsActive())
+    {
+      DEBUG_PRINT("Data channel dropped before the acknowledgement arrived");
+      return false;
+    }
+
+    delay(5);
   }
+
+  DEBUG_PRINT(String("No acknowledgement within ") + timeoutMs + " ms, treating the report as lost");
+  return false;
 }
 
 static bool LoadCredentials()
@@ -105,6 +122,42 @@ static bool LoadCredentials()
   if (secret_store::loadFromCompileTime(_creds))
     return true;
   return secret_store::loadFromNvs(_creds);
+}
+
+static bool DeliverPayload()
+{
+  for (int attempt = 1; attempt <= MAX_SEND_ATTEMPTS; attempt++)
+  {
+    if (!data_channel::IsActive() && !data_channel::Begin(_creds, ServerTcpPort))
+    {
+      DEBUG_PRINT(String("Attempt ") + attempt + ": data channel would not open");
+    }
+    else
+    {
+      data_channel::SendTiming timing;
+      if (!data_channel::Send(_payload, DETECTOR_PAYLOAD_LEN, &timing))
+      {
+        DEBUG_PRINT(String("Attempt ") + attempt + ": data channel rejected the payload");
+      }
+      else
+      {
+        DEBUG_PRINT(String("Attempt ") + attempt + ": queued, encrypt " + timing.encryptUs + " us");
+        if (WaitForAck(ACK_TIMEOUT_MS))
+          return true;
+      }
+    }
+
+    data_channel::End();
+
+    if (attempt < MAX_SEND_ATTEMPTS)
+    {
+      DEBUG_PRINT(String("Retrying in ") + SEND_RETRY_DELAY_MS + " ms");
+      delay(SEND_RETRY_DELAY_MS);
+    }
+  }
+
+  DEBUG_PRINT(String("Gave up after ") + MAX_SEND_ATTEMPTS + " attempts, the report will be retried on the next wake");
+  return false;
 }
 
 static bool SendEvent(DetectorEvent event, float percent, float volts, bool charging, bool sounding, uint32_t beeps)
@@ -127,54 +180,41 @@ static bool SendEvent(DetectorEvent event, float percent, float volts, bool char
     secret_store::setPaired(true);
   }
 
-  if (!data_channel::Begin(_creds, ServerTcpPort))
-  {
-    DEBUG_PRINT("Data channel start failed");
-    return false;
-  }
-
   BuildPayload(event, percent, volts, charging, sounding, beeps);
-  const bool sent = data_channel::Send(_payload, DETECTOR_PAYLOAD_LEN);
-  if (!sent)
+
+  if (DEBUG_ON)
   {
-    DEBUG_PRINT("Event send failed");
+    String hex;
+    for (size_t i = 0; i < DETECTOR_PAYLOAD_LEN; i++)
+    {
+      if (_payload[i] < 0x10)
+        hex += '0';
+      hex += String(_payload[i], HEX);
+      hex += ' ';
+    }
+    DEBUG_PRINT(String("Payload ") + DETECTOR_PAYLOAD_LEN + " bytes: " + hex);
   }
 
-  PollCommands();
+  const bool acknowledged = DeliverPayload();
   data_channel::End();
-  return sent;
+  return acknowledged;
 }
 
-static void Sleep(uint32_t seconds, bool alarmMayBeSounding)
+static void Sleep(uint32_t seconds)
 {
-  // An instantaneous read lands in an 84 ms gap three times out of four, so a
-  // train that is still running has to be measured over a window.
-  const bool measureWindow = alarmMayBeSounding || _alarmOngoing;
-  const bool sounding = measureWindow
-                            ? (alarm_sensor::CountBeeps(ALARM_STILL_SOUNDING_MS) > 0)
-                            : alarm_sensor::IsBeeping();
-  _alarmOngoing = sounding;
-
-  const bool buttonDown = digitalRead(RESET_BUTTON_PIN) == LOW;
-
   uint64_t wakeMask = 0;
-  if (!sounding)
+  if (!_alarmActive)
     wakeMask |= 1ULL << ALARM_PIN;
-  if (!buttonDown)
-    wakeMask |= 1ULL << RESET_BUTTON_PIN;
+
+  wakeMask |= 1ULL << RESET_BUTTON_PIN;
 
   if (wakeMask != 0)
     esp_sleep_enable_ext1_wakeup(wakeMask, ESP_EXT1_WAKEUP_ANY_LOW);
 
-  if (sounding)
+  if (_alarmActive)
   {
     seconds = ALARM_BUSY_SLEEP_SECONDS;
     DEBUG_PRINT("Alarm still sounding, short sleep without the alarm wake armed");
-  }
-  else if (buttonDown)
-  {
-    seconds = ALARM_BUSY_SLEEP_SECONDS;
-    DEBUG_PRINT("Button still held, short sleep without the button wake armed");
   }
 
   const uint32_t awakeSeconds = millis() / 1000UL;
@@ -183,6 +223,8 @@ static void Sleep(uint32_t seconds, bool alarmMayBeSounding)
 
   if (_radioStarted)
   {
+    delay(NETWORK_SETTLE_MS);
+    DEBUG_PRINT(String("Radio settle ") + NETWORK_SETTLE_MS + " ms done, powering Wi-Fi down");
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
     _radioStarted = false;
@@ -202,20 +244,27 @@ static void Sleep(uint32_t seconds, bool alarmMayBeSounding)
   esp_deep_sleep_start();
 }
 
-static void ReportAndSleep(DetectorEvent event, uint32_t beeps, bool sounding)
+static void ReportAndSleep(DetectorEvent event, uint32_t beeps)
 {
   const float volts = battery_gauge::ReadVolts();
   const float percent = battery_gauge::VoltsToPercent(volts);
   const bool charging = battery_gauge::IsCharging();
 
-  DEBUG_PRINT(String("Event ") + (int)event + ": " + percent + " %, " + volts + " V, charging=" + charging);
+  DEBUG_PRINT(String("Event ") + (int)event + ": " + percent + " %, " + volts + " V, charge sense " + battery_gauge::ReadChargeSenseVolts() + " V, charging=" + charging);
 
-  if (!NO_SERVER && LoadCredentials() && SendEvent(event, percent, volts, charging, sounding, beeps))
+  const bool delivered = !NO_SERVER && LoadCredentials() && SendEvent(event, percent, volts, charging, _alarmActive, beeps);
+
+  if (delivered)
   {
     _secondsSinceReport = 0;
+
+    if (event == DetectorEvent::FireAlarm || event == DetectorEvent::AlarmLowBatteryChirp)
+    {
+      _secondsSinceAlarm = 0;
+    }
   }
 
-  Sleep(SLEEP_INTERVAL_SECONDS, sounding);
+  Sleep(SLEEP_INTERVAL_SECONDS);
 }
 
 static void HandleAlarmWake()
@@ -227,16 +276,13 @@ static void HandleAlarmWake()
 
   if (verdict == AlarmVerdict::Silent)
   {
-    DEBUG_PRINT("Nothing heard, treating as a spurious wake");
-    Sleep(SLEEP_INTERVAL_SECONDS, false);
-    return;
-  }
+    _alarmActive = false;
 
-  const bool coolingDown = _alarmEverReported && (_secondsSinceAlarm < ALARM_REPEAT_SECONDS);
-  if (coolingDown)
-  {
-    DEBUG_PRINT("Within the repeat window, not sending again");
-    Sleep(SLEEP_INTERVAL_SECONDS, true);
+    DEBUG_PRINT("Nothing heard, alarm not active");
+
+    const bool charging = battery_gauge::IsCharging();
+
+    ReportAndSleep(charging ? DetectorEvent::BatteryCharging : DetectorEvent::None, 0);
     return;
   }
 
@@ -244,25 +290,31 @@ static void HandleAlarmWake()
                                   ? DetectorEvent::FireAlarm
                                   : DetectorEvent::AlarmLowBatteryChirp;
 
-  _alarmEverReported = true;
-  _secondsSinceAlarm = 0;
+  if(event==DetectorEvent::FireAlarm)
+  {
+    _alarmActive = true;
+  }
+  else
+  {
+    _alarmActive = false;
+  }
 
-  ReportAndSleep(event, beeps, true);
+  ReportAndSleep(event, beeps);
 }
 
 static void HandleTimerWake()
-{
+{ 
   const bool charging = battery_gauge::IsCharging();
   const bool welfareDue = _secondsSinceReport >= WELFARE_INTERVAL_SECONDS;
 
   if (!charging && !welfareDue)
   {
     DEBUG_PRINT("Nothing to report this wake");
-    Sleep(SLEEP_INTERVAL_SECONDS, false);
+    Sleep(SLEEP_INTERVAL_SECONDS);
     return;
   }
 
-  ReportAndSleep(charging ? DetectorEvent::BatteryCharging : DetectorEvent::BatteryWelfare, 0, false);
+  ReportAndSleep(charging ? DetectorEvent::BatteryCharging : DetectorEvent::BatteryWelfare, 0);
 }
 
 static void HandleButtonWake()
@@ -283,7 +335,8 @@ static void HandleButtonWake()
   }
 
   DEBUG_PRINT("Reset button tapped, sending a manual report");
-  ReportAndSleep(DetectorEvent::ManualCheck, 0, false);
+
+  ReportAndSleep(battery_gauge::IsCharging() ? DetectorEvent::BatteryCharging : DetectorEvent::None, 0);
 }
 
 static bool ResetButtonHeld()
@@ -323,7 +376,7 @@ static void HandleColdBoot()
 
   if (LoadCredentials() || NO_SERVER)
   {
-    ReportAndSleep(DetectorEvent::Boot, 0, false);
+    ReportAndSleep(battery_gauge::IsCharging() ? DetectorEvent::BatteryCharging : DetectorEvent::None, 0);
     return;
   }
 
@@ -331,7 +384,7 @@ static void HandleColdBoot()
   if (!provision_ap::begin())
   {
     DEBUG_PRINT("Failed to start the setup access point, sleeping instead");
-    Sleep(SLEEP_INTERVAL_SECONDS, false);
+    Sleep(SLEEP_INTERVAL_SECONDS);
     return;
   }
 
@@ -357,7 +410,7 @@ static void DoProvisioning()
   provision_ap::end();
   _provisioning = false;
 
-  ReportAndSleep(DetectorEvent::Boot, 0, false);
+  ReportAndSleep(battery_gauge::IsCharging() ? DetectorEvent::BatteryCharging : DetectorEvent::None, 0);
 }
 
 void setup()
@@ -409,7 +462,7 @@ void setup()
   {
     // A sounding alarm keeps the level wake disarmed, so the short timer is the
     // only thing that fires. Without this the alarm would never be re-examined.
-    if (_alarmOngoing)
+    if (_alarmActive)
       HandleAlarmWake();
     else
       HandleTimerWake();

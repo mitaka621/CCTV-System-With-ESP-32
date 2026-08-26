@@ -20,15 +20,14 @@ namespace battery_gauge
 {
   void Begin()
   {
-    // rtc_gpio_isolate leaves the pad held, and hold survives deep sleep. Without
-    // releasing it here the ground leg stays disconnected on every wake after the
-    // first, the divider floats to the battery, and the reading saturates.
+    //enabeling gnd for the battery divider (it is normally floating to save power)
     rtc_gpio_hold_dis((gpio_num_t)BATTERY_DIVIDER_GROUND_PIN);
+
     rtc_gpio_deinit((gpio_num_t)BATTERY_DIVIDER_GROUND_PIN);
 
     analogReadResolution(12);
     analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_11db);
-    pinMode(CHARGE_SENSE_PIN, INPUT);
+    analogSetPinAttenuation(CHARGE_SENSE_PIN, ADC_11db);
     pinMode(BATTERY_DIVIDER_GROUND_PIN, INPUT);
   }
 
@@ -71,9 +70,22 @@ namespace battery_gauge
     return 0.0f;
   }
 
+  float ReadChargeSenseVolts()
+  {
+    uint32_t sum = 0;
+    for (int i = 0; i < CHARGE_SENSE_SAMPLE_COUNT; i++)
+    {
+      sum += analogReadMilliVolts(CHARGE_SENSE_PIN);
+      delayMicroseconds(200);
+    }
+
+    const float pinVolts = (sum / (float)CHARGE_SENSE_SAMPLE_COUNT) / 1000.0f;
+    return pinVolts * CHARGE_SENSE_DIVIDER_RATIO;
+  }
+
   bool IsCharging()
   {
-    return digitalRead(CHARGE_SENSE_PIN) == HIGH;
+    return ReadChargeSenseVolts() >= CHARGE_SENSE_THRESHOLD_VOLTS;
   }
 
   void PrepareForSleep()

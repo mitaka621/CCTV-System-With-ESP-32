@@ -54,16 +54,16 @@
                             <MudStack AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Style="height:100%">
                                 <MudText Style="max-width: 155px;">@deviceType.Name</MudText>
                                 <MudChip T="string"
-                                            Color="GetChipColor(deviceType.DeviceVariant)"
+                                            Color="GetChipColor(deviceType.DeviceCategory)"
                                             Variant="Variant.Outlined">
-                                    @deviceType.DeviceVariant
+                                    @deviceType.DeviceCategory
                                 </MudChip>
 
                             </MudStack>
                             <MudSpacer />
                             <MudFab Color="@(model.DeviceTypeId == deviceType.Id ? Color.Success : Color.Primary)"
                                     StartIcon="@Icons.Material.Filled.Check"
-                                    OnClick="() => SelectDeviceType(deviceType.Id, deviceType.DeviceVariant)" />
+                                    OnClick="() => SelectDeviceType(deviceType.Id, deviceType.DeviceCategory)" />
                         </MudStack>
                     </MudPaper>             
                 }
@@ -110,10 +110,12 @@
         if (model.DeviceTypeId!=deviceTypeId)
         {
             model.DeviceTypeId = deviceTypeId;
+            model.DeviceCategory = variant;
         }
         else
         {
             model.DeviceTypeId = default;
+            model.DeviceCategory = default;
         }    
 
         await ModelChanged.InvokeAsync();

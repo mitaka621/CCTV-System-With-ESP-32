@@ -75,7 +75,7 @@ namespace CamPortal.Core.Services.Security
 
             if (siteAlarmActive)
             {
-                _dispatcher.TryEnqueueCommand(cameraId, CameraCommand.TriggerSecurityAlarm);
+                _dispatcher.TryEnqueueCommand(cameraId, DeviceCommand.TriggerSecurityAlarm);
             }
 
             NotifyStatusChanged(cameraId);
@@ -190,7 +190,7 @@ namespace CamPortal.Core.Services.Security
 
         public Task ArmAsync(Guid cameraId, bool armed)
         {
-            _dispatcher.TryEnqueueCommand(cameraId, CameraCommand.ResetSecurityAlarm);
+            _dispatcher.TryEnqueueCommand(cameraId, DeviceCommand.ResetSecurityAlarm);
 
             return armed ? ArmInternalAsync(cameraId) : DisarmInternalAsync(cameraId);
         }
@@ -425,7 +425,7 @@ namespace CamPortal.Core.Services.Security
 
             if (firstAlarm)
             {
-                BroadcastToConnected(CameraCommand.TriggerSecurityAlarm);
+                BroadcastToConnected(DeviceCommand.TriggerSecurityAlarm);
             }
         }
 
@@ -444,13 +444,13 @@ namespace CamPortal.Core.Services.Security
 
             if (lastCleared)
             {
-                BroadcastToConnected(CameraCommand.ResetSecurityAlarm);
+                BroadcastToConnected(DeviceCommand.ResetSecurityAlarm);
             }
         }
 
         private void SyncDeviceToClearBaseline(Guid cameraId)
         {
-            _dispatcher.TryEnqueueCommand(cameraId, CameraCommand.ResetSecurityAlarm);
+            _dispatcher.TryEnqueueCommand(cameraId, DeviceCommand.ResetSecurityAlarm);
 
             bool siteActive;
             lock (_alarmLock)
@@ -460,13 +460,13 @@ namespace CamPortal.Core.Services.Security
 
             if (siteActive)
             {
-                _dispatcher.TryEnqueueCommand(cameraId, CameraCommand.TriggerSecurityAlarm);
+                _dispatcher.TryEnqueueCommand(cameraId, DeviceCommand.TriggerSecurityAlarm);
             }
         }
 
         private void ClearDeviceAlarm(Guid cameraId)
         {
-            _dispatcher.TryEnqueueCommand(cameraId, CameraCommand.ResetSecurityAlarm);
+            _dispatcher.TryEnqueueCommand(cameraId, DeviceCommand.ResetSecurityAlarm);
 
             bool siteStillActive;
             lock (_alarmLock)
@@ -477,15 +477,15 @@ namespace CamPortal.Core.Services.Security
 
             if (siteStillActive)
             {
-                _dispatcher.TryEnqueueCommand(cameraId, CameraCommand.TriggerSecurityAlarm);
+                _dispatcher.TryEnqueueCommand(cameraId, DeviceCommand.TriggerSecurityAlarm);
             }
             else
             {
-                BroadcastToConnected(CameraCommand.ResetSecurityAlarm);
+                BroadcastToConnected(DeviceCommand.ResetSecurityAlarm);
             }
         }
 
-        private void BroadcastToConnected(CameraCommand command)
+        private void BroadcastToConnected(DeviceCommand command)
         {
             foreach (var entry in _states)
             {

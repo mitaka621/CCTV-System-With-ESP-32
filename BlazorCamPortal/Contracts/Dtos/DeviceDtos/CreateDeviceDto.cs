@@ -4,6 +4,8 @@ namespace CamPortal.Contracts.Dtos.CameraDtos
 {
     public class CreateDeviceDto
     {
+        public string? Name { get; set; }
+
         public Guid DeviceTypeId { get; set; }
 
         public required DevicePairStatus PairStatus { get; set; }

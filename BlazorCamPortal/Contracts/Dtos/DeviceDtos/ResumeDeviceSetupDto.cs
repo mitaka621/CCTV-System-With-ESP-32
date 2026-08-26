@@ -9,6 +9,8 @@ namespace CamPortal.Contracts.Dtos.DeviceDtos
 
         public Guid DeviceTypeId { get; set; }
 
+        public DeviceTypeCategories DeviceCategory { get; set; }
+
         public DevicePairStatus PairStatus { get; set; }
 
         public LocalNetworkInfoDto? LocalNetworkInfo { get; set; }

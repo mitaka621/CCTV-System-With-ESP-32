@@ -19,6 +19,7 @@ namespace CamPortal.Core.Services.Devices
         private readonly IDeviceTypeRepository _deviceTypeRepository;
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
         private readonly ICameraCommandDispatcher _cameraCommandDispatcher;
+        private readonly ISmokeAlarmDetectorConfigurationRepository _smokeAlarmDetectorConfigurationRepository;
 
         public DeviceService(
             IDeviceRepository cameraRepository,
@@ -29,7 +30,8 @@ namespace CamPortal.Core.Services.Devices
             IActiveCameraConnections activeCameraConnections,
             IDeviceTypeRepository deviceTypeRepository,
             ICameraConfigurationRepository cameraConfigurationRepository,
-            ICameraCommandDispatcher cameraCommandDispatcher)
+            ICameraCommandDispatcher cameraCommandDispatcher,
+            ISmokeAlarmDetectorConfigurationRepository smokeAlarmDetectorConfigurationRepository)
         {
             _deviceRepository = cameraRepository;
             _mapper = mapper;
@@ -38,6 +40,7 @@ namespace CamPortal.Core.Services.Devices
             _deviceTypeRepository = deviceTypeRepository;
             _cameraConfigurationRepository = cameraConfigurationRepository;
             _cameraCommandDispatcher = cameraCommandDispatcher;
+            _smokeAlarmDetectorConfigurationRepository = smokeAlarmDetectorConfigurationRepository;
         }
 
 
@@ -45,15 +48,24 @@ namespace CamPortal.Core.Services.Devices
         {
             var deviceCategory = await _deviceTypeRepository.GetDeviceCategoryAsync(dto.DeviceTypeId);
 
-            var deviceId = await _deviceRepository.CreateDeviceAsync(_mapper.Map<CreateDeviceDto>(dto), uow);
+            if (string.IsNullOrEmpty(dto.Name))
+            {
+                var deviceCount = await _deviceRepository.CountAllDevicesFromCategoryAsync(deviceCategory);
+                dto.Name = $"{deviceCategory}_{deviceCount + 1}";
+            }
+
+            var deviceId = await _deviceRepository.CreateDeviceAsync(dto, uow);
 
             switch (deviceCategory)
             {
                 case DeviceTypeCategories.Camera:
                     await _cameraConfigurationRepository.AddDefaultCameraConfigurationToDeviceAsync(deviceId, uow);
                     break;
+                case DeviceTypeCategories.SmokeAlarm:
+                    await _smokeAlarmDetectorConfigurationRepository.AddDefaultSmokeAlarmConfigurationToDeviceAsync(deviceId, uow);
+                    break;
                 case DeviceTypeCategories.Sensor:
-                case DeviceTypeCategories.Alarm:
+                case DeviceTypeCategories.SecurityAlarm:
                 case DeviceTypeCategories.BlindsOpener:
                 default:
                     break;
@@ -85,7 +97,7 @@ namespace CamPortal.Core.Services.Devices
             return _mapper.Map<List<CameraDisplayModel>>(result);
         }
 
-        public async Task<List<DeviceDto>> GetAllActiveCameraIpsAsync()
+        public async Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllActiveCameraIpsAsync()
         {
             var cameras = await _deviceRepository.GetAllDevicesWithStatusesAsync(DevicePairStatus.Paired);
 

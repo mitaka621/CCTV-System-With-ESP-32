@@ -1,8 +1,9 @@
 @using CamPortal.Components.Features.DeviceConfig.Components
+@using CamPortal.Components.Features.DeviceConfig.Components.PerDeviceLastStepConfigurationComponents
 
 <MudDialog>
     <DialogContent>
-        <ConfigureDeviceComponent CameraId="CameraId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
+        <ConfigureCameraComponent CameraId="CameraId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Close" Color="Color.Primary">Done</MudButton>

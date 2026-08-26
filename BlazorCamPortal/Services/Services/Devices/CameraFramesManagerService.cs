@@ -26,7 +26,7 @@ namespace CamPortal.Core.Services.Devices
         private readonly byte[] _defaultFrame;
         private readonly Font _stampFont = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
 
-        private readonly Channel<(DeviceStreamingHandshakeDto, byte[])> _rawFramesChannel;
+        private readonly Channel<(DeviceStreamingHandshakeWithCameraConfigDto, byte[])> _rawFramesChannel;
         private int _highWaterMark = 0;
         private DateTime _lastSaturationLogUtc = default;
 
@@ -34,14 +34,14 @@ namespace CamPortal.Core.Services.Devices
         public event Action<Guid>? ChannelClosed;
         public event Action<Guid>? ChannelOpened;
 
-        public ChannelReader<(DeviceStreamingHandshakeDto, byte[])> RawFramesChannelReader => _rawFramesChannel.Reader;
+        public ChannelReader<(DeviceStreamingHandshakeWithCameraConfigDto, byte[])> RawFramesChannelReader => _rawFramesChannel.Reader;
 
         public CameraFramesManagerService(IConfiguration configuration, ILogger<ICameraFramesManagerService> logger)
         {
             _numberOfBufferFramesInChannel = int.Parse(configuration.GetSection("TCPServerConfig")["NumberOfBufferRawFrames"]
                 ?? throw new InvalidOperationException("NumberOfBufferRawFrames configuration is missing"));
 
-            _rawFramesChannel = Channel.CreateBounded<(DeviceStreamingHandshakeDto, byte[])>(
+            _rawFramesChannel = Channel.CreateBounded<(DeviceStreamingHandshakeWithCameraConfigDto, byte[])>(
                 new BoundedChannelOptions(_numberOfBufferFramesInChannel)
                 {
                     FullMode = BoundedChannelFullMode.DropOldest,
@@ -51,7 +51,7 @@ namespace CamPortal.Core.Services.Devices
             _logger = logger;
         }
 
-        public void AddFrame(DeviceStreamingHandshakeDto device, byte[] frame)
+        public void AddFrame(DeviceStreamingHandshakeWithCameraConfigDto device, byte[] frame)
         {
             if (device.Id == Guid.Empty)
                 throw new ArgumentException("Camera ID cannot be empty", nameof(device.Id));
@@ -112,14 +112,14 @@ namespace CamPortal.Core.Services.Devices
             return _processedFramesCameraChannels[cameraId];
         }
 
-        public CameraFrameDto StampFrame(byte[] frame, DeviceStreamingHandshakeDto camera)
+        public CameraFrameDto StampFrame(byte[] frame, DeviceStreamingHandshakeWithCameraConfigDto camera)
         {
             using var image = Image.Load(frame);
 
             string text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
             var cameraName = camera.DeviceName ?? $"<No Name Set, Device id {camera.Id}>";
 
-            var cameraConfig = camera.CameraStreamingConfiguration;
+            var cameraConfig = camera.CameraConfiguration;
 
             image.Mutate(ctx =>
             {

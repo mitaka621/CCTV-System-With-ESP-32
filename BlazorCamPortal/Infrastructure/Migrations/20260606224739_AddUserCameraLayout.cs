@@ -12,7 +12,7 @@ namespace CamPortal.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.RenameColumn(
-                name: "DeviceVariant",
+                name: "DeviceCategory",
                 table: "DeviceTypes",
                 newName: "DeviceCategory");
 
@@ -65,7 +65,7 @@ namespace CamPortal.Infrastructure.Migrations
             migrationBuilder.RenameColumn(
                 name: "DeviceCategory",
                 table: "DeviceTypes",
-                newName: "DeviceVariant");
+                newName: "DeviceCategory");
         }
     }
 }

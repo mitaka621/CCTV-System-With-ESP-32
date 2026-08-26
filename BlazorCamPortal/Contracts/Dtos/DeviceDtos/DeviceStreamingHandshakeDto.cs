@@ -1,4 +1,3 @@
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Contracts.Dtos.DeviceDtos
@@ -13,8 +12,6 @@ namespace CamPortal.Contracts.Dtos.DeviceDtos
 
         public required string PublicKey { get; set; }
 
-        public DeviceTypeCategories DeviceVariant { get; set; }
-
-        public CameraStreamingConfigurationDto CameraStreamingConfiguration { get; set; } = null!;
+        public DeviceTypeCategories DeviceCategory { get; set; }
     }
 }

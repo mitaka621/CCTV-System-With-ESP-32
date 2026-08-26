@@ -1,13 +1,14 @@
-﻿using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
-using CamPortal.Contracts.Enums;
+﻿using CamPortal.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.CameraDtos
+namespace CamPortal.Contracts.Dtos.DeviceDtos
 {
     public class DeviceDto
     {
         public Guid Id { get; set; }
 
         public Guid DeviceTypeId { get; set; }
+
+        public DeviceTypeCategories DeviceCategory { get; set; }
 
         public string? Name { get; set; }
 
@@ -22,7 +23,5 @@ namespace CamPortal.Contracts.Dtos.CameraDtos
         public required string PublicKey { get; set; }
 
         public required string Fingerprint { get; set; }
-
-        public List<PreprovisionAttemptDto> PreprovisionAttempts { get; set; } = new();
     }
 }

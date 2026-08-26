@@ -69,7 +69,7 @@
                 <UploadCredentialsComponent model="model" ModelChanged="StateHasChanged" />
                 break;
             case 4:
-                <ConfigureDeviceComponent CameraId="model.DeviceId ?? Guid.Empty" ModelChanged="StateHasChanged" />
+                <ConfigureDeviceComponent model="model" ModelChanged="StateHasChanged" />
                 break;
             default: break;
         }
@@ -236,9 +236,8 @@
         MudDialog?.Close(DialogResult.Ok(model.DeviceId));
     }
 
-    private bool IsCurrentStepCompleted()
-    {
-        return _currentStep switch
+    private bool IsCurrentStepCompleted() 
+        => _currentStep switch
         {
             0 => model.PreprovisionRequest.DeviceTypeId != default,
             1 => model.PreprovisionRequest.LocalNetworkInfo != default,
@@ -247,7 +246,7 @@
             4 => true,
             _ => false
         };
-    }
+    
 
     private void HandleKeyDown(KeyboardEventArgs e)
     {

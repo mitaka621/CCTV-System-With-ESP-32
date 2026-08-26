@@ -12,7 +12,7 @@ namespace CamPortal.Contracts.Models
 
         [Required(ErrorMessage = "Category is required.")]
         [EnumDataType(typeof(DeviceTypeCategories), ErrorMessage = "Category is not a recognized value.")]
-        public DeviceTypeCategories DeviceVariant { get; set; }
+        public DeviceTypeCategories DeviceCategory { get; set; }
 
         [Required(ErrorMessage = "Icon file is required.")]
         public IBrowserFile? IconFile { get; set; }

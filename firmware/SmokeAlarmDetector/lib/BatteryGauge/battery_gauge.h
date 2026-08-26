@@ -10,6 +10,8 @@ namespace battery_gauge
 
   float VoltsToPercent(float volts);
 
+  float ReadChargeSenseVolts();
+
   bool IsCharging();
 
   void PrepareForSleep();

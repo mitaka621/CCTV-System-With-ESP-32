@@ -36,7 +36,7 @@ namespace CamPortal.Infrastructure.Migrations
                     Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     IconName = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     IconUpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    DeviceVariant = table.Column<int>(type: "int", nullable: false)
+                    DeviceCategory = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {

@@ -35,6 +35,10 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<CameraTelemetry> CameraTelemetry { get; set; }
 
+        public DbSet<SmokeAlarmTelemetry> SmokeAlarmTelemetry { get; set; }
+
+        public DbSet<SmokeAlarmDetectorConfiguration> SmokeAlarmDetectorConfigurations { get; set; }
+
         public static readonly Guid SystemSettingsId = Guid.Parse("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d");
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -16,8 +16,8 @@
                 <MudSelect T="DeviceTypeCategories"
                            Label="Category"
                            Variant="Variant.Outlined"
-                           @bind-Value="_model.DeviceVariant"
-                           For="@(() => _model.DeviceVariant)"
+                           @bind-Value="_model.DeviceCategory"
+                           For="@(() => _model.DeviceCategory)"
                            Disabled="_isSubmitting">
                     @foreach (var category in Enum.GetValues<DeviceTypeCategories>())
                     {

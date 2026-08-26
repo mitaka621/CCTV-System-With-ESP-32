@@ -72,11 +72,11 @@ namespace CamPortal.Core.BackgroundServices
                     return;
                 }
 
-                if (!_deviceSessionHandlers.TryGetValue(device.DeviceVariant, out var deviceSessionHandler))
+                if (!_deviceSessionHandlers.TryGetValue(device.DeviceCategory, out var deviceSessionHandler))
                 {
                     _logger.LogWarning(
                         "Stream rejected from {RemoteEndpoint}: no handler for device {DeviceId} variant {Variant}",
-                        remoteEndpoint, device.Id, device.DeviceVariant);
+                        remoteEndpoint, device.Id, device.DeviceCategory);
                     return;
                 }
 

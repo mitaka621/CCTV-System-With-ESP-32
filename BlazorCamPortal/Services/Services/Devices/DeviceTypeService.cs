@@ -55,7 +55,7 @@ namespace CamPortal.Core.Services.Devices
                 Name = model.Name,
                 IconName = iconName,
                 IconUpdatedAt = DateTime.UtcNow,
-                DeviceVariant = model.DeviceVariant,
+                DeviceCategory = model.DeviceCategory,
             };
 
             try

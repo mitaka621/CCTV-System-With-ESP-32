@@ -97,7 +97,7 @@
     </MudPaper>
 
     @{
-        var filteredCameras = GetFilteredCameras();
+        var filteredCameras = GetFilteredDevices();
         var cameraRows = ChunkIntoRows(filteredCameras);
     }
 
@@ -122,132 +122,132 @@
                 {
                     <div class="camera-config-row-item" @key="camera.Id">
                         <MudCard Elevation="6" Class="camera-config-card">
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <div class="d-flex align-center justify-space-between">
-                                    <div>
-                                        <MudText Typo="Typo.h6">
-                                            <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Class="mr-2" />
-                                            @(camera.Name ?? "Unnamed Camera")
-                                        </MudText>
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="config-truncate">
-                                            ID: @camera.Id
-                                        </MudText>
-                                    </div>
-                                    <MudChip T="string" Color="@GetStatusColor(camera.PairStatus)" 
-                                            Size="Size.Small" 
-                                            Icon="@GetStatusIcon(camera.PairStatus)">
-                                        @MiscUtilities.GetDisplayNameAttributeValue(camera.PairStatus)
-                                    </MudChip>
-                                </div>
-                            </CardHeaderContent>
-                        </MudCardHeader>
-                    
-                        <MudCardContent>
-                            <MudStack Spacing="2">
-                                <div class="d-flex align-center">
-                                    <MudIcon Icon="@Icons.Material.Filled.NetworkWifi" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.body2">
-                                        <strong>IP:</strong> @(string.IsNullOrWhiteSpace(camera.Ipv4Address) ? "Unknown" : camera.Ipv4Address)
-                                    </MudText>
-                                </div>
-                                @if (camera.ResolutionWidth.HasValue && camera.ResolutionHeight.HasValue && camera.ResolutionWidth > 0)
-                                {
-                                    <div class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.AspectRatio" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2">
-                                            <strong>Resolution:</strong> @camera.ResolutionWidth x @camera.ResolutionHeight
-                                        </MudText>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(camera.FirmwareVersion))
-                                {
-                                    <div class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2">
-                                            <strong>Firmware:</strong> @camera.FirmwareVersion
-                                        </MudText>
-                                    </div>
-                                }
-                                <div class="d-flex align-center">
-                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.body2">
-                                        <strong>Added:</strong> @_userTimeZoneService.ToLocal(camera.CreatedAt).ToString("MMM dd, yyyy")
-                                    </MudText>
-                                </div>
-                                @if (camera.UpdatedAt.HasValue)
-                                {
-                                    <div class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Update" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2">
-                                            <strong>Updated:</strong> @_userTimeZoneService.ToLocal(camera.UpdatedAt.Value).ToString("MMM dd, yyyy HH:mm")
-                                        </MudText>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(camera.Fingerprint))
-                                {
-                                    <MudTooltip Text="@camera.Fingerprint">
-                                        <div class="d-flex align-center">
-                                            <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
-                                            <MudText Typo="Typo.body2">
-                                                <strong>Fingerprint:</strong> @(camera.Fingerprint)
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center justify-space-between">
+                                        <div>
+                                            <MudText Typo="Typo.h6">
+                                                <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Class="mr-2" />
+                                                @(camera.Name ?? "Unnamed Camera")
+                                            </MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="config-truncate">
+                                                ID: @camera.Id
                                             </MudText>
                                         </div>
-                                    </MudTooltip>
-                                }
-                            </MudStack>
-                        </MudCardContent>
-                    
-                        <MudCardActions Class="d-flex justify-space-between">
-                            @if (camera.PairStatus != DevicePairStatus.Removed)
-                            {
-                                @if (camera.PairStatus == DevicePairStatus.PairingPending)
+                                        <MudChip T="string" Color="@GetStatusColor(camera.PairStatus)" 
+                                        Size="Size.Small" 
+                                        Icon="@GetStatusIcon(camera.PairStatus)">
+                                            @MiscUtilities.GetDisplayNameAttributeValue(camera.PairStatus)
+                                        </MudChip>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+
+                            <MudCardContent>
+                                <MudStack Spacing="2">
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.NetworkWifi" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2">
+                                            <strong>IP:</strong> @(string.IsNullOrWhiteSpace(camera.Ipv4Address) ? "Unknown" : camera.Ipv4Address)
+                                        </MudText>
+                                    </div>
+                                    @if (camera.ResolutionWidth.HasValue && camera.ResolutionHeight.HasValue && camera.ResolutionWidth > 0)
+                                    {
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.AspectRatio" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.body2">
+                                                <strong>Resolution:</strong> @camera.ResolutionWidth x @camera.ResolutionHeight
+                                            </MudText>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(camera.FirmwareVersion))
+                                    {
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.body2">
+                                                <strong>Firmware:</strong> @camera.FirmwareVersion
+                                            </MudText>
+                                        </div>
+                                    }
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2">
+                                            <strong>Added:</strong> @_userTimeZoneService.ToLocal(camera.CreatedAt).ToString("MMM dd, yyyy")
+                                        </MudText>
+                                    </div>
+                                    @if (camera.UpdatedAt.HasValue)
+                                    {
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Update" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.body2">
+                                                <strong>Updated:</strong> @_userTimeZoneService.ToLocal(camera.UpdatedAt.Value).ToString("MMM dd, yyyy HH:mm")
+                                            </MudText>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(camera.Fingerprint))
+                                    {
+                                        <MudTooltip Text="@camera.Fingerprint">
+                                            <div class="d-flex align-center">
+                                                <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                                <MudText Typo="Typo.body2">
+                                                    <strong>Fingerprint:</strong> @(camera.Fingerprint)
+                                                </MudText>
+                                            </div>
+                                        </MudTooltip>
+                                    }
+                                </MudStack>
+                            </MudCardContent>
+
+                            <MudCardActions Class="d-flex justify-space-between">
+                                @if (camera.PairStatus != DevicePairStatus.Removed)
                                 {
-                                    <MudButton StartIcon="@Icons.Material.Filled.PlayArrow"
-                                             Color="Color.Primary"
-                                             Size="Size.Small"
-                                             Variant="Variant.Filled"
-                                             OnClick="() => ResumeSetup(camera)">
-                                        Resume Setup
+                                    @if (camera.PairStatus == DevicePairStatus.PairingPending)
+                                    {
+                                        <MudButton StartIcon="@Icons.Material.Filled.PlayArrow"
+                                        Color="Color.Primary"
+                                        Size="Size.Small"
+                                        Variant="Variant.Filled"
+                                        OnClick="() => ResumeSetup(camera)">
+                                            Resume Setup
+                                        </MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudButton StartIcon="@Icons.Material.Filled.Edit" 
+                                        Color="Color.Secondary" 
+                                        Size="Size.Small"
+                                        Variant="Variant.Text"
+                                        OnClick="() => ConfigureCamera(camera.Id)">
+                                            Configure
+                                        </MudButton>
+                                    }
+                                    <MudButton StartIcon="@Icons.Material.Filled.Delete" 
+                                    Color="Color.Error" 
+                                    Size="Size.Small"
+                                    Variant="Variant.Text"
+                                    OnClick="() => ShowForgetDialog(camera)">
+                                        Forget
                                     </MudButton>
                                 }
                                 else
                                 {
-                                    <MudButton StartIcon="@Icons.Material.Filled.Edit" 
-                                             Color="Color.Secondary" 
-                                             Size="Size.Small"
-                                             Variant="Variant.Text"
-                                               OnClick="() => ConfigureCamera(camera.Id)">
-                                        Configure
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Device forgotten</MudText>
+                                    <MudButton StartIcon="@Icons.Material.Filled.Restore" 
+                                    Color="Color.Primary" 
+                                    Size="Size.Small"
+                                    Variant="Variant.Text"
+                                    OnClick="() => RestoreCamera(camera.Id)">
+                                        Restore
                                     </MudButton>
                                 }
-                                <MudButton StartIcon="@Icons.Material.Filled.Delete" 
-                                         Color="Color.Error" 
-                                         Size="Size.Small"
-                                         Variant="Variant.Text"
-                                           OnClick="() => ShowForgetDialog(camera)">
-                                    Forget
-                                </MudButton>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">Device forgotten</MudText>
-                                <MudButton StartIcon="@Icons.Material.Filled.Restore" 
-                                         Color="Color.Primary" 
-                                         Size="Size.Small"
-                                         Variant="Variant.Text"
-                                           OnClick="() => RestoreCamera(camera.Id)">
-                                    Restore
-                                </MudButton>
-                            }
-                        </MudCardActions>
-                    </MudCard>
+                            </MudCardActions>
+                        </MudCard>
                     </div>
                 }
             </div>
         </Virtualize>
     }
-</PageLoader>
+    </PageLoader>
 
 <style>
     .blurry-background {
@@ -273,25 +273,25 @@
         flex-direction: column;
     }
 
-        .camera-config-card .mud-card-content {
-            flex: 1 1 auto;
-            overflow: hidden;
-        }
+    .camera-config-card .mud-card-content {
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
 
-        .camera-config-card .mud-card-actions {
-            margin-top: auto;
-        }
+    .camera-config-card .mud-card-actions {
+        margin-top: auto;
+    }
 
-        .camera-config-card .mud-card-content .d-flex {
-            min-width: 0;
-        }
+    .camera-config-card .mud-card-content .d-flex {
+        min-width: 0;
+    }
 
-            .camera-config-card .mud-card-content .d-flex .mud-typography {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                min-width: 0;
-            }
+    .camera-config-card .mud-card-content .d-flex .mud-typography {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
 
     .config-truncate {
         white-space: nowrap;
@@ -332,7 +332,7 @@
 		}
 	}
 
-	private List<CameraDisplayModel> GetFilteredCameras()
+	private List<CameraDisplayModel> GetFilteredDevices()
 	{
 		return cameraDisplayModels
 			.Where(c => _selectedStatuses.Contains(c.PairStatus))

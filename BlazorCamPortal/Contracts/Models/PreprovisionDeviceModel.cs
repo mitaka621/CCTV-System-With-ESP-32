@@ -1,4 +1,5 @@
 ﻿using CamPortal.Contracts.Dtos.LocalNetworkDtos;
+using CamPortal.Contracts.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace CamPortal.Contracts.Models
@@ -6,6 +7,8 @@ namespace CamPortal.Contracts.Models
     public class PreprovisionDeviceModel
     {
         public Guid DeviceTypeId { get; set; }
+
+        public DeviceTypeCategories? DeviceCategory { get; set; }
 
         [Required]
         [StringLength(60, MinimumLength = 1, ErrorMessage = "Minimum length 1")]

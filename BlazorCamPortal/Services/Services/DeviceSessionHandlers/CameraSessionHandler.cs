@@ -1,3 +1,5 @@
+using AutoMapper;
+using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
@@ -6,12 +8,12 @@ using CamPortal.Contracts.Dtos.TelemetryDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Exceptions;
 using CamPortal.Core.Services.Telemetry;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Threading.Channels;
 
 namespace CamPortal.Core.Services.DeviceSessionHandlers
@@ -23,10 +25,8 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
         private const int _telemetryHeaderLen = _resolutionHeaderLen + _telemetryLengthPrefixLen;
         private const int _telemetryPayloadLen = 44;
         private const byte _telemetryVersion = 2;
-        private const byte _commandVersion = 1;
         private const int _commandQueueCapacity = 32;
         private static readonly TimeSpan _telemetrySampleInterval = TimeSpan.FromSeconds(20);
-        private static readonly JsonSerializerOptions _configSerializerOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         private readonly ConcurrentDictionary<Guid, Channel<OutboundDeviceMessageDto>> _commandChannels = new();
 
@@ -34,8 +34,10 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
         private readonly IActiveCameraConnections _activeCameraConnections;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly ICameraConfigurationService _cameraConfigurationService;
+        private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
         private readonly CameraTelemetryQueue _telemetryQueue;
         private readonly ICameraSecurityCoordinator _securityCoordinator;
+        private readonly IMapper _mapper;
         private readonly int _frameReadTimeoutSeconds;
         private readonly int _maxSessionDurationMinutes;
         private readonly long _maxSessionFrames;
@@ -47,7 +49,9 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             ICameraConfigurationService cameraConfigurationService,
             CameraTelemetryQueue telemetryQueue,
             ICameraSecurityCoordinator securityCoordinator,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IMapper mapper,
+            ICameraConfigurationRepository cameraConfigurationRepository)
         {
             _logger = logger;
             _activeCameraConnections = activeCameraConnections;
@@ -55,6 +59,8 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             _cameraConfigurationService = cameraConfigurationService;
             _telemetryQueue = telemetryQueue;
             _securityCoordinator = securityCoordinator;
+            _mapper = mapper;
+            _cameraConfigurationRepository = cameraConfigurationRepository;
 
             var streamingSection = configuration.GetSection("SecureStreaming");
 
@@ -79,6 +85,13 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 
             try
             {
+                var config = await _cameraConfigurationService.GetCameraConfigurationAsync(device.Id);
+
+                var deviceWithConfigDto = _mapper.Map<DeviceStreamingHandshakeWithCameraConfigDto>(device);
+
+                deviceWithConfigDto.CameraConfiguration = await _cameraConfigurationRepository.GetCameraConfigurationAsync(device.Id)
+                    ?? throw new InvalidOperationException("Camera configuration not found");
+
                 try
                 {
                     await _securityCoordinator.OnCameraConnectedAsync(device.Id);
@@ -189,7 +202,7 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 
                     var jpeg = plaintext.AsSpan(jpegOffset).ToArray();
 
-                    _cameraFramesManagerService.AddFrame(device, jpeg);
+                    _cameraFramesManagerService.AddFrame(deviceWithConfigDto, jpeg);
                 }
             }
             finally
@@ -208,7 +221,7 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             {
                 await foreach (var message in channel.Reader.ReadAllAsync(cancellationToken))
                 {
-                    if (!TryBuildPayload(message, out var payload))
+                    if (!DeviceSessionHelper.TryBuildPayload(message, out var payload))
                     {
                         continue;
                     }
@@ -237,36 +250,14 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             }
         }
 
-        private static bool TryBuildPayload(OutboundDeviceMessageDto message, out byte[] payload)
-        {
-            if (message.Command == CameraCommand.None)
-            {
-                payload = Array.Empty<byte>();
-                return false;
-            }
-
-            if (message.Command == CameraCommand.SaveNewConfig)
-            {
-                var json = JsonSerializer.SerializeToUtf8Bytes(message.Config ?? new DeviceEspConfigDto(), _configSerializerOptions);
-                payload = new byte[2 + json.Length];
-                payload[0] = _commandVersion;
-                payload[1] = (byte)CameraCommand.SaveNewConfig;
-                Buffer.BlockCopy(json, 0, payload, 2, json.Length);
-                return true;
-            }
-
-            payload = new byte[] { _commandVersion, (byte)message.Command };
-            return true;
-        }
-
-        public bool TryEnqueueCommand(Guid cameraId, CameraCommand command)
+        public bool TryEnqueueCommand(Guid cameraId, DeviceCommand command)
         {
             return GetOrCreateCommandChannel(cameraId).Writer.TryWrite(new OutboundDeviceMessageDto { Command = command });
         }
 
         public bool TryEnqueueConfig(Guid cameraId, DeviceEspConfigDto config)
         {
-            return GetOrCreateCommandChannel(cameraId).Writer.TryWrite(new OutboundDeviceMessageDto { Command = CameraCommand.SaveNewConfig, Config = config });
+            return GetOrCreateCommandChannel(cameraId).Writer.TryWrite(new OutboundDeviceMessageDto { Command = DeviceCommand.SaveNewConfig, Config = config });
         }
 
         public void RemoveCamera(Guid cameraId)

@@ -18,7 +18,13 @@
 #define ALARM_STILL_SOUNDING_MS 600
 #define ALARM_MIN_BEEPS_FOR_FIRE 3
 
+// The 5 volt pin is not dead on battery, it back-feeds to roughly 3 volts, so a
+// digital level cannot tell battery from charger. Measure it instead. The divider
+// is 10k over 15k, so the ratio back to the pin voltage is 25/15.
 #define CHARGE_SENSE_PIN 5
+#define CHARGE_SENSE_DIVIDER_RATIO 1.6667f
+#define CHARGE_SENSE_THRESHOLD_VOLTS 4.0f
+#define CHARGE_SENSE_SAMPLE_COUNT 16
 
 #define RESET_BUTTON_PIN 7
 #define RESET_BUTTON_HOLD_MS 5000
@@ -55,10 +61,19 @@
 
 #define DEVICE_COMMAND_VERSION 1
 #define DETECTOR_PAYLOAD_VERSION 1
-#define COMMAND_POLL_MS 0
+// The device waits for the server to confirm the payload before sleeping, so a
+// report is only counted as delivered once it has actually been parsed.
+#define ACK_TIMEOUT_MS 5000
+#define SEND_RETRY_DELAY_MS 10000
+#define MAX_SEND_ATTEMPTS 3
 
 #define ServerHttpsPort 7010
 #define ServerTcpPort 7000
+
+// client.write() only reaches the TCP send buffer and stop() does not linger, so
+// powering the radio down immediately discards anything still queued. Give the
+// stack time to transmit and be acknowledged before tearing Wi-Fi down.
+#define NETWORK_SETTLE_MS 500
 
 // Hardware serial hands bytes to a background task rather than the wire, so a
 // short wake can reach deep sleep with the last lines still queued. Debug builds

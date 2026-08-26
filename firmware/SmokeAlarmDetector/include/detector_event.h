@@ -9,6 +9,4 @@ enum class DetectorEvent : uint8_t
   AlarmLowBatteryChirp = 2,
   BatteryWelfare = 3,
   BatteryCharging = 4,
-  Boot = 5,
-  ManualCheck = 6
 };

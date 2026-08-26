@@ -91,7 +91,7 @@ namespace CamPortal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("DeviceVariant")
+                    b.Property<int>("DeviceCategory")
                         .HasColumnType("int");
 
                     b.Property<string>("IconName")
