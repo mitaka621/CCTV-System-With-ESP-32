@@ -1,11 +1,13 @@
-﻿namespace CamPortal.Contracts.Enums
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CamPortal.Contracts.Enums
 {
     public enum DeviceTypeCategories
     {
+        [Display(Name = "Camera")]
         Camera,
-        Sensor,
-        SecurityAlarm,
-        BlindsOpener,
+
+        [Display(Name = "Smoke Alarm")]
         SmokeAlarm,
     }
 }

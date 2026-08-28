@@ -8,8 +8,12 @@ namespace CamPortal.Infrastructure.Data.Entities
         [Key]
         public Guid Id { get; set; }
 
+        [Required]
         [MaxLength(200)]
         public required string Name { get; set; }
+
+        [MaxLength(1000)]
+        public string? Description { get; set; }
 
         [MaxLength(500)]
         public required string IconName { get; set; }

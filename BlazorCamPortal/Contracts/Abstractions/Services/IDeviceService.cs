@@ -12,7 +12,7 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task<bool> UpdateDeviceAsync(UpdateDeviceDto dto, IUnitOfWork? uow = null);
 
-        Task<List<CameraDisplayModel>> GetAllCamerasAsync();
+        Task<DevicesByTypeDisplayModel> GetAllDevicesByTypeAsync(DeviceFilterModel filterModel);
 
         Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> cameraIds);
 

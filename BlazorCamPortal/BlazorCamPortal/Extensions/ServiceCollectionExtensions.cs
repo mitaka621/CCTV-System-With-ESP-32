@@ -16,6 +16,7 @@ using CamPortal.Core.Services.Users;
 using CamPortal.Core.Services.Video;
 using CamPortal.Core.Utilities;
 using CamPortal.Infrastructure.Repositories;
+using CamPortal.Infrastructure.Repositories.PerDeviceRepository;
 using CamPortal.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -75,11 +76,13 @@ namespace CamPortal.Extensions
             services.AddSingleton<ISmokeAlarmDetectorManagerService, SmokeAlarmDetectorManagerService>();
             services.AddSingleton<ISmokeAlarmTelemetryRepository, SmokeAlarmTelemetryRepository>();
             services.AddSingleton<ISmokeAlarmDetectorConfigurationService, SmokeAlarmDetectorConfigurationService>();
+            services.AddSingleton<ICameraRepository, CameraRepository>();
+            services.AddSingleton<ISmokeAlarmRepository, SmokeAlarmRepository>();
+            services.AddSingleton<ISecureHandshake, SecureHandshake>();
 
             services.AddSingleton<VideoExportEncoderService>();
             services.AddSingleton<IVideoExportCanceller>(sp => sp.GetRequiredService<VideoExportEncoderService>());
 
-            services.AddSingleton<ISecureHandshake, SecureHandshake>();
             services.AddSingleton<CameraSessionHandler>();
             services.AddSingleton<SmokeAlarmSessionHandler>();
             services.AddSingleton<IDeviceSessionHandler>(sp => sp.GetRequiredService<CameraSessionHandler>());

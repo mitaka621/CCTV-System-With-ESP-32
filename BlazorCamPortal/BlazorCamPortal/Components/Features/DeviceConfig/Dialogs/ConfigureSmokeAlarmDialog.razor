@@ -1,0 +1,24 @@
+﻿@using CamPortal.Components.Features.DeviceConfig.Components
+@using CamPortal.Components.Features.DeviceConfig.Components.PerDeviceLastStepConfigurationComponents
+
+<MudDialog>
+    <DialogContent>
+        <ConfigureSmokeAlarmDetectorComponent SmokeAlarmId="DeviceId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid DeviceId { get; set; }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}

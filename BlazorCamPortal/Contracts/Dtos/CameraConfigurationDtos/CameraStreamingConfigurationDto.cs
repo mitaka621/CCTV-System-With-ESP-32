@@ -5,6 +5,8 @@ namespace CamPortal.Contracts.Dtos.CameraConfigurationDtos
 {
     public class CameraStreamingConfigurationDto
     {
+        public Guid DeviceId { get; set; }
+
         public float FrameRotation { get; set; } = 0;
 
         public float ZoomFactor { get; set; } = 1;

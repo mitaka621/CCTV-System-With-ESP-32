@@ -7,12 +7,15 @@ namespace CamPortal.Core.Services.Devices
 {
     public class DeviceTypeIconStorageService : IDeviceTypeIconStorageService
     {
-        private const string _allowedExtension = ".svg";
-        private const string _allowedContentType = "image/svg+xml";
+        public const string AllowedContentType = "image/svg+xml";
 
         private readonly string _absoluteIconsFolder;
         private readonly long _maxIconSizeBytes;
         private readonly string _baseApiUrl;
+
+        public IReadOnlyCollection<string> AllowedExtension => [".svg", ".png", ".jpg", ".jpeg"];
+
+        public IReadOnlyCollection<string> AllowedContentTypes => ["image/svg+xml", "image/png", "image/jpeg"];
 
         public DeviceTypeIconStorageService(
             IConfiguration configuration,
@@ -45,12 +48,12 @@ namespace CamPortal.Core.Services.Devices
             }
 
             var extension = Path.GetExtension(file.Name).ToLowerInvariant();
-            if (extension != _allowedExtension)
+            if (!AllowedExtension.Contains(extension))
             {
-                throw new InvalidOperationException("Only .svg files are accepted.");
+                throw new InvalidOperationException("Only .svg, .png, .jpg, and .jpeg files are accepted.");
             }
 
-            if (!string.Equals(file.ContentType, _allowedContentType, StringComparison.OrdinalIgnoreCase))
+            if (!AllowedContentTypes.Contains(file.ContentType))
             {
                 throw new InvalidOperationException("Only image/svg+xml content type is accepted.");
             }
@@ -61,7 +64,7 @@ namespace CamPortal.Core.Services.Devices
                     $"Icon must be between 1 byte and {_maxIconSizeBytes} bytes.");
             }
 
-            var iconName = $"{Guid.NewGuid():N}{_allowedExtension}";
+            var iconName = $"{Guid.NewGuid():N}{extension}";
             var fullPath = Path.Combine(_absoluteIconsFolder, iconName);
 
             await using var sourceStream = file.OpenReadStream(_maxIconSizeBytes, ct);

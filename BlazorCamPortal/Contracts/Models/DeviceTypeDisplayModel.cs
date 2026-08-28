@@ -1,3 +1,4 @@
+using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Contracts.Models
@@ -8,12 +9,17 @@ namespace CamPortal.Contracts.Models
 
         public required string Name { get; set; }
 
+        public string? Description { get; set; }
+
         public required string IconName { get; set; }
 
         public required DateTime IconUpdatedAt { get; set; }
 
         public DeviceTypeCategories DeviceCategory { get; set; }
 
-        public string IconUrl { get; set; } = string.Empty;
+        public string GetIconUrl(IDeviceTypeIconStorageService service)
+        {
+            return service.BuildPublicUrl(IconName, DateTime.Now);
+        }
     }
 }

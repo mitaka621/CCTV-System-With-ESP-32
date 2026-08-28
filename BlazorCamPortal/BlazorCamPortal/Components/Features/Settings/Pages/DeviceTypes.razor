@@ -8,6 +8,7 @@
 @attribute [Authorize(Roles = Roles.Admin)]
 
 @inject IDeviceTypeService _deviceTypeService
+@inject IDeviceTypeIconStorageService _deviceTypeIconStorageService
 @inject IDialogService _dialogService
 @inject ISnackbar _snackbar
 
@@ -53,16 +54,18 @@
                         @foreach (var deviceType in row)
                         {
                             <MudItem xs="12" sm="6" md="4" lg="3" @key="deviceType.Id">
-                                <MudCard Elevation="6" Class="device-type-card">
-                                    <MudCardMedia Image="@deviceType.IconUrl"
-                                                  Height="140"
+                                <MudCard Elevation="6" Class="device-type-card" style="position:relative">
+                                    <MudCardMedia Image="@deviceType.GetIconUrl(_deviceTypeIconStorageService)"
+                                                  Height="300"
                                                   Style="background-color: var(--mud-palette-surface); object-fit: contain;" />
 
                                     <MudCardContent>
                                         <MudText Typo="Typo.h6" Class="mb-1">@deviceType.Name</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@deviceType.Description</MudText>
                                         <MudChip T="string"
                                                  Size="Size.Small"
                                                  Color="@GetCategoryColor(deviceType.DeviceCategory)"
+                                                 style="position: absolute;top: 10px;left: 10px;"
                                                  Icon="@GetCategoryIcon(deviceType.DeviceCategory)">
                                             @deviceType.DeviceCategory
                                         </MudChip>
@@ -147,7 +150,7 @@
         var options = new DialogOptions
         {
             CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Small,
+            MaxWidth = MaxWidth.Large,
             FullWidth = true,
         };
 
@@ -208,9 +211,6 @@
         return category switch
         {
             DeviceTypeCategories.Camera => Color.Primary,
-            DeviceTypeCategories.Sensor => Color.Info,
-            DeviceTypeCategories.SecurityAlarm => Color.Warning,
-            DeviceTypeCategories.BlindsOpener => Color.Secondary,
             _ => Color.Default,
         };
     }
@@ -220,9 +220,6 @@
         return category switch
         {
             DeviceTypeCategories.Camera => Icons.Material.Filled.Videocam,
-            DeviceTypeCategories.Sensor => Icons.Material.Filled.Sensors,
-            DeviceTypeCategories.SecurityAlarm => Icons.Material.Filled.Notifications,
-            DeviceTypeCategories.BlindsOpener => Icons.Material.Filled.Blinds,
             _ => Icons.Material.Filled.DeviceHub,
         };
     }

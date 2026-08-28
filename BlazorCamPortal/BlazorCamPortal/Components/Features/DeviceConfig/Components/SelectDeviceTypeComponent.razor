@@ -1,4 +1,5 @@
 ﻿@inject IDeviceTypeService _deviceTypeService
+@inject IDeviceTypeIconStorageService _deviceTypeIconStorageService
 
 <MudStack Spacing="3">
     <MudStack Row="true" Spacing="6" Justify="Justify.Center">
@@ -46,7 +47,7 @@
                 {
                     <MudPaper Class="pa-3" Elevation="6" Outlined="true" Width="400px">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Style="height:120px">
-                            <MudImage Src="@deviceType.IconUrl"
+                            <MudImage Src="@deviceType.GetIconUrl(_deviceTypeIconStorageService)"
                                         Alt="@deviceType.Name"
                                         Height="120"
                                         Width="120"

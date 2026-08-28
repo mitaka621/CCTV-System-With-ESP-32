@@ -1,14 +1,11 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using CamPortal.Contracts.Dtos.DeviceTypeDtos;
+using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Contracts.Dtos.DeviceDtos
 {
     public class DeviceDto
     {
         public Guid Id { get; set; }
-
-        public Guid DeviceTypeId { get; set; }
-
-        public DeviceTypeCategories DeviceCategory { get; set; }
 
         public string? Name { get; set; }
 
@@ -23,5 +20,7 @@ namespace CamPortal.Contracts.Dtos.DeviceDtos
         public required string PublicKey { get; set; }
 
         public required string Fingerprint { get; set; }
+
+        public DeviceTypeDto? DeviceType { get; set; }
     }
 }

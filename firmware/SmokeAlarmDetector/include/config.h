@@ -80,7 +80,7 @@
 // wait for that task to drain.
 #define SERIAL_DRAIN_MS 150
 
-#define DEBUG_ON true
+#define DEBUG_ON false
 
 //used for testing to display all of the functionallity in the Serial monitor by skipping preprovision and not sending anything to a server
 #define NO_SERVER false

@@ -12,6 +12,7 @@ namespace CamPortal.Core.Services.Users
     {
         private readonly IUserCameraLayoutRepository _userCameraLayoutRepository;
         private readonly IDeviceRepository _deviceRepository;
+        private readonly ICameraRepository _cameraRepository;
         private readonly ILogger<UserCameraLayoutService> _logger;
         private readonly IUserSettingsService _userSettingsService;
 
@@ -20,18 +21,20 @@ namespace CamPortal.Core.Services.Users
             IDeviceRepository deviceRepository,
             IConfiguration configuration,
             ILogger<UserCameraLayoutService> logger,
-            IUserSettingsService userSettingsService)
+            IUserSettingsService userSettingsService,
+            ICameraRepository cameraRepository)
         {
             _userCameraLayoutRepository = userCameraLayoutRepository;
             _deviceRepository = deviceRepository;
             _logger = logger;
             _userSettingsService = userSettingsService;
+            _cameraRepository = cameraRepository;
         }
 
         public async Task<List<UserCameraLayoutItemDto[]>> GetLatestLayoutAsync(Guid userId)
         {
             var camerasPerRow = await _userSettingsService.GetNumberOfCamerasPerRowAsync(userId);
-            var cameras = await _deviceRepository.GetAllCamerasWithConfigurationAsync();
+            var cameras = await _cameraRepository.GetAllCamerasWithConfigurationAsync();
             var configuredCameraPositions = await _userCameraLayoutRepository.GetLayoutForUserAsync(userId);
 
             int numberOfRows = Math.Max(cameras.Count * 2, 2);

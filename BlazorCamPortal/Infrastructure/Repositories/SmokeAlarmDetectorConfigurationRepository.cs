@@ -62,5 +62,15 @@ namespace CamPortal.Infrastructure.Repositories
 
             return await dbContext.SmokeAlarmDetectorConfigurations.CountAsync();
         }
+
+        public async Task<List<SmokeAlarmConfigurationDto>> GetAllConfigurationsAsync(params Guid[] deviceIds)
+        {
+            var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            var configurations = await dbContext.SmokeAlarmDetectorConfigurations
+                .AsNoTracking()
+                .Where(c => deviceIds.Contains(c.DeviceId))
+                .ToListAsync();
+            return _mapper.Map<List<SmokeAlarmConfigurationDto>>(configurations);
+        }
     }
 }

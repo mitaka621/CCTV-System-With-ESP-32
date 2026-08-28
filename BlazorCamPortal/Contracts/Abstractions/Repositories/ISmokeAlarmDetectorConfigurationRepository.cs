@@ -12,5 +12,7 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<SmokeAlarmConfigurationDto> GetSmokeAlarmConfigurationAsync(Guid deviceId);
 
         Task<int> CountDeviceConfigurationsAsync();
+
+        Task<List<SmokeAlarmConfigurationDto>> GetAllConfigurationsAsync(params Guid[] deviceIds);
     }
 }

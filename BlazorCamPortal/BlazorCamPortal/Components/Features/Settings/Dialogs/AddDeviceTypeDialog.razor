@@ -1,57 +1,90 @@
 @inject IDeviceTypeService _deviceTypeService
 @inject ISnackbar _snackbar
 @inject IConfiguration _configuration
+@inject IDeviceTypeIconStorageService _deviceTypeIconStorageService
 
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form" Model="_model" ValidationDelay="0">
-            <MudStack Spacing="3">
-                <MudTextField @bind-Value="_model.Name"
-                              Label="Name"
-                              Variant="Variant.Outlined"
-                              For="@(() => _model.Name)"
-                              Immediate="true"
-                              Disabled="_isSubmitting" />
+            <MudGrid>
+                <MudItem xs="6">
+                     <MudStack Spacing="3" Justify="Justify.Center">
+                        
+                        <MudTextField @bind-Value="_model.Name"
+                                      Label="Name"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => _model.Name)"
+                                      Immediate="true"
+                                      Disabled="_isSubmitting" />
 
-                <MudSelect T="DeviceTypeCategories"
-                           Label="Category"
-                           Variant="Variant.Outlined"
-                           @bind-Value="_model.DeviceCategory"
-                           For="@(() => _model.DeviceCategory)"
-                           Disabled="_isSubmitting">
-                    @foreach (var category in Enum.GetValues<DeviceTypeCategories>())
-                    {
-                        <MudSelectItem Value="@category">@category</MudSelectItem>
-                    }
-                </MudSelect>
+                        <MudTextField @bind-Value="_model.Description"
+                                      Label="Description (optional)"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => _model.Description)"
+                                      Immediate="true"
+                                      Lines="3"
+                                      MaxLines="10"
+                                      Sizing="InputSizing.Auto"
+                                      Disabled="_isSubmitting" />
 
-                <div>
-                    <MudFileUpload T="IBrowserFile"
-                                   Accept=".svg,image/svg+xml"
-                                   FilesChanged="OnFileChanged"
-                                   MaximumFileCount="1"
+                        <MudSelect T="DeviceTypeCategories"
+                                   Label="Category"
+                                   Variant="Variant.Outlined"
+                                   @bind-Value="_model.DeviceCategory"
+                                   For="@(() => _model.DeviceCategory)"
                                    Disabled="_isSubmitting">
-                        <ActivatorContent>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.UploadFile"
-                                       FullWidth="true"
-                                       Disabled="_isSubmitting">
-                                @(_model.IconFile is null ? "Upload SVG Icon" : _model.IconFile.Name)
-                            </MudButton>
-                        </ActivatorContent>
-                    </MudFileUpload>
-                    @if (!string.IsNullOrEmpty(_iconError))
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_iconError</MudText>
-                    }
-                </div>
+                            @foreach (var category in Enum.GetValues<DeviceTypeCategories>())
+                            {
+                                <MudSelectItem Value="@category">@category</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+                        <MudStack Spacing="0">
+                            <img style="width:300px; height:300px; object-fit:cover" src="@_previewIconUrl" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">300x300px</MudText>
+                        </MudStack>
+                        <MudStack Spacing="0">
+                            <img style="width:200px; height:200px; object-fit:cover" src="@_previewIconUrl" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">200x200px</MudText>
+                        </MudStack>
+                        <MudStack Spacing="0">
+                            <img style="width:50px; height:50px; object-fit:cover" src="@_previewIconUrl" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">50x50px</MudText>
+                        </MudStack>
+                    </MudStack> 
+                        <div>
+                            <MudFileUpload T="IBrowserFile"
+                                           Accept="@string.Join(", ", _deviceTypeIconStorageService.AllowedContentTypes)"
+                                           FilesChanged="OnFileChanged"
+                                           MaximumFileCount="1"
+                                           MaxFileSize="@_maxIconSizeBytes"
+                                           Disabled="_isSubmitting">
+                                <ActivatorContent>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.UploadFile"
+                                               FullWidth="true"
+                                               Disabled="_isSubmitting">
+                                        @(_model.IconFile is null ? "Upload Icon" : _model.IconFile.Name)
+                                    </MudButton>
+                                </ActivatorContent>
+                            </MudFileUpload>
+                            @if (!string.IsNullOrEmpty(_iconError))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_iconError</MudText>
+                            }
+                        </div>
+                </MudItem>
+            </MudGrid>
 
-                @if (!string.IsNullOrEmpty(_submitError))
-                {
-                    <MudAlert Severity="Severity.Error" NoIcon="true">@_submitError</MudAlert>
-                }
-            </MudStack>
+            @if (!string.IsNullOrEmpty(_submitError))
+            {
+                <MudAlert Severity="Severity.Error" NoIcon="true">@_submitError</MudAlert>
+            }
+
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -82,10 +115,9 @@
     private string? _iconError;
     private string? _submitError;
     private bool _isSubmitting;
+    private string? _previewIconUrl;
 
     private long _maxIconSizeBytes;
-    private const string _allowedExtension = ".svg";
-    private const string _allowedContentType = "image/svg+xml";
 
     protected override void OnInitialized()
     {
@@ -93,9 +125,13 @@
                 _configuration.GetSection("DeviceTypeIconsConfig")["MaxIconSizeBytes"]
                 ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"));
 
+        _previewIconUrl =_deviceTypeIconStorageService
+            .BuildPublicUrl( _configuration.GetSection("DeviceTypeIconsConfig")["DefaultIconName"]
+                ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"), DateTime.Now);
+
         base.OnInitialized();
     }
-    private void OnFileChanged(IBrowserFile? file)
+    private async Task OnFileChanged(IBrowserFile? file)
     {
         _iconError = null;
         _submitError = null;
@@ -107,14 +143,14 @@
         }
 
         var extension = Path.GetExtension(file.Name).ToLowerInvariant();
-        if (extension != _allowedExtension)
+        if (!_deviceTypeIconStorageService.AllowedExtension.Contains(extension))
         {
-            _iconError = "Only .svg files are allowed.";
+            _iconError = "Only .svg, .png, .jpg, and .jpeg files are allowed.";
             _model.IconFile = null;
             return;
         }
 
-        if (!string.Equals(file.ContentType, _allowedContentType, StringComparison.OrdinalIgnoreCase))
+        if (!_deviceTypeIconStorageService.AllowedContentTypes.Contains(file.ContentType))
         {
             _iconError = "File must be of type image/svg+xml.";
             _model.IconFile = null;
@@ -129,6 +165,13 @@
         }
 
         _model.IconFile = file;
+
+        await using var stream = file.OpenReadStream(_maxIconSizeBytes);
+
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+
+        _previewIconUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(memoryStream.ToArray())}";
     }
 
     private async Task SubmitAsync()

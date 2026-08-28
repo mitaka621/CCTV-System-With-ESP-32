@@ -10,11 +10,13 @@ namespace CamPortal.Contracts.Models
         [StringLength(100, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 100 characters.")]
         public string Name { get; set; } = string.Empty;
 
+        [StringLength(1000, MinimumLength = 0, ErrorMessage = "Description must be between 1 and 1000 characters.")]
+        public string Description { get; set; } = string.Empty;
+
         [Required(ErrorMessage = "Category is required.")]
         [EnumDataType(typeof(DeviceTypeCategories), ErrorMessage = "Category is not a recognized value.")]
         public DeviceTypeCategories DeviceCategory { get; set; }
 
-        [Required(ErrorMessage = "Icon file is required.")]
         public IBrowserFile? IconFile { get; set; }
     }
 }

@@ -6,6 +6,7 @@ using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Models;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 
 namespace CamPortal.Core.Services.Devices
@@ -20,9 +21,12 @@ namespace CamPortal.Core.Services.Devices
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
         private readonly ICameraCommandDispatcher _cameraCommandDispatcher;
         private readonly ISmokeAlarmDetectorConfigurationRepository _smokeAlarmDetectorConfigurationRepository;
+        private readonly ISmokeAlarmTelemetryRepository _smokeAlarmTelemetryRepository;
+        private readonly ICameraRepository _cameraRepository;
+        private readonly ISmokeAlarmRepository _smokeAlarmRepository;
 
         public DeviceService(
-            IDeviceRepository cameraRepository,
+            IDeviceRepository deviceRepository,
             IMapper mapper,
             IDeviceAuthenticatorService deviceAuthenticatorService,
             IConfiguration configuration,
@@ -31,9 +35,12 @@ namespace CamPortal.Core.Services.Devices
             IDeviceTypeRepository deviceTypeRepository,
             ICameraConfigurationRepository cameraConfigurationRepository,
             ICameraCommandDispatcher cameraCommandDispatcher,
-            ISmokeAlarmDetectorConfigurationRepository smokeAlarmDetectorConfigurationRepository)
+            ISmokeAlarmDetectorConfigurationRepository smokeAlarmDetectorConfigurationRepository,
+            ISmokeAlarmTelemetryRepository smokeAlarmTelemetryRepository,
+            ICameraRepository cameraRepository,
+            ISmokeAlarmRepository smokeAlarmRepository)
         {
-            _deviceRepository = cameraRepository;
+            _deviceRepository = deviceRepository;
             _mapper = mapper;
             _cameraFramesManagerService = cameraFramesManagerService;
             _activeCameraConnections = activeCameraConnections;
@@ -41,6 +48,9 @@ namespace CamPortal.Core.Services.Devices
             _cameraConfigurationRepository = cameraConfigurationRepository;
             _cameraCommandDispatcher = cameraCommandDispatcher;
             _smokeAlarmDetectorConfigurationRepository = smokeAlarmDetectorConfigurationRepository;
+            _smokeAlarmTelemetryRepository = smokeAlarmTelemetryRepository;
+            _cameraRepository = cameraRepository;
+            _smokeAlarmRepository = smokeAlarmRepository;
         }
 
 
@@ -64,9 +74,6 @@ namespace CamPortal.Core.Services.Devices
                 case DeviceTypeCategories.SmokeAlarm:
                     await _smokeAlarmDetectorConfigurationRepository.AddDefaultSmokeAlarmConfigurationToDeviceAsync(deviceId, uow);
                     break;
-                case DeviceTypeCategories.Sensor:
-                case DeviceTypeCategories.SecurityAlarm:
-                case DeviceTypeCategories.BlindsOpener:
                 default:
                     break;
             }
@@ -78,9 +85,48 @@ namespace CamPortal.Core.Services.Devices
             return await _deviceRepository.UpdateDeviceAsync(dto, uow);
         }
 
-        public async Task<List<CameraDisplayModel>> GetAllCamerasAsync()
+        public async Task<DevicesByTypeDisplayModel> GetAllDevicesByTypeAsync(DeviceFilterModel filterModel)
         {
-            return await _deviceRepository.GetAllCameraDisplayModelsAsync();
+            if (!MiscUtilities.ValidateModel(filterModel))
+                filterModel = new();
+
+            var result = new DevicesByTypeDisplayModel();
+
+            foreach (var category in Enum.GetValues<DeviceTypeCategories>())
+            {
+                switch (category)
+                {
+                    case DeviceTypeCategories.Camera:
+                        var cameras = await _cameraRepository.GetAllCamerasWithTypeAndConfigurationAsync(filterModel);
+
+                        result.Cameras = cameras.GroupBy(x => x.DeviceType)
+                            .ToDictionary(g => _mapper.Map<DeviceTypeDisplayModel>(g.Key), g => g.Select(x => _mapper.Map<CameraDisplayModel>(x)).ToList());
+                        break;
+                    case DeviceTypeCategories.SmokeAlarm:
+                        var smokeAlarms = await _smokeAlarmRepository.GetAllSmokeAlarmsWithTypeAndLatestTelemetryAsync(filterModel);
+
+                        result.SmokeAlarms = smokeAlarms.GroupBy(x => x.DeviceType)
+                            .ToDictionary(g => _mapper.Map<DeviceTypeDisplayModel>(g.Key), g => g.Select(x => new SmokeAlarmDisplayModel()
+                            {
+                                BatterySOCPercent = x.LatestTelemetry.BatterySOCPercent,
+                                BatteryVoltage = x.LatestTelemetry.BatteryVoltage,
+                                BootCount = x.LatestTelemetry.BootCount,
+                                CreatedAt = x.CreatedAt,
+                                Fingerprint = x.Fingerprint,
+                                Id = x.Id,
+                                Ipv4Address = x.Ipv4Address,
+                                Name = x.Name,
+                                LatestCommunicationTime = x.LatestTelemetry.LoggedTimeUTC,
+                                PairStatus = x.PairStatus,
+                                UpdatedAt = x.UpdatedAt
+                            }).ToList());
+                        break;
+                    default:
+                        throw new NotImplementedException($"Device category {category} is not implemented in GetAllDevicesByTypeAsync.");
+                }
+            }
+
+            return result;
         }
 
         public async Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> cameraIds)

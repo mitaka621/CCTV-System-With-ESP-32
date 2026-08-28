@@ -335,8 +335,6 @@ namespace CamPortal.Core.Services.Provisioning
             return new ResumeDeviceSetupDto
             {
                 DeviceId = deviceId,
-                DeviceTypeId = device.DeviceTypeId,
-                DeviceCategory = device.DeviceCategory,
                 PairStatus = device.PairStatus,
                 LocalNetworkInfo = localNetworkInfo,
             };

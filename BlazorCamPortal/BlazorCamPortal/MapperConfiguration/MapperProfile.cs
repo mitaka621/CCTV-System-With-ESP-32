@@ -1,6 +1,7 @@
 using AutoMapper;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
+using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
 using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
 using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
@@ -46,7 +47,6 @@ namespace CamPortal.MapperConfiguration
                 .ReverseMap();
 
             CreateMap<DeviceTypeDto, DeviceTypeDisplayModel>()
-                .ForMember(dest => dest.IconUrl, opt => opt.Ignore())
                 .ReverseMap();
 
             CreateMap<CreatePreprovisionAttemptDto, PreprovisionAttempt>()
@@ -71,6 +71,27 @@ namespace CamPortal.MapperConfiguration
                 .ReverseMap();
 
             CreateMap<SmokeAlarmConfigurationDto, SmokeAlarmConfigurationModel>()
+                .ReverseMap();
+
+            CreateMap<CameraDisplayModel, DeviceDisplayModel>()
+                .ReverseMap();
+
+            CreateMap<SmokeAlarmDisplayModel, DeviceDisplayModel>()
+                .ReverseMap();
+
+            CreateMap<DeviceType, DeviceTypeDto>()
+                .ReverseMap();
+
+            CreateMap<DeviceDto, Device>()
+                .ReverseMap();
+
+            CreateMap<DeviceDto, CameraDisplayModel>()
+                .ReverseMap();
+
+            CreateMap<DeviceDto, SmokeAlarmDisplayModel>()
+                .ReverseMap();
+
+            CreateMap<SmokeAlarmShortPayloadDto, SmokeAlarmTelemetry>()
                 .ReverseMap();
         }
     }

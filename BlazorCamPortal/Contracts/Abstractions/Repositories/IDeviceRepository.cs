@@ -1,10 +1,8 @@
 using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.CameraDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
 using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
 
 namespace CamPortal.Contracts.Abstractions.Repositories
 {
@@ -28,8 +26,6 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllDevicesAsync(params List<Guid> ids);
 
-        Task<List<CameraDisplayModel>> GetAllCameraDisplayModelsAsync();
-
         Task<bool> UpdateDeviceAsync(UpdateDeviceDto dto, IUnitOfWork? uow = null);
 
         Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllDevicesWithStatusesAsync(params DevicePairStatus[] withStatuses);
@@ -45,8 +41,6 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<DeviceWithPreprovisionAttemptsDto?> GetDeviceByIdWithStatusAsync(Guid deviceId, DevicePairStatus status);
 
         Task<DeviceStreamingHandshakeDto?> GetDeviceForStreamingHandshakeAsync(Guid deviceId);
-
-        Task<Dictionary<Guid, CameraInfoWithConfigurationDto>> GetAllCamerasWithConfigurationAsync();
 
         Task<int> CountAllDevicesFromCategoryAsync(DeviceTypeCategories category);
     }

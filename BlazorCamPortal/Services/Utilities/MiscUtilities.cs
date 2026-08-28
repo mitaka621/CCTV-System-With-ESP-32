@@ -14,6 +14,13 @@ namespace CamPortal.Core.Utilities
 
         public static bool ValidateModel<T>(T model)
         {
+            return ValidateModel(model, out _);
+        }
+
+        public static bool ValidateModel<T>(T model, out ICollection<ValidationResult> validationResults)
+        {
+            validationResults = new List<ValidationResult>();
+
             if (model == null)
             {
                 return false;
@@ -21,7 +28,7 @@ namespace CamPortal.Core.Utilities
 
             var context = new ValidationContext(model);
 
-            return Validator.TryValidateObject(model, context, null, validateAllProperties: true);
+            return Validator.TryValidateObject(model, context, validationResults, validateAllProperties: true);
         }
 
         public static DateTime FloorToSecond(DateTime dt)
