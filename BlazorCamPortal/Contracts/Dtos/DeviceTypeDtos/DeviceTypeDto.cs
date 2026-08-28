@@ -2,7 +2,7 @@ using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Contracts.Dtos.DeviceTypeDtos
 {
-    public class DeviceTypeDto
+    public record DeviceTypeDto
     {
         public Guid Id { get; set; }
 
