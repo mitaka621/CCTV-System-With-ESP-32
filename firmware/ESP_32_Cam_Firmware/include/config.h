@@ -89,7 +89,7 @@
 #define ServerHttpsPort 7010
 #define ServerTcpPort 7000
 
-#define DEBUG_ON true
+#define DEBUG_ON false
 
 #define DEBUG_PRINT(x)   \
   do                     \
