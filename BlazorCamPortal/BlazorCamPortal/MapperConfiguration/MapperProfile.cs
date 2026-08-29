@@ -93,6 +93,9 @@ namespace CamPortal.MapperConfiguration
 
             CreateMap<SmokeAlarmShortPayloadDto, SmokeAlarmTelemetry>()
                 .ReverseMap();
+
+            CreateMap<DeviceStreamingHandshakeDto, DeviceStreamingHandshakeWithCameraConfigDto>()
+                .ReverseMap();
         }
     }
 }
