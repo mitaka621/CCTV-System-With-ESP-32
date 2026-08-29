@@ -12,7 +12,7 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 {
     public class SmokeAlarmSessionHandler : IDeviceSessionHandler
     {
-        private const int _payloadLength = 12;
+        private const int _payloadLength = 14;
         private const int _maxSessionDurationSeconds = 60;
 
         private readonly ILogger<SmokeAlarmSessionHandler> _logger;
@@ -79,6 +79,7 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
                 IsCharging = (payloadByteArray[5] & 0x01) != 0,
                 BootCount = (int)BinaryPrimitives.ReadUInt32BigEndian(payloadByteArray.Slice(6, 4)),
                 DetectedAlarmBeepCount = payloadByteArray[10],
+                ChargingSenseVolts = BinaryPrimitives.ReadUInt16BigEndian(payloadByteArray.Slice(11, 2)) / 1000.0,
             };
 
             await _smokeAlarmDetectorManagerService.IngestAsync(payload);

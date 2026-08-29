@@ -16,6 +16,8 @@ namespace CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
 
         public double BatteryVoltage { get; set; }
 
+        public double ChargingSenseVolts { get; set; }
+
         public bool IsCharging { get; set; }
 
         public int BootCount { get; set; }

@@ -13,7 +13,7 @@
 #include <WiFi.h>
 #include <esp_sleep.h>
 
-static constexpr size_t DETECTOR_PAYLOAD_LEN = 12;
+static constexpr size_t DETECTOR_PAYLOAD_LEN = 14;
 
 RTC_DATA_ATTR static uint32_t _bootCount = 0;
 RTC_DATA_ATTR static uint32_t _secondsSinceReport = 0;
@@ -39,7 +39,7 @@ static void PutBE32(uint8_t *out, uint32_t value)
   out[3] = (uint8_t)value;
 }
 
-static void BuildPayload(DetectorEvent event, float percent, float volts, bool charging, bool sounding, uint32_t beeps)
+static void BuildPayload(DetectorEvent event, float percent, float volts, float chargeSenseVolts, bool charging, bool sounding, uint32_t beeps)
 {
   _payload[0] = DETECTOR_PAYLOAD_VERSION;
   _payload[1] = (uint8_t)event;
@@ -48,7 +48,8 @@ static void BuildPayload(DetectorEvent event, float percent, float volts, bool c
   _payload[5] = (charging ? 0x01 : 0x00) | (sounding ? 0x02 : 0x00);
   PutBE32(_payload + 6, _bootCount);
   _payload[10] = (uint8_t)min(beeps, (uint32_t)255);
-  _payload[11] = 0;
+  PutBE16(_payload + 11, (uint16_t)lroundf(constrain(chargeSenseVolts, 0.0f, 65.0f) * 1000.0f));
+  _payload[13] = 0;
 }
 
 static void ApplyNewConfig(const uint8_t *json, size_t len)
@@ -160,7 +161,7 @@ static bool DeliverPayload()
   return false;
 }
 
-static bool SendEvent(DetectorEvent event, float percent, float volts, bool charging, bool sounding, uint32_t beeps)
+static bool SendEvent(DetectorEvent event, float percent, float volts,float chargeSenseVolts, bool charging, bool sounding, uint32_t beeps)
 {
   if (!wifi_manager::connect(_creds.wifiSsid, _creds.wifiPass, WIFI_CONNECT_TIMEOUT_MS))
   {
@@ -180,7 +181,7 @@ static bool SendEvent(DetectorEvent event, float percent, float volts, bool char
     secret_store::setPaired(true);
   }
 
-  BuildPayload(event, percent, volts, charging, sounding, beeps);
+  BuildPayload(event, percent, volts, chargeSenseVolts, charging, sounding, beeps);
 
   if (DEBUG_ON)
   {
@@ -247,12 +248,13 @@ static void Sleep(uint32_t seconds)
 static void ReportAndSleep(DetectorEvent event, uint32_t beeps)
 {
   const float volts = battery_gauge::ReadVolts();
+  const float chargeSenseVolts = battery_gauge::ReadChargeSenseVolts();
   const float percent = battery_gauge::VoltsToPercent(volts);
   const bool charging = battery_gauge::IsCharging();
 
-  DEBUG_PRINT(String("Event ") + (int)event + ": " + percent + " %, " + volts + " V, charge sense " + battery_gauge::ReadChargeSenseVolts() + " V, charging=" + charging);
+  DEBUG_PRINT(String("Event ") + (int)event + ": " + percent + " %, " + volts + " V, charge sense " + chargeSenseVolts + " V, charging=" + charging);
 
-  const bool delivered = !NO_SERVER && LoadCredentials() && SendEvent(event, percent, volts, charging, _alarmActive, beeps);
+  const bool delivered = !NO_SERVER && LoadCredentials() && SendEvent(event, percent, volts, chargeSenseVolts, charging, _alarmActive, beeps);
 
   if (delivered)
   {

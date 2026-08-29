@@ -19,6 +19,8 @@ namespace CamPortal.Infrastructure.Data.Entities
 
         public double BatteryVoltage { get; set; }
 
+        public double ChargingSenseVolts { get; set; }
+
         public bool IsCharging { get; set; }
 
         public int BootCount { get; set; }
