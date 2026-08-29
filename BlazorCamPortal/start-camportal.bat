@@ -30,6 +30,8 @@ if not exist "%APP_EXE%" (
     exit /b 1
 )
 
+powershell -NoProfile -Command "$d='%LOG_DIR%'; $f=Join-Path $d 'app.log'; if (Test-Path $f) { Rename-Item $f ('app-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.log') }; Get-ChildItem (Join-Path $d 'app-*.log') -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-1) } | Remove-Item -Force"
+
 cd /d "%PUBLISH_DIR%"
 
 echo [%date% %time%] Starting CamPortal...>> "%LOG_DIR%\startup.log"
