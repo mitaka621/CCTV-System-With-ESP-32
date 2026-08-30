@@ -7,6 +7,6 @@ namespace CamPortal.Contracts.Dtos.DeviceDtos
     {
         public DeviceCommand Command { get; init; }
 
-        public DeviceEspConfigDto? Config { get; init; }
+        public List<DeviceEspConfigDto>? Config { get; init; }
     }
 }

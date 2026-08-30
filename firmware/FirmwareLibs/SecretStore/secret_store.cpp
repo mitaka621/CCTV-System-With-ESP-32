@@ -240,6 +240,21 @@ namespace secret_store
            out.serverIdentityPubKey.length() > 0;
   }
 
+  bool loadFromNvs(const char* key, String &out)
+  {
+    if (!_ready)
+    {
+      return false;
+    }
+
+    if (!decryptValue(_prefs.getString(key, ""), out))
+    {
+      return false;
+    }
+
+    return out.length() > 0;
+  }
+
   bool saveToNvs(const DeviceCredentials &creds)
   {
     if (!_ready)
@@ -267,6 +282,24 @@ namespace secret_store
     _prefs.putString("nonce", encNonce);
     _prefs.putString("serverIp", encServerIp);
     _prefs.putString("srvIdPubKey", encSrvIdPubKey);
+    return true;
+  }
+
+  bool saveToNvs(const char *key, String &value)
+  {
+    if (!_ready)
+    {
+      return false;
+    }
+
+    String encValue;
+    if (!encryptValue(value, encValue))
+    {
+      DEBUG_PRINT("secret_store: failed to encrypt value; nothing saved");
+      return false;
+    }
+
+    _prefs.putString(key, encValue);
     return true;
   }
 

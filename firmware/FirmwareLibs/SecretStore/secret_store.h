@@ -23,6 +23,10 @@ namespace secret_store
 
   bool saveToNvs(const DeviceCredentials &creds);
 
+  bool loadFromNvs(const char* key, String &out);
+
+  bool saveToNvs(const char* key, String &value);
+
   bool isPaired();
 
   bool setPaired(bool paired);

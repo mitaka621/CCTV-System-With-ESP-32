@@ -1,6 +1,8 @@
-﻿@using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
+﻿@using CamPortal.Contracts.Dtos.SecurityDtos
+@using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
 @inject ISmokeAlarmDetectorManagerService _smokeAlarmDetectorManagerService;
 @inject ISmokeAlarmDetectorConfigurationService _smokeAlarmDetectorConfigurationService;
+@inject ISmokeAlarmCommandDispatcher _smokeAlarmCommandDispatcher;
 
 <MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
 
@@ -21,7 +23,7 @@
         </MudTooltip>
         <MudStack>
             <MudText style="width:100%" Align="Align.Center" Typo="Typo.caption">Device Info</MudText>
-            <MudPaper Style=$"background-color: {GetStatusDisplayColor()}; height:150px; width:230px; border-radius: 20px">
+            <MudPaper Style=@($"background-color: {GetStatusDisplayColor()}; height:150px; width:230px; border-radius: 20px")>
                 <MudStack Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mx-2" style="height:100%; position:relative">
                     <MudIcon Size="Size.Large" Icon="@Icons.Material.Filled.LocalFireDepartment" Style="font-size: 4em;"></MudIcon>
                     <MudText style="font-size: 1.1rem; font-weight: 800; text-align:center">@GetStatusDisplayDescription()</MudText>
@@ -43,13 +45,26 @@
             <MudStack>
                 <MudTooltip Placement="Placement.Top">
                     <ChildContent>
-                        <MudIcon Icon="@Icons.Material.Filled.ElectricBolt"></MudIcon>
+                        <MudIcon Icon="@Icons.Material.Filled.Bolt"></MudIcon>
                     </ChildContent>
                     <TooltipContent>
                         <MudText Typo="Typo.body2">Latest reported battery voltage</MudText>
                     </TooltipContent>
                 </MudTooltip>    
                 <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BatteryVoltage V</MudText>
+            </MudStack>
+            <MudStack>
+                <MudTooltip Placement="Placement.Top">
+                    <ChildContent>
+                        <MudIcon Icon="@Icons.Material.Filled.BatteryUnknown"></MudIcon>
+                    </ChildContent>
+                    <TooltipContent>
+                        <MudText Typo="Typo.body2">Latest reported voltage between the 5v pin and gnd pin of the esp32 s3.</MudText>
+                        <MudText Typo="Typo.body2">When a charger is plugged, this voltage increases, allowing</MudText>
+                        <MudText Typo="Typo.body2">the charging to be detected</MudText>
+                    </TooltipContent>
+                </MudTooltip>
+                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.ChargingSenseVolts V</MudText>
             </MudStack>
             <MudStack>
                 <MudTooltip Placement="Placement.Top">
@@ -82,6 +97,20 @@
                               DebounceInterval="500"
                               Variant="Variant.Outlined"
                               For="()=>_configurationModel.MinBatterySOCForAlert" />
+                <MudTextField @bind-Value="_configurationModel.ChargeSenseVoltageThreashold"
+                              @bind-Value:after="OnConfigurationChanged"
+                              Immediate="true"
+                              DebounceInterval="500"
+                              Variant="Variant.Outlined"
+                              HelperText="When this voltage threashold is exceeded, the smoke alarm will be marked as charging"
+                              For="()=>_configurationModel.ChargeSenseVoltageThreashold" />
+                <MudTextField @bind-Value="_configurationModel.MaxVoltageOverchargeWarning"
+                              @bind-Value:after="OnConfigurationChanged"
+                              Immediate="true"
+                              DebounceInterval="500"
+                              Variant="Variant.Outlined"
+                              HelperText="If the onboard regulator fails, and the battery voltage exceeds this limit then a warning will be displayed"
+                              For="()=>_configurationModel.MaxVoltageOverchargeWarning" />
             </MudStack>
         </MudStack>
     </MudPaper>
@@ -149,6 +178,15 @@
 
     private async Task OnConfigurationChanged()
     {
-        await _smokeAlarmDetectorConfigurationService.UpdateConfigurationAsync(_configurationModel);
+        if(!await _smokeAlarmDetectorConfigurationService.UpdateConfigurationAsync(_configurationModel))
+        {
+            return;
+        }
+
+        _smokeAlarmCommandDispatcher.TryEnqueueConfig(SmokeAlarmId, new DeviceEspConfigDto()
+        {
+            ConfigurationPropertyName = nameof(SmokeAlarmAvailibleConfigsToEdit.ChargeSense),
+            Value = _configurationModel.ChargeSenseVoltageThreashold
+        });
     }
 }

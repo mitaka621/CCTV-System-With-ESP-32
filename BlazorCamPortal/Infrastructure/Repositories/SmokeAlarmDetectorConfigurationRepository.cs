@@ -40,7 +40,9 @@ namespace CamPortal.Infrastructure.Repositories
             var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
             var result = await dbContext.SmokeAlarmDetectorConfigurations
-                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.MinBatterySOCForAlert, configuration.MinBatterySOCForAlert));
+                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.MinBatterySOCForAlert, configuration.MinBatterySOCForAlert)
+                 .SetProperty(y => y.ChargeSenseVoltageThreashold, configuration.ChargeSenseVoltageThreashold)
+                 .SetProperty(y => y.MaxVoltageOverchargeWarning, configuration.MaxVoltageOverchargeWarning));
 
             return result > 0;
         }

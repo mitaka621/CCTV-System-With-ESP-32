@@ -7,7 +7,7 @@ namespace CamPortal.Contracts.Abstractions.Services
     {
         bool TryEnqueueCommand(Guid cameraId, DeviceCommand command);
 
-        bool TryEnqueueConfig(Guid cameraId, DeviceEspConfigDto config);
+        bool TryEnqueueConfig(Guid cameraId, params List<DeviceEspConfigDto> config);
 
         void RemoveCamera(Guid cameraId);
     }

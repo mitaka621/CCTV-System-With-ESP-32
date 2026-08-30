@@ -18,6 +18,31 @@ namespace
 
 namespace battery_gauge
 {
+  const char* _chargeSenseNVSKey="ChargeSense";
+  static float _chargeSenseThresholdVoltage=CHARGE_SENSE_THRESHOLD_VOLTS;
+
+  const char* GetChargeSenseNVSKey()
+  {
+    return _chargeSenseNVSKey;
+  }
+
+  float GetChargeSenseThreashold()
+  {
+    return _chargeSenseThresholdVoltage;
+  }
+
+  bool SetNewChargeSenseThreashold (float newThreashold)
+  {
+    if(newThreashold<0 || newThreashold>6)
+    {
+      return false;
+    }
+
+    _chargeSenseThresholdVoltage=newThreashold;
+
+    return true;
+  }
+
   void Begin()
   {
     //enabeling gnd for the battery divider (it is normally floating to save power)
@@ -85,7 +110,7 @@ namespace battery_gauge
 
   bool IsCharging()
   {
-    return ReadChargeSenseVolts() >= CHARGE_SENSE_THRESHOLD_VOLTS;
+    return ReadChargeSenseVolts() >= _chargeSenseThresholdVoltage;
   }
 
   void PrepareForSleep()

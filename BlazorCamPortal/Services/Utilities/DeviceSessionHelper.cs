@@ -1,5 +1,4 @@
 ﻿using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.SecurityDtos;
 using CamPortal.Contracts.Enums;
 using System.Text.Json;
 
@@ -18,9 +17,20 @@ namespace CamPortal.Core.Utilities
                 return false;
             }
 
-            if (message.Command == DeviceCommand.SaveNewConfig || message.Command == DeviceCommand.PayloadAck)
+            if (message.Command == DeviceCommand.SaveNewConfig)
             {
-                var json = JsonSerializer.SerializeToUtf8Bytes(message.Config ?? new DeviceEspConfigDto(), _configSerializerOptions);
+                if (message.Config == null)
+                {
+                    payload = Array.Empty<byte>();
+                    return false;
+                }
+
+                var json = JsonSerializer
+                    .SerializeToUtf8Bytes(message.Config.ToDictionary(
+                        x => x.ConfigurationPropertyName,
+                        x => x.Value
+                    ), _configSerializerOptions);
+
                 payload = new byte[2 + json.Length];
                 payload[0] = _commandVersion;
                 payload[1] = (byte)message.Command;

@@ -13,7 +13,7 @@
 #include <WiFi.h>
 #include <esp_sleep.h>
 
-static constexpr size_t DETECTOR_PAYLOAD_LEN = 14;
+static constexpr size_t DETECTOR_PAYLOAD_LEN = 15;
 
 RTC_DATA_ATTR static uint32_t _bootCount = 0;
 RTC_DATA_ATTR static uint32_t _secondsSinceReport = 0;
@@ -24,6 +24,7 @@ static DeviceCredentials _creds;
 static uint8_t _payload[DETECTOR_PAYLOAD_LEN];
 static bool _provisioning = false;
 static bool _radioStarted = false;
+static bool _configChanged = false;
 
 static void PutBE16(uint8_t *out, uint16_t value)
 {
@@ -49,7 +50,7 @@ static void BuildPayload(DetectorEvent event, float percent, float volts, float 
   PutBE32(_payload + 6, _bootCount);
   _payload[10] = (uint8_t)min(beeps, (uint32_t)255);
   PutBE16(_payload + 11, (uint16_t)lroundf(constrain(chargeSenseVolts, 0.0f, 65.0f) * 1000.0f));
-  _payload[13] = 0;
+  PutBE16(_payload + 13, (uint16_t)lroundf(constrain(battery_gauge::GetChargeSenseThreashold(), 0.0f, 65.0f) * 1000.0f));
 }
 
 static void ApplyNewConfig(const uint8_t *json, size_t len)
@@ -61,9 +62,31 @@ static void ApplyNewConfig(const uint8_t *json, size_t len)
     DEBUG_PRINT(String("Config: parse failed ") + err.c_str());
     return;
   }
+  const char* nvsKey=battery_gauge::GetChargeSenseNVSKey();
 
-  const char *label = doc["label"] | "unnamed";
-  DEBUG_PRINT(String("Config: label=") + label);
+  if (!doc[nvsKey].is<float>())
+  {
+    DEBUG_PRINT(String("Config: no numeric ") + nvsKey + " in payload, ignoring");
+    return;
+  }
+
+  float newChargeSenseThresholdVoltage = doc[nvsKey].as<float>();
+
+  if (fabsf(newChargeSenseThresholdVoltage - battery_gauge::GetChargeSenseThreashold()) < CHARGE_SENSE_THRESHOLD_EPSILON_VOLTS)
+  {
+    DEBUG_PRINT("Config: charge sense threshold already in effect, ignoring");
+    return;
+  }
+
+  if(!battery_gauge::SetNewChargeSenseThreashold(newChargeSenseThresholdVoltage))
+    return;
+
+  String stringThreashold=String(newChargeSenseThresholdVoltage);
+  secret_store::saveToNvs(nvsKey,stringThreashold);
+
+  DEBUG_PRINT(String("New charge sense threshold saved: ") + stringThreashold);
+
+  _configChanged = true;
 }
 
 static void HandleCommand(DeviceCommand command, const uint8_t *payload, size_t payloadLen)
@@ -72,6 +95,11 @@ static void HandleCommand(DeviceCommand command, const uint8_t *payload, size_t 
   {
   case DeviceCommand::SaveNewConfig:
     ApplyNewConfig(payload, payloadLen);
+    if (_configChanged)
+    {
+      ESP.restart();
+      return;
+    }
     break;
   default:
     DEBUG_PRINT(String("Command: ignored code ") + (int)command);
@@ -96,6 +124,7 @@ static bool WaitForAck(uint32_t timeoutMs)
       }
 
       const DeviceCommand command = (DeviceCommand)message[1];
+
       if (command == DeviceCommand::PayloadAck)
       {
         DEBUG_PRINT(String("Server acknowledged the payload after ") + (millis() - start) + " ms");
@@ -123,6 +152,21 @@ static bool LoadCredentials()
   if (secret_store::loadFromCompileTime(_creds))
     return true;
   return secret_store::loadFromNvs(_creds);
+}
+
+static void LoadConfigFromNVS()
+{
+  String voltage;
+
+  if(!secret_store::loadFromNvs(battery_gauge::GetChargeSenseNVSKey(), voltage))
+  {
+    DEBUG_PRINT(String("Config: no stored charge sense threshold, using ") + CHARGE_SENSE_THRESHOLD_VOLTS + " V");
+    return;
+  }
+  
+    battery_gauge::SetNewChargeSenseThreashold(voltage.toFloat());
+
+  DEBUG_PRINT(String("Config: charge sense threshold restored from storage: ") + voltage);
 }
 
 static bool DeliverPayload()
@@ -449,6 +493,8 @@ void setup()
   {
     DEBUG_PRINT("Failed to open the credential storage namespace");
   }
+
+  LoadConfigFromNVS();
 
   if (wakeCause == ESP_SLEEP_WAKEUP_EXT1)
   {

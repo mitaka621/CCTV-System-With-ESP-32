@@ -12,5 +12,9 @@ namespace CamPortal.Infrastructure.Data.Entities
         public Device Device { get; set; } = null!;
 
         public double MinBatterySOCForAlert { get; set; } = 10.0;
+
+        public double ChargeSenseVoltageThreashold { get; set; } = 4.0;
+
+        public double MaxVoltageOverchargeWarning { get; set; } = 4.2;
     }
 }

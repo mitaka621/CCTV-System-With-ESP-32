@@ -278,15 +278,27 @@ namespace CamPortal.Core.Services.Security
 
         private void PushConfigToDevice(Guid cameraId, CameraState state)
         {
-            DeviceEspConfigDto config;
+            List<DeviceEspConfigDto> config;
             lock (state.Sync)
             {
-                config = new DeviceEspConfigDto
-                {
-                    CaseSensor = state.CaseSensorInstalled,
-                    MoveOffset = state.MovementThresholdOffset,
-                    RotateOffset = state.RotationThresholdOffset
-                };
+                config =
+                [
+                     new DeviceEspConfigDto()
+                     {
+                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.CaseSensorInstalled),
+                         Value=state.CaseSensorInstalled
+                     },
+                     new DeviceEspConfigDto()
+                     {
+                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.MovementThresholdOffset),
+                         Value=state.MovementThresholdOffset
+                     },
+                     new DeviceEspConfigDto()
+                     {
+                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.RotationThresholdOffset),
+                         Value=state.RotationThresholdOffset
+                     }
+                ];
             }
 
             _dispatcher.TryEnqueueConfig(cameraId, config);

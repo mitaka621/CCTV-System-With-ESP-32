@@ -1,8 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CamPortal.Infrastructure.Data.Entities
 {
+    [Index(nameof(DeviceId), nameof(ChunkStartTime))]
     public class VideoChunk
     {
         [Key]

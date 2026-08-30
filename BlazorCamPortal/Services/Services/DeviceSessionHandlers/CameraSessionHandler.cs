@@ -85,8 +85,6 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 
             try
             {
-                var config = await _cameraConfigurationService.GetCameraConfigurationAsync(device.Id);
-
                 var deviceWithConfigDto = _mapper.Map<DeviceStreamingHandshakeWithCameraConfigDto>(device);
 
                 deviceWithConfigDto.CameraConfiguration = await _cameraConfigurationRepository.GetCameraConfigurationAsync(device.Id)
@@ -255,7 +253,7 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             return GetOrCreateCommandChannel(cameraId).Writer.TryWrite(new OutboundDeviceMessageDto { Command = command });
         }
 
-        public bool TryEnqueueConfig(Guid cameraId, DeviceEspConfigDto config)
+        public bool TryEnqueueConfig(Guid cameraId, params List<DeviceEspConfigDto> config)
         {
             return GetOrCreateCommandChannel(cameraId).Writer.TryWrite(new OutboundDeviceMessageDto { Command = DeviceCommand.SaveNewConfig, Config = config });
         }

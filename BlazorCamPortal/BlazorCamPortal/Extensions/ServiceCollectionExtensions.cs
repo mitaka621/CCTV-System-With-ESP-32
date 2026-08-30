@@ -88,6 +88,7 @@ namespace CamPortal.Extensions
             services.AddSingleton<IDeviceSessionHandler>(sp => sp.GetRequiredService<CameraSessionHandler>());
             services.AddSingleton<IDeviceSessionHandler>(sp => sp.GetRequiredService<SmokeAlarmSessionHandler>());
             services.AddSingleton<ICameraCommandDispatcher>(sp => sp.GetRequiredService<CameraSessionHandler>());
+            services.AddSingleton<ISmokeAlarmCommandDispatcher>(sp => sp.GetRequiredService<SmokeAlarmSessionHandler>());
 
             services.AddSingleton<CameraSecurityCoordinator>();
             services.AddSingleton<ICameraSecurityCoordinator>(sp => sp.GetRequiredService<CameraSecurityCoordinator>());

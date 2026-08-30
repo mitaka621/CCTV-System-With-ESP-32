@@ -15,4 +15,10 @@ namespace battery_gauge
   bool IsCharging();
 
   void PrepareForSleep();
+
+  const char* GetChargeSenseNVSKey();
+
+  float GetChargeSenseThreashold();
+
+  bool SetNewChargeSenseThreashold (float newThreashold);
 }
