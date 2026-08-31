@@ -1,0 +1,17 @@
+# FirmwareLibs is compiled into each device project, never on its own, so there
+# is no compilation database at or above this directory and clangd would fall
+# back to a bare command. Borrow NewDeviceExample's: it is the template that
+# links every library here, so every source below gets real flags. The path is
+# relative to this file, which keeps it working on any machine.
+CompileFlags:
+  CompilationDatabase: ../NewDeviceExample
+  Add:
+    - -Wno-unknown-warning-option
+    - -Wno-unknown-attributes
+    - -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1
+    - -D__XTENSA__=1
+    - -D__XTENSA_EL__=1
+    - -D__XTENSA_WINDOWED_ABI__=1
+  Remove:
+    - -m*
+    - -f*

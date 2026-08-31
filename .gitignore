@@ -22,7 +22,12 @@ obj/
 *.sln.ide
 
 ## Visual Studio Code settings
-.vscode/
+## Root only. A bare ".vscode/" also matches at depth and would cancel the
+## firmware/*/.vscode rules above, which keep .clangd and extensions.json.
+## settings.json is kept: it disables the cpptools engine and configures clangd.
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/tasks.json
 
 ## Rider settings
 .idea/
@@ -133,5 +138,5 @@ obj/**/staticwebassets.runtime.json
 /BlazorCamPortal/BlazorCamPortal/data
 /BlazorCamPortal/BlazorCamPortal/device-type-icons/*
 /BlazorCamPortal/BlazorCamPortal/exports
-/firmware/*/.clangd
+## Regenerate with: pio run -t compiledb
 /firmware/*/compile_commands.json

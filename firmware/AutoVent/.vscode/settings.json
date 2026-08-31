@@ -1,0 +1,10 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": [
+    "--query-driver=**",
+    "--background-index",
+    "--header-insertion=never",
+    "--all-scopes-completion",
+    "--completion-style=detailed"
+  ]
+}

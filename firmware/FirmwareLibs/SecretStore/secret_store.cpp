@@ -2,17 +2,24 @@
 #include "config.h"
 #include "secrets.h"
 #include <Preferences.h>
+#include <soc/soc_caps.h>
+#include <string.h>
+
+#if SOC_HMAC_SUPPORTED
 #include <esp_efuse.h>
 #include <esp_hmac.h>
 #include <esp_random.h>
 #include <mbedtls/gcm.h>
 #include <mbedtls/base64.h>
-#include <string.h>
+#endif
 
 namespace secret_store
 {
   static Preferences _prefs;
   static bool _ready = false;
+
+#if SOC_HMAC_SUPPORTED
+
   static bool _keyReady = false;
   static uint8_t _aesKey[32];
 
@@ -183,6 +190,22 @@ namespace secret_store
     free(plain);
     return true;
   }
+
+#else
+
+  static bool encryptValue(const String &plain, String &out)
+  {
+    out = plain;
+    return true;
+  }
+
+  static bool decryptValue(const String &stored, String &out)
+  {
+    out = stored;
+    return true;
+  }
+
+#endif
 
   bool begin()
   {

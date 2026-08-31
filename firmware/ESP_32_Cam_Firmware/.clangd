@@ -1,0 +1,23 @@
+# Portable on purpose. The compiler and its system include paths come from
+# compile_commands.json plus --query-driver in .vscode/settings.json, so nothing
+# here is tied to one machine. Regenerate the database with:
+#   pio run -t compiledb
+#
+# Do not add --target here. clangd forwards it to the real driver when it asks
+# that driver for its system includes, and the xtensa compilers reject an
+# unknown target and exit non zero. The extraction then yields no include paths
+# at all and every system header, starting at stdio.h, goes missing.
+#
+# clangd reads this file as plain YAML and does not expand variables, so an
+# absolute path here could never be portable.
+CompileFlags:
+  Add:
+    - -Wno-unknown-warning-option
+    - -Wno-unknown-attributes
+    - -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1
+    - -D__XTENSA__=1
+    - -D__XTENSA_EL__=1
+    - -D__XTENSA_WINDOWED_ABI__=1
+  Remove:
+    - -m*
+    - -f*

@@ -1,0 +1,136 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Set up IntelliSense: AutoVent",
+      "detail": "Installs dependencies and writes compile_commands.json for AutoVent.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run",
+        "-t",
+        "compiledb"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/firmware/AutoVent"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "close": true
+      }
+    },
+    {
+      "label": "Set up IntelliSense: ESP_32_Cam_Firmware",
+      "detail": "Installs dependencies and writes compile_commands.json for ESP_32_Cam_Firmware.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run",
+        "-t",
+        "compiledb"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/firmware/ESP_32_Cam_Firmware"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "close": true
+      }
+    },
+    {
+      "label": "Set up IntelliSense: NewDeviceExample",
+      "detail": "Installs dependencies and writes compile_commands.json for NewDeviceExample.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run",
+        "-t",
+        "compiledb"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/firmware/NewDeviceExample"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "close": true
+      }
+    },
+    {
+      "label": "Set up IntelliSense: SmokeAlarmDetector",
+      "detail": "Installs dependencies and writes compile_commands.json for SmokeAlarmDetector.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run",
+        "-t",
+        "compiledb"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/firmware/SmokeAlarmDetector"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "close": true
+      }
+    },
+    {
+      "label": "Set up IntelliSense (all firmware)",
+      "detail": "Runs on folder open. Prepares clangd for every firmware project. Run CertGenerator once as well; it is deliberately not automated because it rewrites secrets.h.",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Set up IntelliSense: AutoVent",
+        "Set up IntelliSense: ESP_32_Cam_Firmware",
+        "Set up IntelliSense: NewDeviceExample",
+        "Set up IntelliSense: SmokeAlarmDetector"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "TemperatureSensor",
+  "version": "1.0.0",
+  "description": "Non blocking DS18B20 one wire temperature reader.",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "paulstoffregen/OneWire": "^2.3.8",
+    "milesburton/DallasTemperature": "^4.0.6"
+  }
+}

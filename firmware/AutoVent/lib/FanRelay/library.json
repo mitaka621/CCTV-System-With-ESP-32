@@ -1,0 +1,7 @@
+{
+  "name": "FanRelay",
+  "version": "1.0.0",
+  "description": "Single relay output that switches the vent fan.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

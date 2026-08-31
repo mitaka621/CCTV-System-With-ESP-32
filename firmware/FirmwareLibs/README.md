@@ -55,7 +55,10 @@ the folder, rename it, then work through the steps below.
 
 `SecretStore` derives its NVS encryption key from the HMAC peripheral and eFuse
 key block 4. Those exist on the ESP32-S2, S3 and C3, but not on the original
-ESP32, so `esp_hmac.h` will not resolve for a classic `esp32dev` board.
+ESP32. A `SOC_HMAC_SUPPORTED` guard compiles the encryption out on a classic
+`esp32dev` board, which then stores credentials in plain text: anyone who can
+read the flash over the serial port recovers the Wi-Fi password and the device
+private key. Prefer an S3 unless you are reusing existing hardware.
 
 ## Macros the shared libraries expect from `include/config.h`
 

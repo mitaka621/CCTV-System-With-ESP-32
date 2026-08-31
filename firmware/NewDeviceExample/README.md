@@ -55,9 +55,10 @@ match what the server sends.
 
 ## Setup
 
-1. Set `board` in [platformio.ini](platformio.ini). It must be an ESP32-S3, S2 or
-   C3: `SecretStore` derives its NVS encryption key from the HMAC peripheral and
-   eFuse key block 4, which the original ESP32 does not have.
+1. Set `board` in [platformio.ini](platformio.ini). Prefer an ESP32-S3, S2 or C3:
+   `SecretStore` derives its NVS encryption key from the HMAC peripheral and
+   eFuse key block 4, which the original ESP32 does not have, so a classic
+   `esp32dev` board falls back to storing credentials in plain text.
 2. Fix the pins in [include/config.h](include/config.h) for your hardware.
 3. Create `include/secrets.h` by copying `include/secrets.example.h`, then run
    CertGenerator to write the real `ROOT_CA_CERT` into it. CertGenerator finds

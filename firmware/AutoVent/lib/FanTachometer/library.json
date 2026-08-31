@@ -1,0 +1,7 @@
+{
+  "name": "FanTachometer",
+  "version": "1.0.0",
+  "description": "Counts fan tachometer pulses and turns them into revolutions per minute.",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

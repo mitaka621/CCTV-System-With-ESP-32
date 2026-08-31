@@ -1,0 +1,10 @@
+{
+  "name": "VentDoor",
+  "version": "1.0.0",
+  "description": "Two geared steppers that raise and lower the vent louvre, calibrated against a limit switch.",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "waspinator/AccelStepper": "^1.64"
+  }
+}

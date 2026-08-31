@@ -1,0 +1,101 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Set up IntelliSense",
+      "detail": "Installs the platform, framework and libraries, then writes compile_commands.json for clangd. The first run downloads a lot and is slow; later runs take a couple of seconds.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run",
+        "-t",
+        "compiledb"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "close": true
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "PlatformIO: build",
+      "detail": "Full firmware build.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "PlatformIO: upload and monitor",
+      "detail": "Flash the board and open the serial monitor.",
+      "type": "process",
+      "command": "${userHome}/.platformio/penv/bin/pio",
+      "args": [
+        "run",
+        "-t",
+        "upload",
+        "-t",
+        "monitor"
+      ],
+      "windows": {
+        "command": "${userHome}/.platformio/penv/Scripts/pio.exe"
+      },
+      "linux": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "osx": {
+        "command": "${userHome}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
