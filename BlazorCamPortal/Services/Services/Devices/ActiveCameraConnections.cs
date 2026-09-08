@@ -21,7 +21,6 @@ namespace CamPortal.Core.Services.Devices
                 (_, existing) =>
                 {
                     existing.Cancel();
-                    existing.Dispose();
                     return cts;
                 });
             return cts.Token;
@@ -34,14 +33,25 @@ namespace CamPortal.Core.Services.Devices
 
         public bool TryDisconnect(Guid cameraId)
         {
-            if (_byCameraId.TryRemove(cameraId, out var cts))
-            {
-                cts.Cancel();
-                cts.Dispose();
-                _cameraFramesManagerService.PublishPlaceholderToViewers(cameraId);
-                return true;
-            }
-            return false;
+            return _byCameraId.TryRemove(cameraId, out var cts) && Disconnect(cameraId, cts);
+        }
+
+        //if a camera loses connection there is a 15 sec timeout and then it is marked as disconnected.
+        //however if the camera connects before this 15 sec period then its new connection is canceld after 15 seconds elaps.
+        //This is why this method exisits so after 15 seconds the connection is disconnected only if there isnt a new session token by a new connection.
+        public bool TryDisconnect(Guid cameraId, CancellationToken sessionToken)
+        {
+            return _byCameraId.TryGetValue(cameraId, out var cts)
+                && cts.Token == sessionToken
+                && _byCameraId.TryRemove(new KeyValuePair<Guid, CancellationTokenSource>(cameraId, cts))
+                && Disconnect(cameraId, cts);
+        }
+
+        private bool Disconnect(Guid cameraId, CancellationTokenSource cts)
+        {
+            cts.Cancel();
+            _cameraFramesManagerService.PublishPlaceholderToViewers(cameraId);
+            return true;
         }
 
         public int TotalActiveCameraConnevtions()

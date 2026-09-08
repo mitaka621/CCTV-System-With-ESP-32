@@ -205,9 +205,13 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             }
             finally
             {
-                _securityCoordinator.OnCameraDisconnected(device.Id);
-                _activeCameraConnections.TryDisconnect(device.Id);
-                _cameraFramesManagerService.CloseProcessedFramesCameraChannel(device.Id);
+                _activeCameraConnections.TryDisconnect(device.Id, sessionToken);
+
+                if (!_activeCameraConnections.IsCameraActive(device.Id))
+                {
+                    _securityCoordinator.OnCameraDisconnected(device.Id);
+                    _cameraFramesManagerService.CloseProcessedFramesCameraChannel(device.Id);
+                }
             }
         }
 

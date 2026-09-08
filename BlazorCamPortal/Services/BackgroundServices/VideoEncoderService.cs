@@ -109,7 +109,7 @@ namespace CamPortal.Core.BackgroundServices
                 string outputDir = _storageLocationService.GetCameraChunkStagingDirectory(cameraId);
                 Directory.CreateDirectory(outputDir);
 
-                string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_%03d.ts");
+                string tempPattern = Path.Combine(outputDir, $"camera_{cameraId}_{DateTime.UtcNow:yyyyMMddHHmmssfff}_%03d.ts");
 
                 var outputResolution = await GetCameraEncodingResolutionAsync(cameraId);
 
@@ -365,8 +365,12 @@ namespace CamPortal.Core.BackgroundServices
                 {
                     await input.WriteAsync(frame, 0, frame.Length, stoppingToken);
                 }
-                catch (TaskCanceledException) { }
+                catch (OperationCanceledException) { }
                 catch (ObjectDisposedException) { }
+                catch (IOException)
+                {
+                    return;
+                }
 
                 frameCount++;
 
@@ -388,7 +392,11 @@ namespace CamPortal.Core.BackgroundServices
             {
                 var perCameraCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
 
-                _cameraEncodersCancelationSources.TryAdd(cameraId, perCameraCts);
+                _cameraEncodersCancelationSources.AddOrUpdate(cameraId, perCameraCts, (_, previous) =>
+                {
+                    previous.Cancel();
+                    return perCameraCts;
+                });
 
                 _ = Task.Run(() => EncodeCameraFramesAsync(cameraId, perCameraCts.Token), perCameraCts.Token);
             }
@@ -400,9 +408,10 @@ namespace CamPortal.Core.BackgroundServices
 
         private void OnChannelClose(Guid cameraId)
         {
-            _cameraEncodersCancelationSources.GetValueOrDefault(cameraId)?.Cancel();
-
-            _cameraEncodersCancelationSources.TryRemove(cameraId, out _);
+            if (_cameraEncodersCancelationSources.TryRemove(cameraId, out var cts))
+            {
+                cts.Cancel();
+            }
 
             _logger.LogInformation(
                 "Channel closed for camera {CameraId}. Cancelling video encoding task.",
@@ -458,7 +467,7 @@ namespace CamPortal.Core.BackgroundServices
 
             string filterSection = outputResolution.Width > 0 && outputResolution.Height > 0
                 ? $"-vf scale={outputResolution.Width}:{outputResolution.Height}:force_original_aspect_ratio=decrease,pad={outputResolution.Width}:{outputResolution.Height}:(ow-iw)/2:(oh-ih)/2,setsar=1 "
-                : string.Empty;
+                : "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2 ";
 
             string codecSection = _activeEncoder switch
             {

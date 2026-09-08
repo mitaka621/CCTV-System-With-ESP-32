@@ -8,6 +8,8 @@
 
         bool TryDisconnect(Guid cameraId);
 
+        bool TryDisconnect(Guid cameraId, CancellationToken sessionToken);
+
         int TotalActiveCameraConnevtions();
     }
 }
