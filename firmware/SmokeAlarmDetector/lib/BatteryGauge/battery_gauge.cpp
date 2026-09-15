@@ -10,8 +10,9 @@ namespace
     float percent;
   };
 
+  // at around 3.70 V is the min cell voltage since then the onboard regulator produces 3V
   const CurvePoint _socCurve[] = {
-      {4.20f, 100.0f}, {4.15f, 95.0f}, {4.10f, 90.0f}, {4.05f, 85.0f}, {4.00f, 80.0f}, {3.95f, 75.0f}, {3.90f, 68.0f}, {3.85f, 60.0f}, {3.80f, 52.0f}, {3.78f, 45.0f}, {3.75f, 38.0f}, {3.72f, 32.0f}, {3.70f, 26.0f}, {3.65f, 20.0f}, {3.60f, 15.0f}, {3.55f, 10.0f}, {3.50f, 7.0f}, {3.45f, 5.0f}, {3.40f, 3.0f}, {3.30f, 1.0f}, {3.20f, 0.0f}};
+      {4.20f, 100.0f}, {4.15f, 93.0f}, {4.10f, 86.0f}, {4.05f, 80.0f}, {4.00f, 73.0f}, {3.95f, 66.0f}, {3.90f, 57.0f}, {3.85f, 46.0f}, {3.80f, 35.0f}, {3.78f, 26.0f}, {3.75f, 16.0f}, {3.72f, 8.0f}, {3.65f, 0.0f}};
 
   const size_t _socPointCount = sizeof(_socCurve) / sizeof(_socCurve[0]);
 }
