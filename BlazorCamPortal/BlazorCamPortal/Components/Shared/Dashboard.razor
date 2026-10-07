@@ -16,7 +16,7 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenActiveDuration" />
             </div>
             <MudStack AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+                <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
                 <MudText Typo="Typo.h4" Color="Color.Inherit">@activeCameras</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Inherit">Active Cameras</MudText>
             </MudStack>
@@ -26,12 +26,12 @@
         <MudPaper Elevation="4" Class="relative pa-4 text-center" 
                   Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
             <div style="position:absolute; top:4px; right:4px;">
-                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenTotalDuration" />
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Size="Size.Small" OnClick="OpenTotalPairedDevicesDuration" />
             </div>
             <MudStack AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
-                <MudText Typo="Typo.h4" Color="Color.Inherit">@totalCameras</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Inherit">Total Cameras</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.Devices" Color="Color.Inherit" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.h4" Color="Color.Inherit">@_totalPairedDevices</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Inherit">Paired Devices</MudText>
             </MudStack>
         </MudPaper>
     </MudItem>
@@ -65,7 +65,7 @@
     private int defaultRefreshInterval = 5;
 
     private int activeCameras = 0;
-    private int totalCameras = 0;
+    private int _totalPairedDevices = 0;
     private double storageUsedInGB = 0;
     private int totalUsers = 0;
 
@@ -75,12 +75,12 @@
     protected override async Task OnInitializedAsync()
     {
         await RefreshActiveCameras();
-        await RefreshTotalCameras();
+        await RefreshTotalPairedDevices();
         await RefreshStorageUsed();
         totalUsers = await _userManagementService.GetTotalUsersAsync();
 
-        SetInterval(nameof(activeCameras), defaultRefreshInterval);
-        SetInterval(nameof(totalCameras), defaultRefreshInterval);
+        SetInterval(nameof(activeCameras), 1);
+        SetInterval(nameof(_totalPairedDevices), defaultRefreshInterval);
         SetInterval(nameof(storageUsedInGB), defaultRefreshInterval);
     }
 
@@ -90,9 +90,9 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task RefreshTotalCameras()
+    private async Task RefreshTotalPairedDevices()
     {
-        totalCameras = await _cameraService.GetTotalCamerasAsync();
+        _totalPairedDevices = await _cameraService.GetTotalCamerasAsync(DevicePairStatus.Paired);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -126,7 +126,7 @@
                     switch (metric)
                     {
                         case nameof(activeCameras): await RefreshActiveCameras(); break;
-                        case nameof(totalCameras): await RefreshTotalCameras(); break;
+                        case nameof(_totalPairedDevices): await RefreshTotalPairedDevices(); break;
                         case nameof(storageUsedInGB): await RefreshStorageUsed(); break;
                     }
                 }
@@ -158,7 +158,7 @@
     }
 
     private Task OpenActiveDuration() => OpenDurationDialog(nameof(activeCameras), "Active cameras");
-    private Task OpenTotalDuration() => OpenDurationDialog(nameof(totalCameras), "Total cameras");
+    private Task OpenTotalPairedDevicesDuration() => OpenDurationDialog(nameof(_totalPairedDevices), "Paired devices");
     private Task OpenStorageDuration() => OpenDurationDialog(nameof(storageUsedInGB), "Storage used");
 
     public void Dispose()

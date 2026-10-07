@@ -25,31 +25,42 @@
 
 <MudPaper Elevation="4" Class="pa-6 mb-6" Style="border-radius: 20px;">
     <MudGrid>
-        <MudItem xs="12" md="6" lg="3">
-            <MudDatePicker Label="From Date"
-                @ref="_startDatePicker"
-                MaxDate="DateTime.Now.Date"          
-                DateChanged="OnFilterDateRangeChange"
-                Class="mb-2" />
-            <MudTimePicker Label="From Time"
-                @bind-Time="_selectedStartTime"
-                Class="mb-3" />
-        </MudItem>
-        <MudItem xs="12" md="6" lg="3">
-            <MudDatePicker Label="To Date"
-                @ref="_endDatePicker"
-                MaxDate="DateTime.Now.Date"
-                DateChanged="OnFilterDateRangeChange"
-                Class="mb-2" />
-            <MudTimePicker Label="To Time"
-                @bind-Time="_selectedEndTime"
-                Class="mb-3" />
+        <MudItem xs="12" lg="6">
+            <div class="interval-groups">
+                <div class="interval-group">
+                    <MudText Typo="Typo.caption" Class="interval-group-label">
+                        Interval Start
+                    </MudText>
+                    <div class="interval-fields">
+                        <MudDatePicker Label="Date"
+                            @bind-Date="_selectedStartDate"
+                            @bind-Date:after="OnStartDateChanged"
+                            MaxDate="@GetUserNow().Date" />
+                        <MudTimePicker Label="Time"
+                            @bind-Time="_selectedStartTime" />
+                    </div>
+                </div>
+                <div class="interval-group">
+                    <MudText Typo="Typo.caption" Class="interval-group-label">
+                        Interval End
+                    </MudText>
+                    <div class="interval-fields">
+                        <MudDatePicker Label="Date"
+                            @bind-Date="_selectedEndDate"
+                            @bind-Date:after="OnEndDateChanged"
+                            MaxDate="@GetUserNow().Date" />
+                        <MudTimePicker Label="Time"
+                            @bind-Time="_selectedEndTime" />
+                    </div>
+                </div>
+            </div>
         </MudItem>
         <MudItem xs="12" md="6" lg="3">
             <MudSelectExtended T="NameAndIdWithStatusModel" Label="Camera Filter"
                 Class="mb-3"
                 MultiSelection="true"
                 ItemCollection="_allCamerasNameAndId"
+                PopoverClass="@(_showUnpairedCameras ? string.Empty : "hide-unpaired-cameras")"
                 SearchBox="true"
                 SearchBoxAutoFocus="true"
                 SearchBoxClearable="true"
@@ -58,6 +69,25 @@
                 SearchFunc="@CameraFilterSearch"
                 ToStringFunc="@(camera => GetCameraLabel(camera))"
                 @bind-SelectedValues="_selectedCameraIds">
+                <ItemTemplate>
+                    <MudCheckBox T="bool"
+                        Value="@context.IsSelected"
+                        Color="Color.Primary"
+                        Dense="true"
+                        Style="pointer-events: none;" />
+                    <div class="mud-list-item-text-extended @(context.Value?.PairStatus == DevicePairStatus.Paired ? string.Empty : "unpaired-camera")">
+                        <MudText Typo="Typo.body1">@GetCameraLabel(context.Value)</MudText>
+                    </div>
+                </ItemTemplate>
+                <StaticContent>
+                    <MudSpacer></MudSpacer>
+                    <MudSwitch T="bool"
+                        Value="_showUnpairedCameras"
+                        ValueChanged="OnShowUnpairedCamerasChanged"
+                        Label="Show unpaired cameras"
+                        Color="Color.Primary"
+                        Class="ml-4" />
+                </StaticContent>
             </MudSelectExtended>
         </MudItem>
         <MudItem xs="12" md="6" lg="3">
@@ -344,35 +374,56 @@ else
     private List<CameraDisplayModel> _currentCameras = new();
     private IEnumerable<NameAndIdWithStatusModel> _selectedCameraIds = new List<NameAndIdWithStatusModel>();
     private IEnumerable<CameraEvents> _selectedEventTypes = Enum.GetValues<CameraEvents>();
-    private DateTime? _selectedStartDate=DateTime.Now.Date;
-    private DateTime? _selectedEndDate = DateTime.Now.Date;
+    private DateTime? _selectedStartDate;
+    private DateTime? _selectedEndDate;
     private TimeSpan? _selectedStartTime;
     private TimeSpan? _selectedEndTime;
     private TimeSpan? _updatedNewStartTime;
     private TimeSpan? _updatedNewEndTime;
     private List<HLSPlaylistDto> _hLSPlaylists = new();
     private bool _isFiltering = false;
-    private MudDatePicker? _startDatePicker;
-    private MudDatePicker? _endDatePicker;
     private string _error = string.Empty;
     private int _totalTimelineDurationInMinutes=0;
     private Guid _currentUserId;
+    private bool _showUnpairedCameras = false;
 
     protected override async Task OnInitializedAsync()
     {
-        _selectedStartTime = new TimeSpan();
-        _selectedEndTime = new TimeSpan(DateTime.Now.Hour, DateTime.Now.Minute, 0);
+        SetDefaultInterval();
 
         var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
         Guid.TryParse(authState.User.FindFirst(CustomClaimTypes.Id)?.Value, out _currentUserId);
 
         _allCamerasNameAndId = await _cameraService.GetAllCameraNameAndIdAsync();
+    }
 
-        if (_startDatePicker!=null && _endDatePicker!=null)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
         {
-            await _startDatePicker.GoToDate(_userTimeZoneService.ToLocal(DateTime.UtcNow));
-            await _endDatePicker.GoToDate(_userTimeZoneService.ToLocal(DateTime.UtcNow));
+            return;
         }
+
+        await _userTimeZoneService.EnsureInitializedAsync();
+
+        SetDefaultInterval();
+
+        StateHasChanged();
+    }
+
+    private DateTime GetUserNow()
+    {
+        return _userTimeZoneService.ToLocal(DateTime.UtcNow);
+    }
+
+    private void SetDefaultInterval()
+    {
+        var now = GetUserNow();
+
+        _selectedStartDate = now.Date;
+        _selectedStartTime = TimeSpan.Zero;
+        _selectedEndDate = now.Date;
+        _selectedEndTime = new TimeSpan(now.Hour, now.Minute, 0);
     }
 
     private string GetCameraLabel(NameAndIdWithStatusModel? camera)
@@ -384,7 +435,16 @@ else
 
         var name = string.IsNullOrEmpty(camera.Name) ? camera.Id.ToString() : camera.Name;
 
-        return $"{name} - ({camera.PairStatus})";
+        return camera.PairStatus!=DevicePairStatus.Paired?$"{name} - ({camera.PairStatus})":name;
+    }
+
+    private void OnShowUnpairedCamerasChanged(bool showUnpairedCameras)
+    {
+        _showUnpairedCameras = showUnpairedCameras;
+
+        _selectedCameraIds = new List<NameAndIdWithStatusModel>();
+
+        StateHasChanged();
     }
 
     private bool CameraFilterSearch(NameAndIdWithStatusModel camera, string searchText)
@@ -397,25 +457,20 @@ else
         return GetCameraLabel(camera).Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 
-    private void OnFilterDateRangeChange()
+    private void OnStartDateChanged()
     {
-        if (_startDatePicker == null || _endDatePicker == null || _startDatePicker.Date == null || _endDatePicker.Date == null)
+        if (_selectedStartDate > _selectedEndDate)
         {
-            return;
+            _selectedEndDate = _selectedStartDate;
         }
+    }
 
-        if (_startDatePicker.Date > _endDatePicker.Date)
+    private void OnEndDateChanged()
+    {
+        if (_selectedEndDate < _selectedStartDate)
         {
-            _endDatePicker.GoToDate(_startDatePicker.Date.Value);
+            _selectedStartDate = _selectedEndDate;
         }
-
-        if (_endDatePicker.Date < _startDatePicker.Date)
-        {
-            _startDatePicker.GoToDate(_endDatePicker.Date.Value);
-        }
-
-        _selectedStartDate = _startDatePicker.Date;
-        _selectedEndDate=_endDatePicker.Date;
     }
 
     private async Task FilterCameras()
@@ -563,19 +618,12 @@ else
 
     private void AutoApplyFilters(int minutesAgo)
     {
-        if (_startDatePicker == null || _endDatePicker == null || _selectedStartTime==null)
-        {
-            return;
-        }
+        var now = GetUserNow();
+        var start = now.AddMinutes(-minutesAgo);
 
-        var currentTime=_userTimeZoneService.ToLocal(DateTime.UtcNow);
-
-        currentTime=currentTime.AddMinutes(-minutesAgo);
-
-        _startDatePicker.GoToDate(currentTime.Date);
-
-        _selectedStartTime = new TimeSpan(currentTime.Hour, currentTime.Minute, currentTime.Second);
-
-       StateHasChanged();
+        _selectedStartDate = start.Date;
+        _selectedStartTime = new TimeSpan(start.Hour, start.Minute, start.Second);
+        _selectedEndDate = now.Date;
+        _selectedEndTime = new TimeSpan(now.Hour, now.Minute, now.Second);
     }
 }

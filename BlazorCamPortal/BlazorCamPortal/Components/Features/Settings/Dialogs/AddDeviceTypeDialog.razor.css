@@ -1,0 +1,20 @@
+.device-type-dialog ::deep .device-type-form-column {
+    height: 100%;
+}
+
+.device-type-dialog ::deep .device-type-form-column > * {
+    flex: 0 0 auto;
+}
+
+.device-type-dialog ::deep .device-type-form-column > .device-type-description-field {
+    flex: 1 1 auto;
+}
+
+.device-type-dialog ::deep .device-type-description-field .mud-input-control-input-container,
+.device-type-dialog ::deep .device-type-description-field .mud-input {
+    flex: 1 1 auto;
+}
+
+.device-type-dialog ::deep .device-type-description-field .mud-input {
+    align-items: stretch;
+}

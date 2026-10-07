@@ -1,9 +1,4 @@
-﻿<h3>ConfigureCameraComponent</h3>
-
-@code {
-
-}
-@using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
+﻿@using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
 @using CamPortal.Contracts.Dtos.CameraConfigurationDtos
 @using CamPortal.Contracts.Enums
 @using SixLabors.ImageSharp.Processing;
@@ -19,7 +14,7 @@
     <MudOverlay Visible="_isApplying"
                 Absolute="true"
                 DarkBackground="false"
-                Style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10; width:102%; left:-10px;">
+                Style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10;">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
     </MudOverlay>
 

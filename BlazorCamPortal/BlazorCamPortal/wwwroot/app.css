@@ -11,6 +11,18 @@ body:has(.mud-overlay) {
   overflow: hidden !important;
 }
 
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 :root {
   --mud-palette-primary: #776be7;
   --mud-palette-secondary: #ff6ec7;
@@ -513,4 +525,8 @@ a,
 .mud-list-subheader-extended > .mud-list-item-extended {
   padding-top: 0;
   padding-bottom: 4px;
+}
+
+.hide-unpaired-cameras .mud-list-item-extended:has(.unpaired-camera) {
+  display: none;
 }

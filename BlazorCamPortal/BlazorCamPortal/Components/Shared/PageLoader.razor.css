@@ -1,0 +1,3 @@
+.page-loader ::deep .page-loader-stack {
+    min-height: 60vh;
+}

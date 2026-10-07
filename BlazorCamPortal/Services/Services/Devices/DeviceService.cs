@@ -172,7 +172,7 @@ namespace CamPortal.Core.Services.Devices
 
         public async Task<List<NameAndIdWithStatusModel>> GetAllCameraNameAndIdAsync()
         {
-            var result = await _deviceRepository.GetAllDeviceNameAndIdAsync();
+            var result = await _deviceRepository.GetAllDeviceNameAndIdAsync(DeviceTypeCategories.Camera);
 
             return _mapper.Map<List<NameAndIdWithStatusModel>>(result);
         }

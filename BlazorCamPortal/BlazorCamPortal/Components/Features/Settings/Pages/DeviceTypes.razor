@@ -57,18 +57,13 @@
                                 <MudCard Elevation="6" Class="device-type-card" style="position:relative">
                                     <MudCardMedia Image="@deviceType.GetIconUrl(_deviceTypeIconStorageService)"
                                                   Height="300"
-                                                  Style="background-color: var(--mud-palette-surface); object-fit: contain;" />
+                                                  Style="background-color: var(--mud-palette-surface); background-size: contain;" />
 
                                     <MudCardContent>
                                         <MudText Typo="Typo.h6" Class="mb-1">@deviceType.Name</MudText>
                                             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@deviceType.Description</MudText>
-                                        <MudChip T="string"
-                                                 Size="Size.Small"
-                                                 Color="@GetCategoryColor(deviceType.DeviceCategory)"
-                                                 style="position: absolute;top: 10px;left: 10px;"
-                                                 Icon="@GetCategoryIcon(deviceType.DeviceCategory)">
-                                            @deviceType.DeviceCategory
-                                        </MudChip>
+                                        <DeviceCategoryChip Category="@deviceType.DeviceCategory"
+                                                            Style="position: absolute;top: 10px;left: 10px;" />
                                     </MudCardContent>
 
                                     <MudCardActions Class="d-flex justify-end">
@@ -101,14 +96,6 @@
         }
     </PageLoader>
 </MudContainer>
-
-<style>
-    .device-types-scroll-area {
-        height: calc(100vh - 220px);
-        overflow-y: auto;
-        padding-right: 8px;
-    }
-</style>
 
 @code {
     private const int _rowChunkSize = 4;
@@ -165,9 +152,13 @@
 
     private async Task ShowDeleteDialogAsync(DeviceTypeDisplayModel deviceType)
     {
+        var warning = deviceType.DeviceCategory == DeviceTypeCategories.Camera
+            ? "All devices of this type will be deleted, including their recorded video. Playback for these cameras will no longer be available."
+            : "All devices of this type will be deleted.";
+
         var result = await _dialogService.ShowMessageBox(
             "Confirm Delete",
-            (MarkupString)$"Are you sure you want to delete <b>{deviceType.Name}</b>?",
+            (MarkupString)$"Are you sure you want to delete <b>{deviceType.Name}</b>?<br /><br /><span style=\"color: var(--mud-palette-error);\">{warning}</span>",
             yesText: "Delete",
             cancelText: "Cancel");
 
@@ -200,27 +191,26 @@
         }
     }
 
-    private Task EditDeviceTypeAsync(DeviceTypeDisplayModel deviceType)
+    private async Task EditDeviceTypeAsync(DeviceTypeDisplayModel deviceType)
     {
-        _snackbar.Add("Editing device types is not implemented yet.", Severity.Info);
-        return Task.CompletedTask;
-    }
-
-    private Color GetCategoryColor(DeviceTypeCategories category)
-    {
-        return category switch
+        var parameters = new DialogParameters<AddDeviceTypeDialog>
         {
-            DeviceTypeCategories.Camera => Color.Primary,
-            _ => Color.Default,
+            { x => x.DeviceType, deviceType }
         };
-    }
 
-    private string GetCategoryIcon(DeviceTypeCategories category)
-    {
-        return category switch
+        var options = new DialogOptions
         {
-            DeviceTypeCategories.Camera => Icons.Material.Filled.Videocam,
-            _ => Icons.Material.Filled.DeviceHub,
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
         };
+
+        var dialog = await _dialogService.ShowAsync<AddDeviceTypeDialog>("Edit Device Type", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is true)
+        {
+            await LoadDeviceTypesAsync();
+        }
     }
 }

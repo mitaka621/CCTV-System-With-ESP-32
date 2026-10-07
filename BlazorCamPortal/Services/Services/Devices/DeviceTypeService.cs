@@ -78,6 +78,77 @@ namespace CamPortal.Core.Services.Devices
             }
         }
 
+        public async Task<bool> UpdateDeviceTypeAsync(Guid deviceTypeId, CreateDeviceTypeModel model, CancellationToken ct)
+        {
+            if (!MiscUtilities.ValidateModel(model, out ICollection<ValidationResult> validationResults))
+            {
+                throw new ArgumentException(string.Join(", ", validationResults.Where(x => !string.IsNullOrEmpty(x.ErrorMessage)).Select(v => v.ErrorMessage)));
+            }
+
+            var existing = await _deviceTypeRepository.GetByIdAsync(deviceTypeId);
+            if (existing is null)
+            {
+                return false;
+            }
+
+            if (await _deviceTypeRepository.DoesExistByNameAsync(model.Name, deviceTypeId))
+            {
+                throw new InvalidOperationException($"A device type named '{model.Name}' already exists.");
+            }
+
+            if (existing.DeviceCategory != model.DeviceCategory && await _deviceTypeRepository.IsTypeInUseAsync(deviceTypeId))
+            {
+                throw new InvalidOperationException("The category cannot be changed while devices are using this device type.");
+            }
+
+            var isIconReplaced = model.IconFile != null;
+            var iconName = isIconReplaced ? await _deviceTypeIconStorageService.SaveAsync(model.IconFile!, ct) : existing.IconName;
+
+            var dto = new UpdateDeviceTypeDto
+            {
+                Id = deviceTypeId,
+                Name = model.Name,
+                IconName = iconName,
+                IconUpdatedAt = isIconReplaced ? DateTime.UtcNow : existing.IconUpdatedAt,
+                DeviceCategory = model.DeviceCategory,
+                Description = model.Description,
+            };
+
+            bool updated;
+
+            try
+            {
+                updated = await _deviceTypeRepository.UpdateTypeAsync(dto);
+            }
+            catch
+            {
+                if (isIconReplaced)
+                {
+                    await _deviceTypeIconStorageService.DeleteAsync(iconName);
+                }
+
+                throw;
+            }
+
+            if (!isIconReplaced)
+            {
+                return updated;
+            }
+
+            if (!updated)
+            {
+                await _deviceTypeIconStorageService.DeleteAsync(iconName);
+                return false;
+            }
+
+            if (string.Compare(existing.IconName, _defaultIconName, true) != 0)
+            {
+                await _deviceTypeIconStorageService.DeleteAsync(existing.IconName);
+            }
+
+            return true;
+        }
+
         public async Task<bool> DeleteDeviceTypeAsync(Guid deviceTypeId)
         {
             var dto = await _deviceTypeRepository.GetByIdAsync(deviceTypeId);
@@ -95,9 +166,14 @@ namespace CamPortal.Core.Services.Devices
             return deleted;
         }
 
-        public Task<bool> DoesDeviceTypeExistByNameAsync(string name)
+        public Task<bool> DoesDeviceTypeExistByNameAsync(string name, Guid? excludedDeviceTypeId = null)
         {
-            return _deviceTypeRepository.DoesExistByNameAsync(name);
+            return _deviceTypeRepository.DoesExistByNameAsync(name, excludedDeviceTypeId);
+        }
+
+        public Task<bool> IsDeviceTypeInUseAsync(Guid deviceTypeId)
+        {
+            return _deviceTypeRepository.IsTypeInUseAsync(deviceTypeId);
         }
 
         public async Task<List<DeviceTypeDisplayModel>> GetDevicesByNameAsync(string name)

@@ -50,23 +50,23 @@ namespace CamPortal.Core.Utilities
             if (elapsedTime.TotalSeconds < 60)
             {
                 var rounded = Math.Round(elapsedTime.TotalSeconds);
-                return $"{rounded} second{(rounded == 1 ? "s" : string.Empty)} ago";
+                return $"{rounded} second{(rounded != 1 ? "s" : string.Empty)} ago";
             }
 
             if (elapsedTime.TotalMinutes < 60)
             {
                 var rounded = Math.Round(elapsedTime.TotalMinutes);
-                return $"{rounded} minute{(rounded == 1 ? "s" : string.Empty)} ago";
+                return $"{rounded} minute{(rounded != 1 ? "s" : string.Empty)} ago";
             }
 
             if (elapsedTime.TotalHours < 24)
             {
                 var rounded = Math.Round(elapsedTime.TotalHours);
-                return $"{rounded} hour{(rounded == 1 ? "s" : string.Empty)} ago";
+                return $"{rounded} hour{(rounded != 1 ? "s" : string.Empty)} ago";
             }
 
             var finalRounded = Math.Round(elapsedTime.TotalDays);
-            return $"{finalRounded} day{(finalRounded == 1 ? "s" : string.Empty)} ago";
+            return $"{finalRounded} day{(finalRounded != 1 ? "s" : string.Empty)} ago";
         }
     }
 }

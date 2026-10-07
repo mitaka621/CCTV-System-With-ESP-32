@@ -6,57 +6,78 @@
 
 <MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
 
-<MudStack Row="true">
-    <MudPaper style="position:relative">
-        <MudTooltip Placement="Placement.Top">
-            <ChildContent>
-                <MudIconButton Size="Size.Small" Color="Color.Inherit" Style="position:absolute; top:7px; right:0" Icon="@Icons.Material.Filled.CompareArrows" />
-                <MudText>
-                    @MiscUtilities.TimeElapsedUntilNowInWords(_latestSmokeAlarmData.LoggedTimeUTC)
-                </MudText>
-            </ChildContent>
-            <TooltipContent>
-                <MudText Typo="Typo.body2">Last time when the smoke alarm detector sent telemetry to the server.</MudText>
-                <MudText Typo="Typo.body2">The detector does not stay on all the time. It wakes periodically</MudText>
-                <MudText Typo="Typo.body2">on a timer or by alarm trigger and only then it sends the telemetry data.</MudText>
-            </TooltipContent>
-        </MudTooltip>
-        <MudStack>
-            <MudText style="width:100%" Align="Align.Center" Typo="Typo.caption">Device Info</MudText>
-            <MudPaper Style=@($"background-color: {GetStatusDisplayColor()}; height:150px; width:230px; border-radius: 20px")>
-                <MudStack Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mx-2" style="height:100%; position:relative">
-                    <MudIcon Size="Size.Large" Icon="@Icons.Material.Filled.LocalFireDepartment" Style="font-size: 4em;"></MudIcon>
-                    <MudText style="font-size: 1.1rem; font-weight: 800; text-align:center">@GetStatusDisplayDescription()</MudText>
-                </MudStack>
-            </MudPaper>
-        </MudStack>
-        <MudStack Row="true">
-            <MudStack>
-                <MudTooltip Placement="Placement.Top">
+<MudGrid Spacing="4">
+    <MudItem xs="12" md="5">
+        <div class="smoke-alarm-panel">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-3">
+                Device Status
+            </MudText>
+
+            <div class="smoke-alarm-status" style="background-color: @GetStatusDisplayColor();">
+                <div class="smoke-alarm-status-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.LocalFireDepartment" Style="font-size: 2.5rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="smoke-alarm-status-text">@GetStatusDisplayDescription()</MudText>
+                <MudTooltip Placement="Placement.Bottom">
                     <ChildContent>
-                        <MudIcon Icon="@Icons.Material.Filled.Battery6Bar"></MudIcon>
+                        <div class="smoke-alarm-last-report">
+                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+                            <MudText Typo="Typo.caption">
+                                Last report @MiscUtilities.TimeElapsedUntilNowInWords(_latestSmokeAlarmData.LoggedTimeUTC)
+                            </MudText>
+                        </div>
+                    </ChildContent>
+                    <TooltipContent>
+                        <MudText Typo="Typo.body2">Last time when the smoke alarm detector sent telemetry to the server.</MudText>
+                        <MudText Typo="Typo.body2">The detector does not stay on all the time. It wakes periodically</MudText>
+                        <MudText Typo="Typo.body2">on a timer or by alarm trigger and only then it sends the telemetry data.</MudText>
+                    </TooltipContent>
+                </MudTooltip>
+            </div>
+
+            <div class="smoke-alarm-stats">
+                <MudTooltip Placement="Placement.Top" Inline="false">
+                    <ChildContent>
+                        <div class="smoke-alarm-stat">
+                            <MudIcon Icon="@GetBatteryIcon()" Color="Color.Primary" />
+                            <div class="smoke-alarm-stat-text">
+                                <MudText Typo="Typo.h6" Class="smoke-alarm-stat-value">@_latestSmokeAlarmData.BatterySOCPercent.ToString("0.#") %</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Battery</MudText>
+                                <MudProgressLinear Value="@_latestSmokeAlarmData.BatterySOCPercent"
+                                                   Color="@(IsBatteryLow() ? Color.Warning : Color.Success)"
+                                                   Rounded="true"
+                                                   Size="Size.Small"
+                                                   Class="mt-1" />
+                            </div>
+                        </div>
                     </ChildContent>
                     <TooltipContent>
                         <MudText Typo="Typo.body2">Latest reported battery state of charge</MudText>
                     </TooltipContent>
                 </MudTooltip>
-                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BatterySOCPercent %</MudText>
-            </MudStack>
-            <MudStack>
-                <MudTooltip Placement="Placement.Top">
+                <MudTooltip Placement="Placement.Top" Inline="false">
                     <ChildContent>
-                        <MudIcon Icon="@Icons.Material.Filled.Bolt"></MudIcon>
+                        <div class="smoke-alarm-stat">
+                                <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Primary" />
+                                <div class="smoke-alarm-stat-text" >
+                                    <MudText Typo="Typo.h6" Class="smoke-alarm-stat-value">@_latestSmokeAlarmData.BatteryVoltage.ToString("0.###") V</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Battery Voltage</MudText>
+                                </div>
+                         </div>
                     </ChildContent>
                     <TooltipContent>
                         <MudText Typo="Typo.body2">Latest reported battery voltage</MudText>
                     </TooltipContent>
-                </MudTooltip>    
-                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BatteryVoltage V</MudText>
-            </MudStack>
-            <MudStack>
-                <MudTooltip Placement="Placement.Top">
+                </MudTooltip>
+                <MudTooltip Placement="Placement.Top" Inline="false">
                     <ChildContent>
-                        <MudIcon Icon="@Icons.Material.Filled.BatteryUnknown"></MudIcon>
+                        <div class="smoke-alarm-stat">
+                            <MudIcon Icon="@Icons.Material.Filled.ElectricalServices" Color="Color.Primary" />
+                            <div class="smoke-alarm-stat-text">
+                                <MudText Typo="Typo.h6" Class="smoke-alarm-stat-value">@_latestSmokeAlarmData.ChargingSenseVolts.ToString("0.###") V</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Charge Sense</MudText>
+                            </div>
+                        </div>
                     </ChildContent>
                     <TooltipContent>
                         <MudText Typo="Typo.body2">Latest reported voltage between the 5v pin and gnd pin of the esp32 s3.</MudText>
@@ -64,12 +85,15 @@
                         <MudText Typo="Typo.body2">the charging to be detected</MudText>
                     </TooltipContent>
                 </MudTooltip>
-                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.ChargingSenseVolts V</MudText>
-            </MudStack>
-            <MudStack>
-                <MudTooltip Placement="Placement.Top">
+                <MudTooltip Placement="Placement.Top" Inline="false">
                     <ChildContent>
-                        <MudIcon Icon="@Icons.Material.Filled.RestartAlt"></MudIcon>
+                        <div class="smoke-alarm-stat">
+                            <MudIcon Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Primary" />
+                            <div class="smoke-alarm-stat-text">
+                                <MudText Typo="Typo.h6" Class="smoke-alarm-stat-value">@_latestSmokeAlarmData.BootCount</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Boot Count</MudText>
+                            </div>
+                        </div>
                     </ChildContent>
                     <TooltipContent>
                         <MudText Typo="Typo.body2">Number of times the smoke alarm detector (esp32 s3) </MudText>
@@ -77,14 +101,17 @@
                         <MudText Typo="Typo.body2">for reporting its current status</MudText>
                     </TooltipContent>
                 </MudTooltip>
-                <MudText Color="Color.Secondary" Typo="Typo.body2">@_latestSmokeAlarmData.BootCount</MudText>
-            </MudStack>
-        </MudStack>
-    </MudPaper>
-    <MudPaper>
-        <MudStack Spacing="5">
-            <MudText style="width:100%" Align="Align.Center" Typo="Typo.caption">Device Configuration</MudText>
-            <MudStack>
+            </div>
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" md="7">
+        <div class="smoke-alarm-panel">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-3">
+                Device Configuration
+            </MudText>
+
+            <MudStack Spacing="3">
                 <MudTextField @bind-Value="_configurationModel.DeviceName"
                               @bind-Value:after="OnConfigurationChanged"
                               Immediate="true"
@@ -96,12 +123,16 @@
                               Immediate="true"
                               DebounceInterval="500"
                               Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentText="%"
                               For="()=>_configurationModel.MinBatterySOCForAlert" />
                 <MudTextField @bind-Value="_configurationModel.ChargeSenseVoltageThreashold"
                               @bind-Value:after="OnConfigurationChanged"
                               Immediate="true"
                               DebounceInterval="500"
                               Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentText="V"
                               HelperText="When this voltage threashold is exceeded, the smoke alarm will be marked as charging"
                               For="()=>_configurationModel.ChargeSenseVoltageThreashold" />
                 <MudTextField @bind-Value="_configurationModel.MaxVoltageOverchargeWarning"
@@ -109,12 +140,14 @@
                               Immediate="true"
                               DebounceInterval="500"
                               Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentText="V"
                               HelperText="If the onboard regulator fails, and the battery voltage exceeds this limit then a warning will be displayed"
                               For="()=>_configurationModel.MaxVoltageOverchargeWarning" />
             </MudStack>
-        </MudStack>
-    </MudPaper>
-</MudStack>
+        </div>
+    </MudItem>
+</MudGrid>
 
 @code {
     private SmokeAlarmDetectorPayloadDto _latestSmokeAlarmData = new();
@@ -153,6 +186,9 @@
 
     private void OnNewSmokeAlarmData(SmokeAlarmDetectorPayloadDto data)
     {
+        if (_configurationModel.DeviceId != data.DeviceId)
+            return;
+
         _latestSmokeAlarmData = data;
 
         _ = InvokeAsync(StateHasChanged);
@@ -163,7 +199,7 @@
         SmokeAlarmEvent.FireAlarm => "var(--mud-palette-error)",
         SmokeAlarmEvent.AlarmLowBatteryChirp => "var(--mud-palette-warning)",
         SmokeAlarmEvent.BatteryCharging => "var(--mud-palette-primary)",
-        SmokeAlarmEvent.BatteryWelfare => _latestSmokeAlarmData.BatterySOCPercent < _configurationModel.MinBatterySOCForAlert ? "var(--mud-palette-warning)" : "var(--mud-palette-success)",
+        SmokeAlarmEvent.BatteryWelfare => IsBatteryLow() ? "var(--mud-palette-warning)" : "var(--mud-palette-success)",
         _ => "var(--mud-palette-success)"
     };
 
@@ -172,9 +208,34 @@
         SmokeAlarmEvent.FireAlarm => "Smoke alarm is active!",
         SmokeAlarmEvent.AlarmLowBatteryChirp => "Change battery of the smoke alarm",
         SmokeAlarmEvent.BatteryCharging => "Smoke alarm detector is charging",
-        SmokeAlarmEvent.BatteryWelfare => _latestSmokeAlarmData.BatterySOCPercent < _configurationModel.MinBatterySOCForAlert ? "Smoke alarm detector needs charging" : "Smoke alarm not active",
+        SmokeAlarmEvent.BatteryWelfare => IsBatteryLow() ? "Smoke alarm detector needs charging" : "Smoke alarm not active",
         _ => "Smoke alarm not active"
     };
+
+    private bool IsBatteryLow()
+    {
+        return _latestSmokeAlarmData.BatterySOCPercent < _configurationModel.MinBatterySOCForAlert;
+    }
+
+    private string GetBatteryIcon()
+    {
+        if (_latestSmokeAlarmData.IsCharging)
+        {
+            return Icons.Material.Filled.BatteryChargingFull;
+        }
+
+        return _latestSmokeAlarmData.BatterySOCPercent switch
+        {
+            >= 90 => Icons.Material.Filled.BatteryFull,
+            >= 75 => Icons.Material.Filled.Battery6Bar,
+            >= 60 => Icons.Material.Filled.Battery5Bar,
+            >= 45 => Icons.Material.Filled.Battery4Bar,
+            >= 30 => Icons.Material.Filled.Battery3Bar,
+            >= 15 => Icons.Material.Filled.Battery2Bar,
+            >= 5 => Icons.Material.Filled.Battery1Bar,
+            _ => Icons.Material.Filled.Battery0Bar
+        };
+    }
 
     private async Task OnConfigurationChanged()
     {

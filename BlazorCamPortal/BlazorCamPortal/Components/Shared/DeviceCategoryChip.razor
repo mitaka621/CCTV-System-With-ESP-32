@@ -1,0 +1,39 @@
+<MudChip T="string"
+         Size="Size.Small"
+         Color="@GetCategoryColor()"
+         Icon="@GetCategoryIcon()"
+         Class="@Class"
+         Style="@Style">
+    @MiscUtilities.GetDisplayNameAttributeValue(Category)
+</MudChip>
+
+@code {
+    [Parameter, EditorRequired]
+    public DeviceTypeCategories Category { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? Style { get; set; }
+
+    private Color GetCategoryColor()
+    {
+        return Category switch
+        {
+            DeviceTypeCategories.Camera => Color.Primary,
+            DeviceTypeCategories.SmokeAlarm => Color.Secondary,
+            _ => Color.Default,
+        };
+    }
+
+    private string GetCategoryIcon()
+    {
+        return Category switch
+        {
+            DeviceTypeCategories.Camera => Icons.Material.Filled.Videocam,
+            DeviceTypeCategories.SmokeAlarm => Icons.Material.Filled.LocalFireDepartment,
+            _ => Icons.Material.Filled.DeviceHub,
+        };
+    }
+}

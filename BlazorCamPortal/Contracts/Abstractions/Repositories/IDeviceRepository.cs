@@ -32,7 +32,7 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> SetSessionTokenAsync(SetESPSessionTokenDto dto);
 
-        Task<List<NameAndIdWithStatusDto>> GetAllDeviceNameAndIdAsync();
+        Task<List<NameAndIdWithStatusDto>> GetAllDeviceNameAndIdAsync(DeviceTypeCategories category);
 
         Task<int> GetTotalDevicesAsync(params DevicePairStatus[] status);
 

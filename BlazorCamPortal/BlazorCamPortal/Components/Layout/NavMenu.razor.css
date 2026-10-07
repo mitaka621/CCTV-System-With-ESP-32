@@ -1,0 +1,108 @@
+.drawer-header {
+    border-bottom: 1px solid var(--mud-palette-divider);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+.header-content ::deep .header-icon {
+    font-size: 1.5rem !important;
+    transition: all 0.3s ease;
+}
+
+.header-content ::deep .header-text {
+    margin-left: 8px;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.mud-drawer-mini .header-content ::deep .header-text {
+    display: none;
+}
+
+.mud-drawer-mini:hover .header-content ::deep .header-text {
+    display: block;
+    opacity: 1;
+    animation: fadeInSlide 0.3s ease-in-out;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.mud-drawer-mini .header-content {
+    justify-content: center;
+}
+
+.mud-drawer-mini:hover .header-content {
+    justify-content: flex-start;
+    padding-left: 16px;
+}
+
+.mud-drawer-mini .header-content ::deep .header-icon {
+    margin-right: 0;
+    transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mud-drawer-mini:hover .header-content ::deep .header-icon {
+    margin-right: 8px;
+}
+
+.nav-menu-footer {
+    margin-top: auto;
+}
+
+.nav-item-wrapper ::deep .mud-nav-link {
+    border-radius: 12px !important;
+    margin-bottom: 4px !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.nav-item-wrapper ::deep .mud-nav-link:hover {
+    background: var(--mud-palette-action-hover) !important;
+    transform: translateX(4px);
+}
+
+.nav-item-wrapper ::deep .mud-nav-link-active {
+    background: linear-gradient(45deg, var(--mud-palette-primary), rgba(119, 107, 231, 0.8)) !important;
+    color: var(--mud-palette-primary-text) !important;
+    box-shadow: 0 4px 12px rgba(119, 107, 231, 0.3) !important;
+}
+
+.mud-drawer-mini .nav-item-wrapper ::deep .mud-nav-link .mud-icon-root {
+    margin: 0 auto !important;
+}
+
+.mud-drawer-mini .nav-item-wrapper ::deep .mud-nav-link {
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.mud-drawer-mini *,
+.mud-drawer-mini .drawer-header ::deep *,
+.mud-drawer-mini .nav-item-wrapper ::deep * {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}

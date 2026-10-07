@@ -212,11 +212,12 @@ namespace CamPortal.Infrastructure.Repositories
             return result != 0;
         }
 
-        public async Task<List<NameAndIdWithStatusDto>> GetAllDeviceNameAndIdAsync()
+        public async Task<List<NameAndIdWithStatusDto>> GetAllDeviceNameAndIdAsync(DeviceTypeCategories category)
         {
             await using var db = await DbContextFactory.CreateDbContextAsync();
             var result = await db.Devices
                 .AsNoTracking()
+                .Where(x => x.DeviceType.DeviceCategory == category)
                 .Select(device => Mapper.Map<NameAndIdWithStatusDto>(device))
                 .ToListAsync();
 

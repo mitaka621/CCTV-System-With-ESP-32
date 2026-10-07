@@ -1,1 +1,126 @@
-﻿
+.camera-config-row {
+    display: flex;
+    gap: 16px;
+    height: 320px;
+    margin-bottom: 16px;
+}
+
+.camera-config-row-item {
+    flex: 0 1 calc(33.333% - 11px);
+    max-width: calc(33.333% - 11px);
+    min-width: 0;
+}
+
+.device-type-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 4px;
+}
+
+.device-type-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.device-type-icon-frame {
+    flex: 0 0 auto;
+    width: clamp(52px, 3.2vw, 64px);
+    height: clamp(52px, 3.2vw, 64px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: rgba(119, 107, 231, 0.12);
+    border: 1px solid rgba(119, 107, 231, 0.25);
+}
+
+.device-type-icon {
+    width: 72%;
+    height: 72%;
+    object-fit: contain;
+}
+
+.device-type-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+}
+
+.device-type-info ::deep .device-type-name {
+    font-size: clamp(1.05rem, 0.9rem + 0.35vw, 1.35rem);
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.device-type-info ::deep .device-type-description {
+    line-height: 1.5;
+}
+
+.device-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+    gap: 16px;
+}
+
+.device-cards-grid ::deep .camera-config-card {
+    height: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+    .device-cards-grid ::deep .camera-config-card .mud-card-header-content,
+    .device-cards-grid ::deep .camera-config-card .device-card-title {
+        min-width: 0;
+    }
+
+    .device-cards-grid ::deep .camera-config-card .device-card-title {
+        flex: 1 1 auto;
+        margin-right: 8px;
+    }
+
+        .device-cards-grid ::deep .camera-config-card .device-card-title .mud-typography {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+    .device-cards-grid ::deep .camera-config-card .mud-card-content {
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    .device-cards-grid ::deep .camera-config-card .mud-card-actions {
+        margin-top: auto;
+    }
+
+    .device-cards-grid ::deep .camera-config-card .mud-card-header,
+    .device-cards-grid ::deep .camera-config-card .mud-card-content {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+
+        .device-cards-grid ::deep .camera-config-card .mud-card-content .d-flex {
+            min-width: 0;
+        }
+
+            .device-cards-grid ::deep .camera-config-card .mud-card-content .d-flex .mud-typography {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                min-width: 0;
+            }
+
+.device-cards-grid ::deep .config-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: block;
+}

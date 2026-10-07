@@ -32,6 +32,31 @@ namespace CamPortal.Infrastructure.Repositories
             return entity.Id;
         }
 
+        public async Task<bool> UpdateTypeAsync(UpdateDeviceTypeDto dto)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            var result = await db.DeviceTypes
+                .Where(x => x.Id == dto.Id)
+                .ExecuteUpdateAsync(x => x
+                    .SetProperty(c => c.Name, dto.Name)
+                    .SetProperty(c => c.Description, dto.Description)
+                    .SetProperty(c => c.DeviceCategory, dto.DeviceCategory)
+                    .SetProperty(c => c.IconName, dto.IconName)
+                    .SetProperty(c => c.IconUpdatedAt, dto.IconUpdatedAt));
+
+            return result != 0;
+        }
+
+        public async Task<bool> IsTypeInUseAsync(Guid typeId)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            return await db.Devices
+                .AsNoTracking()
+                .AnyAsync(x => x.DeviceTypeId == typeId);
+        }
+
         public async Task<bool> DeleteTypeAsync(Guid typeId)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();
@@ -71,13 +96,13 @@ namespace CamPortal.Infrastructure.Repositories
             return _mapper.Map<DeviceTypeDto>(entity);
         }
 
-        public async Task<bool> DoesExistByNameAsync(string name)
+        public async Task<bool> DoesExistByNameAsync(string name, Guid? excludedTypeId = null)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();
 
             return await db.DeviceTypes
                 .AsNoTracking()
-                .AnyAsync(x => x.Name == name);
+                .AnyAsync(x => x.Name == name && x.Id != excludedTypeId);
         }
 
         public async Task<DeviceTypeCategories> GetDeviceCategoryAsync(Guid typeId)

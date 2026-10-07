@@ -6,9 +6,10 @@
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form" Model="_model" ValidationDelay="0">
+            <div class="device-type-dialog">
             <MudGrid>
                 <MudItem xs="6">
-                     <MudStack Spacing="3" Justify="Justify.Center">
+                     <MudStack Spacing="3" Class="device-type-form-column">
                         
                         <MudTextField @bind-Value="_model.Name"
                                       Label="Name"
@@ -23,8 +24,7 @@
                                       For="@(() => _model.Description)"
                                       Immediate="true"
                                       Lines="3"
-                                      MaxLines="10"
-                                      Sizing="InputSizing.Auto"
+                                      Class="device-type-description-field"
                                       Disabled="_isSubmitting" />
 
                         <MudSelect T="DeviceTypeCategories"
@@ -32,7 +32,8 @@
                                    Variant="Variant.Outlined"
                                    @bind-Value="_model.DeviceCategory"
                                    For="@(() => _model.DeviceCategory)"
-                                   Disabled="_isSubmitting">
+                                   HelperText="@(_isCategoryLocked ? "The category cannot be changed while devices are using this device type." : null)"
+                                   Disabled="@(_isSubmitting || _isCategoryLocked)">
                             @foreach (var category in Enum.GetValues<DeviceTypeCategories>())
                             {
                                 <MudSelectItem Value="@category">@category</MudSelectItem>
@@ -79,6 +80,7 @@
                         </div>
                 </MudItem>
             </MudGrid>
+            </div>
 
             @if (!string.IsNullOrEmpty(_submitError))
             {
@@ -96,11 +98,11 @@
             @if (_isSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <text>Creating...</text>
+                <text>@(IsEditMode ? "Saving..." : "Creating...")</text>
             }
             else
             {
-                <text>Create</text>
+                <text>@(IsEditMode ? "Save" : "Create")</text>
             }
         </MudButton>
     </DialogActions>
@@ -110,26 +112,43 @@
     [CascadingParameter]
     public IMudDialogInstance? MudDialog { get; set; }
 
+    [Parameter]
+    public DeviceTypeDisplayModel? DeviceType { get; set; }
+
     private MudForm _form = default!;
     private readonly CreateDeviceTypeModel _model = new();
     private string? _iconError;
     private string? _submitError;
     private bool _isSubmitting;
+    private bool _isCategoryLocked;
     private string? _previewIconUrl;
 
     private long _maxIconSizeBytes;
 
-    protected override void OnInitialized()
+    private bool IsEditMode => DeviceType is not null;
+
+    protected override async Task OnInitializedAsync()
     {
         _maxIconSizeBytes = long.Parse(
                 _configuration.GetSection("DeviceTypeIconsConfig")["MaxIconSizeBytes"]
                 ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"));
 
+        if (DeviceType is not null)
+        {
+            _model.Name = DeviceType.Name;
+            _model.Description = DeviceType.Description ?? string.Empty;
+            _model.DeviceCategory = DeviceType.DeviceCategory;
+
+            _previewIconUrl = DeviceType.GetIconUrl(_deviceTypeIconStorageService);
+
+            _isCategoryLocked = await _deviceTypeService.IsDeviceTypeInUseAsync(DeviceType.Id);
+
+            return;
+        }
+
         _previewIconUrl =_deviceTypeIconStorageService
             .BuildPublicUrl( _configuration.GetSection("DeviceTypeIconsConfig")["DefaultIconName"]
                 ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"), DateTime.Now);
-
-        base.OnInitialized();
     }
     private async Task OnFileChanged(IBrowserFile? file)
     {
@@ -184,7 +203,7 @@
             return;
         }
 
-        if (await _deviceTypeService.DoesDeviceTypeExistByNameAsync(_model.Name))
+        if (await _deviceTypeService.DoesDeviceTypeExistByNameAsync(_model.Name, DeviceType?.Id))
         {
             _submitError = $"A device type named '{_model.Name}' already exists.";
             return;
@@ -194,8 +213,24 @@
 
         try
         {
-            await _deviceTypeService.CreateDeviceTypeAsync(_model, CancellationToken.None);
-            _snackbar.Add($"Device type '{_model.Name}' created.", Severity.Success);
+            if (DeviceType is null)
+            {
+                await _deviceTypeService.CreateDeviceTypeAsync(_model, CancellationToken.None);
+                _snackbar.Add($"Device type '{_model.Name}' created.", Severity.Success);
+            }
+            else
+            {
+                var updated = await _deviceTypeService.UpdateDeviceTypeAsync(DeviceType.Id, _model, CancellationToken.None);
+
+                if (!updated)
+                {
+                    _submitError = "Device type was not found.";
+                    return;
+                }
+
+                _snackbar.Add($"Device type '{_model.Name}' updated.", Severity.Success);
+            }
+
             MudDialog?.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
