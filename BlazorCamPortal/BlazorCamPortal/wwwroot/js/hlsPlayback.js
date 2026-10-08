@@ -77,7 +77,7 @@
   }
 
   if (Hls.isSupported()) {
-    const hls = new Hls({ lowLatencyMode: true, debug: true });
+    const hls = new Hls({ lowLatencyMode: true, debug: true, maxBufferLength: 120 });
     video._hlsInstance = hls;
     console.log("initHlsStream: attaching media", { videoId, manifestUrl });
     hls.loadSource(manifestUrl);

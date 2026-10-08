@@ -171,9 +171,6 @@ else
                                     <div class="video-loader">
                                         <div class="video-loader-spinner"></div>
                                     </div>
-                                    <div class="camera-info-overlay">
-                                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">@camera.Name</MudText>
-                                    </div>
                                     <div class="camera-overlay">
                                         <MudIcon Icon="@Icons.Material.Filled.Fullscreen"
                                                  Color="Color.Primary"
@@ -190,7 +187,7 @@ else
                                         Event Timeline - @camera.Name
                                     </MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        @GetCombinedStartDateTime()?.ToString("MMM dd, HH:mm") to @GetCombinedEndDateTime()?.ToString("MMM dd, HH:mm")
+                                        @_appliedStartDateTime?.ToString("MMM dd, HH:mm") to @_appliedEndDateTime?.ToString("MMM dd, HH:mm")
                                     </MudText>
                                 </div>
                                 <MudStack Justify="Justify.Center" Style="height:80%">
@@ -208,7 +205,7 @@ else
                                                 {
                                                     @for (int minute = 0; minute <= _totalTimelineDurationInMinutes; minute += incrementMinutes)
                                                     {
-                                                        var currentTime = GetCombinedStartDateTime()?.AddMinutes(minute);
+                                                        var currentTime = _appliedStartDateTime?.AddMinutes(minute);
 
                                                         <MudStack Class="@(minute != 0 && minute + incrementMinutes <= _totalTimelineDurationInMinutes ? "hidden" : string.Empty)"
                                                                   Style="gap:0 !important; width: 5px;"
@@ -229,8 +226,8 @@ else
                                             <div class="timeline-events">
                                                 @if (playlist != null)
                                                 {
-                                                    var eventStart = GetCombinedStartDateTime();
-                                                    var eventEnd = GetCombinedEndDateTime();
+                                                    var eventStart = _appliedStartDateTime;
+                                                    var eventEnd = _appliedEndDateTime;
 
                                                     if (eventStart == null || eventEnd == null)
                                                     {
@@ -336,7 +333,7 @@ else
                                             <div class="d-flex justify-space-between align-center">
                                                 <MudStack Row="true">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                        Current Time: <span id="current-time-@camera.Id">@GetCombinedStartDateTime()?.ToString("HH:mm:ss")</span>
+                                                        Current Time: <span id="current-time-@camera.Id">@_appliedStartDateTime?.ToString("HH:mm:ss")</span>
                                                     </MudText>
                                                     <div class="timeline-sync-controls">
                                                         <input id="camera-sync-enabled-@camera.Id" type="checkbox" checked />
@@ -351,6 +348,40 @@ else
                                                     Export
                                                 </MudButton>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="playback-controls">
+                                        <div class="playback-speed-track playback-speed-track-rewind">
+                                            @for (var exponent = 0; exponent <= _maxPlaybackRateExponent; exponent++)
+                                            {
+                                                <span class="playback-speed-mark @GetPlaybackSpeedMarkClass(exponent)" style="--mark-position: @GetPlaybackSpeedMarkPosition(exponent)">-@(1 << exponent)x</span>
+                                            }
+                                            <input id="rewind-slider-@camera.Id"
+                                                   type="range"
+                                                   min="0"
+                                                   max="@_maxPlaybackRateExponent"
+                                                   step="0.05"
+                                                   value="0"
+                                                   title="Hold and drag left to rewind"
+                                                   class="playback-speed-slider" />
+                                        </div>
+                                        <button id="play-pause-@camera.Id" type="button" class="playback-toggle" aria-label="Play">
+                                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="playback-icon-play" />
+                                            <MudIcon Icon="@Icons.Material.Filled.Pause" Class="playback-icon-pause" />
+                                        </button>
+                                        <div class="playback-speed-track">
+                                            @for (var exponent = 0; exponent <= _maxPlaybackRateExponent; exponent++)
+                                            {
+                                                <span class="playback-speed-mark @GetPlaybackSpeedMarkClass(exponent)" style="--mark-position: @GetPlaybackSpeedMarkPosition(exponent)">@(1 << exponent)x</span>
+                                            }
+                                            <input id="forward-slider-@camera.Id"
+                                                   type="range"
+                                                   min="0"
+                                                   max="@_maxPlaybackRateExponent"
+                                                   step="0.05"
+                                                   value="0"
+                                                   title="Hold and drag right to fast forward"
+                                                   class="playback-speed-slider" />
                                         </div>
                                     </div>
                                 </MudStack>
@@ -369,6 +400,7 @@ else
 
 @code {
     private const int _maxNumberOfTimeMarkersPerCamera=10;
+    private const int _maxPlaybackRateExponent = 4;
 
     private List<NameAndIdWithStatusModel> _allCamerasNameAndId = new();
     private List<CameraDisplayModel> _currentCameras = new();
@@ -378,8 +410,8 @@ else
     private DateTime? _selectedEndDate;
     private TimeSpan? _selectedStartTime;
     private TimeSpan? _selectedEndTime;
-    private TimeSpan? _updatedNewStartTime;
-    private TimeSpan? _updatedNewEndTime;
+    private DateTime? _appliedStartDateTime;
+    private DateTime? _appliedEndDateTime;
     private List<HLSPlaylistDto> _hLSPlaylists = new();
     private bool _isFiltering = false;
     private string _error = string.Empty;
@@ -477,11 +509,8 @@ else
     {
         try
         {
-            _updatedNewStartTime=_selectedStartTime;
-            _updatedNewEndTime=_selectedEndTime;
-
-            var startDateTime = GetCombinedStartDateTime();
-            var endDateTime = GetCombinedEndDateTime();
+            var startDateTime = GetSelectedStartDateTime();
+            var endDateTime = GetSelectedEndDateTime();
 
             if (startDateTime == null || endDateTime == null || _selectedCameraIds.Count() == 0)
             {
@@ -497,6 +526,9 @@ else
             }
 
             _error = string.Empty;
+
+            _appliedStartDateTime = startDateTime;
+            _appliedEndDateTime = endDateTime;
 
             _isFiltering = true;
 
@@ -534,8 +566,8 @@ else
             return;
         }
 
-        var start = GetCombinedStartDateTime();
-        var end = GetCombinedEndDateTime();
+        var start = _appliedStartDateTime;
+        var end = _appliedEndDateTime;
         var durationSeconds = start != null && end != null
             ? (end.Value - start.Value).TotalSeconds
             : 0;
@@ -557,8 +589,8 @@ else
 
     private async Task ExportCameraAsync(Guid cameraId)
     {
-        var startDateTime = GetCombinedStartDateTime();
-        var endDateTime = GetCombinedEndDateTime();
+        var startDateTime = _appliedStartDateTime;
+        var endDateTime = _appliedEndDateTime;
 
         if (startDateTime == null || endDateTime == null)
         {
@@ -589,28 +621,40 @@ else
         _snackbar.Add("Export started. Track its progress in the export manager.", Severity.Success);
     }
 
-    private DateTime? GetCombinedStartDateTime()
+    private DateTime? GetSelectedStartDateTime()
     {
-        if (_selectedStartDate.HasValue && _updatedNewStartTime.HasValue)
-            return _selectedStartDate.Value.Date.Add(_updatedNewStartTime.Value);
+        if (_selectedStartDate.HasValue && _selectedStartTime.HasValue)
+            return _selectedStartDate.Value.Date.Add(_selectedStartTime.Value);
         return null;
     }
 
-    private DateTime? GetCombinedEndDateTime()
+    private DateTime? GetSelectedEndDateTime()
     {
-        if (_selectedEndDate.HasValue && _updatedNewEndTime.HasValue)
-            return _selectedEndDate.Value.Date.Add(_updatedNewEndTime.Value);
+        if (_selectedEndDate.HasValue && _selectedEndTime.HasValue)
+            return _selectedEndDate.Value.Date.Add(_selectedEndTime.Value);
         return null;
+    }
+
+    private static string GetPlaybackSpeedMarkPosition(int exponent)
+    {
+        return ((double)exponent / _maxPlaybackRateExponent).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string GetPlaybackSpeedMarkClass(int exponent)
+    {
+        if (exponent == _maxPlaybackRateExponent)
+        {
+            return "playback-speed-mark-end";
+        }
+
+        return exponent % 2 == 1 ? "playback-speed-mark-secondary" : string.Empty;
     }
 
     private int GetTimelineDurationInMinutes()
     {
-        var start = GetCombinedStartDateTime();
-        var end = GetCombinedEndDateTime();
-
-        if (start != null && end != null)
+        if (_appliedStartDateTime != null && _appliedEndDateTime != null)
         {
-            return (int)(end.Value - start.Value).TotalMinutes;
+            return (int)(_appliedEndDateTime.Value - _appliedStartDateTime.Value).TotalMinutes;
         }
 
         return 0;

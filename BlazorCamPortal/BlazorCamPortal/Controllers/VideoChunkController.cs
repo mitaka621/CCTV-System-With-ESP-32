@@ -2,12 +2,14 @@ using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CamPortal.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = $"{Roles.User},{Roles.Admin}")]
+    [DisableRateLimiting]
     public class VideoChunkController : ControllerBase
     {
         private readonly IStorageLocationService _storageLocationService;

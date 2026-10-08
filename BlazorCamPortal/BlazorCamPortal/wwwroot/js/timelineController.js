@@ -1,5 +1,7 @@
 let timelines = new Map();
 
+const DEFAULT_PLAYBACK_RATE = 1;
+
 function formatTimeFromPercentage(startTime, durationSeconds, percentage) {
   const targetMs =
     startTime.getTime() + durationSeconds * 1000 * (percentage / 100);
@@ -153,6 +155,7 @@ function onSyncCheckboxChange(cameraId) {
   setSliderValue(state, percentage);
   syncCursorUi(cameraId, percentage);
   seekVideos(cameraId, percentage);
+  syncPlaybackState(cameraId);
 }
 
 function onSliderInput(cameraId) {
@@ -185,7 +188,198 @@ function onVideoTimeUpdate(cameraId) {
   updateTimeDisplay(state, percentage);
 }
 
+function getLinkedStates(sourceCameraId) {
+  const source = timelines.get(sourceCameraId);
+  if (!source) {
+    return [];
+  }
+
+  const linkedStates = [source];
+
+  if (!isSyncEnabled(source)) {
+    return linkedStates;
+  }
+
+  timelines.forEach((target, cameraId) => {
+    if (cameraId !== sourceCameraId && isSyncEnabled(target)) {
+      linkedStates.push(target);
+    }
+  });
+
+  return linkedStates;
+}
+
+function getSliderPlaybackRate(slider) {
+  return Math.pow(2, parseFloat(slider.value));
+}
+
+function setSpeedSliderValue(slider, rate) {
+  if (slider) {
+    slider.value = Math.log2(rate);
+  }
+}
+
+function updatePlayPauseUi(state) {
+  if (!state.playPauseButton) {
+    return;
+  }
+
+  const isPlaying = state.isRewinding || !state.video.paused;
+  state.playPauseButton.classList.toggle("is-playing", isPlaying);
+  state.playPauseButton.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
+}
+
+function playVideo(video) {
+  if (video.paused && !video.ended) {
+    video.play().catch((error) => console.warn("Play failed:", error));
+  }
+}
+
+function getSeekableStart(video) {
+  return video.seekable && video.seekable.length > 0 ? video.seekable.start(0) : 0;
+}
+
+function stepRewind(state, timestamp) {
+  if (!state.isRewinding) {
+    return;
+  }
+
+  const elapsedSeconds = Math.max(0, (timestamp - state.rewindLastTimestamp) / 1000);
+  state.rewindLastTimestamp = timestamp;
+  state.rewindTargetTime = Math.max(
+    getSeekableStart(state.video),
+    state.rewindTargetTime - elapsedSeconds * state.rewindRate,
+  );
+
+  // Seeking again before the previous seek finishes only restarts decoding, so the target keeps accumulating instead.
+  if (!state.video.seeking) {
+    state.video.currentTime = state.rewindTargetTime;
+  }
+
+  state.rewindFrameId = requestAnimationFrame((nextTimestamp) => stepRewind(state, nextTimestamp));
+}
+
+function startRewind(state, rate) {
+  state.rewindRate = rate;
+
+  if (state.isRewinding) {
+    return;
+  }
+
+  state.isRewinding = true;
+  state.video.playbackRate = DEFAULT_PLAYBACK_RATE;
+  state.video.pause();
+  state.rewindTargetTime = state.video.currentTime;
+  state.rewindLastTimestamp = performance.now();
+  state.rewindFrameId = requestAnimationFrame((timestamp) => stepRewind(state, timestamp));
+  updatePlayPauseUi(state);
+}
+
+function stopRewind(state) {
+  if (!state.isRewinding) {
+    return;
+  }
+
+  state.isRewinding = false;
+  cancelAnimationFrame(state.rewindFrameId);
+  state.rewindFrameId = null;
+  updatePlayPauseUi(state);
+}
+
+function applyForwardRate(sourceCameraId, rate) {
+  getLinkedStates(sourceCameraId).forEach((state) => {
+    stopRewind(state);
+    state.video.playbackRate = rate;
+    playVideo(state.video);
+    setSpeedSliderValue(state.forwardSlider, rate);
+  });
+}
+
+function applyRewindRate(sourceCameraId, rate) {
+  getLinkedStates(sourceCameraId).forEach((state) => {
+    startRewind(state, rate);
+    setSpeedSliderValue(state.rewindSlider, rate);
+  });
+}
+
+function resetPlaybackSpeed(sourceCameraId) {
+  getLinkedStates(sourceCameraId).forEach((state) => {
+    stopRewind(state);
+    state.video.playbackRate = DEFAULT_PLAYBACK_RATE;
+    playVideo(state.video);
+    setSpeedSliderValue(state.forwardSlider, DEFAULT_PLAYBACK_RATE);
+    setSpeedSliderValue(state.rewindSlider, DEFAULT_PLAYBACK_RATE);
+  });
+}
+
+function setPlaying(state, shouldPlay) {
+  stopRewind(state);
+
+  if (shouldPlay) {
+    playVideo(state.video);
+  } else {
+    state.video.pause();
+  }
+
+  updatePlayPauseUi(state);
+}
+
+function togglePlayback(sourceCameraId) {
+  const source = timelines.get(sourceCameraId);
+  if (!source) {
+    return;
+  }
+
+  const shouldPlay = source.video.paused && !source.isRewinding;
+
+  getLinkedStates(sourceCameraId).forEach((state) => setPlaying(state, shouldPlay));
+}
+
+function syncPlaybackState(sourceCameraId) {
+  const source = timelines.get(sourceCameraId);
+  if (!source) {
+    return;
+  }
+
+  const shouldPlay = !source.video.paused;
+
+  getLinkedStates(sourceCameraId).forEach((state) => {
+    if (state === source) {
+      return;
+    }
+
+    state.video.playbackRate = source.video.playbackRate;
+    setPlaying(state, shouldPlay);
+  });
+}
+
+function bindSpeedSlider(state, slider, applyRate, signal) {
+  if (!slider) {
+    return;
+  }
+
+  const cameraId = state.cameraId;
+  const release = () => resetPlaybackSpeed(cameraId);
+
+  slider.addEventListener(
+    "pointerdown",
+    () => {
+      applyRate(cameraId, getSliderPlaybackRate(slider));
+      window.addEventListener("pointerup", release, { once: true, signal });
+      window.addEventListener("pointercancel", release, { once: true, signal });
+    },
+    { signal },
+  );
+  slider.addEventListener("input", () => applyRate(cameraId, getSliderPlaybackRate(slider)), { signal });
+  slider.addEventListener("change", release, { signal });
+}
+
 window.resetTimelines = function () {
+  timelines.forEach((state) => {
+    stopRewind(state);
+    state.listenersController.abort();
+  });
+
   timelines.clear();
 };
 
@@ -226,20 +420,40 @@ window.initTimelineForCamera = function (
     video,
     syncCheckbox,
     timeDisplay,
+    playPauseButton: document.getElementById(`play-pause-${cameraId}`),
+    forwardSlider: document.getElementById(`forward-slider-${cameraId}`),
+    rewindSlider: document.getElementById(`rewind-slider-${cameraId}`),
+    listenersController: new AbortController(),
     startTime: new Date(startTimeIso),
     durationSeconds,
     isDragging: false,
     isUpdating: false,
+    isRewinding: false,
+    rewindRate: DEFAULT_PLAYBACK_RATE,
+    rewindTargetTime: 0,
+    rewindLastTimestamp: 0,
+    rewindFrameId: null,
   };
 
   timelines.set(cameraId, state);
 
-  slider.addEventListener("pointerdown", () => setScrubbing(cameraId, true));
-  slider.addEventListener("input", () => onSliderInput(cameraId));
-  slider.addEventListener("change", () => onSliderRelease(cameraId));
-  slider.addEventListener("pointercancel", () => setScrubbing(cameraId, false));
-  syncCheckbox?.addEventListener("change", () => onSyncCheckboxChange(cameraId));
-  video.addEventListener("timeupdate", () => onVideoTimeUpdate(cameraId));
+  const signal = state.listenersController.signal;
+
+  slider.addEventListener("pointerdown", () => setScrubbing(cameraId, true), { signal });
+  slider.addEventListener("input", () => onSliderInput(cameraId), { signal });
+  slider.addEventListener("change", () => onSliderRelease(cameraId), { signal });
+  slider.addEventListener("pointercancel", () => setScrubbing(cameraId, false), { signal });
+  syncCheckbox?.addEventListener("change", () => onSyncCheckboxChange(cameraId), { signal });
+  video.addEventListener("timeupdate", () => onVideoTimeUpdate(cameraId), { signal });
+
+  state.playPauseButton?.addEventListener("click", () => togglePlayback(cameraId), { signal });
+  video.addEventListener("play", () => updatePlayPauseUi(state), { signal });
+  video.addEventListener("pause", () => updatePlayPauseUi(state), { signal });
+  bindSpeedSlider(state, state.forwardSlider, applyForwardRate, signal);
+  bindSpeedSlider(state, state.rewindSlider, applyRewindRate, signal);
+  setSpeedSliderValue(state.forwardSlider, DEFAULT_PLAYBACK_RATE);
+  setSpeedSliderValue(state.rewindSlider, DEFAULT_PLAYBACK_RATE);
+  updatePlayPauseUi(state);
 
   const container = video.closest(".video-container");
   let loaderTimeout = null;
@@ -266,9 +480,17 @@ window.initTimelineForCamera = function (
     container.classList.remove("is-loading");
   };
 
-  video.addEventListener("seeking", () => setLoading(true));
-  video.addEventListener("waiting", () => setLoading(true));
-  video.addEventListener("seeked", () => setLoading(false));
-  video.addEventListener("playing", () => setLoading(false));
-  video.addEventListener("canplay", () => setLoading(false));
+  video.addEventListener(
+    "seeking",
+    () => {
+      if (!state.isRewinding) {
+        setLoading(true);
+      }
+    },
+    { signal },
+  );
+  video.addEventListener("waiting", () => setLoading(true), { signal });
+  video.addEventListener("seeked", () => setLoading(false), { signal });
+  video.addEventListener("playing", () => setLoading(false), { signal });
+  video.addEventListener("canplay", () => setLoading(false), { signal });
 };
