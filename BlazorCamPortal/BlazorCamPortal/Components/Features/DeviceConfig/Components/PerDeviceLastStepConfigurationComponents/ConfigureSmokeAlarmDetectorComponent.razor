@@ -3,6 +3,7 @@
 @inject ISmokeAlarmDetectorManagerService _smokeAlarmDetectorManagerService;
 @inject ISmokeAlarmDetectorConfigurationService _smokeAlarmDetectorConfigurationService;
 @inject ISmokeAlarmCommandDispatcher _smokeAlarmCommandDispatcher;
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
 
@@ -239,6 +240,11 @@
 
     private async Task OnConfigurationChanged()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         if(!await _smokeAlarmDetectorConfigurationService.UpdateConfigurationAsync(_configurationModel))
         {
             return;

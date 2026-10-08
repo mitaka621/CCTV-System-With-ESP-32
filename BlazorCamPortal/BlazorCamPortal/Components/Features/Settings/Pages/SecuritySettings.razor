@@ -10,6 +10,7 @@
 @inject ISystemSettingsService _systemSettingsService
 @inject ICameraSecurityService _securityService
 @inject ISnackbar _snackbar
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <PageTitle>Security Thresholds - BlazorCam Portal</PageTitle>
 
@@ -74,6 +75,11 @@
 
     private async Task SaveAsync()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         _isSaving = true;
 
         try

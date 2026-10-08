@@ -11,6 +11,7 @@
 @inject IDeviceTypeIconStorageService _deviceTypeIconStorageService
 @inject IDialogService _dialogService
 @inject ISnackbar _snackbar
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <PageTitle>Device Types - BlazorCam Portal</PageTitle>
 
@@ -170,6 +171,11 @@
 
     private async Task DeleteDeviceTypeAsync(DeviceTypeDisplayModel deviceType)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         try
         {
             var deleted = await _deviceTypeService.DeleteDeviceTypeAsync(deviceType.Id);

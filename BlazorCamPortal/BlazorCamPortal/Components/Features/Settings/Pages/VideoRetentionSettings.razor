@@ -9,6 +9,7 @@
 
 @inject ISystemSettingsService _systemSettingsService
 @inject ISnackbar _snackbar
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <PageTitle>Video Retention - BlazorCam Portal</PageTitle>
 
@@ -75,6 +76,11 @@
 
     private async Task SaveAsync()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         _isSaving = true;
 
         try

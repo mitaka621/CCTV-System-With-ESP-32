@@ -1,9 +1,13 @@
 @using CamPortal.Components.Features.DeviceConfig.Components
 @using CamPortal.Components.Features.DeviceConfig.Components.PerDeviceLastStepConfigurationComponents
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <MudDialog>
     <DialogContent>
-        <ConfigureCameraComponent CameraId="CameraId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
+        @if (_isAuthorized)
+        {
+            <ConfigureCameraComponent CameraId="CameraId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Close" Color="Color.Primary">Done</MudButton>
@@ -16,6 +20,19 @@
 
     [Parameter, EditorRequired]
     public Guid CameraId { get; set; }
+
+    private bool _isAuthorized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            MudDialog?.Cancel();
+            return;
+        }
+
+        _isAuthorized = true;
+    }
 
     private void Close()
     {

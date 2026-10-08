@@ -239,6 +239,8 @@ namespace CamPortal.Extensions
 
             services.AddScoped<AuthenticationStateProvider, RevalidatingAuthStateProvider>();
 
+            services.AddScoped<IAdminAuthorizationGuard, AdminAuthorizationGuard>();
+
             return services;
         }
 

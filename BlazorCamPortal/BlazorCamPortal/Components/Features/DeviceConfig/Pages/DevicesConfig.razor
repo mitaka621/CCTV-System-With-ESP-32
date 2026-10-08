@@ -13,6 +13,7 @@
 @inject IDevicePreProvisionService _devicePairHttpService
 @inject IUserTimeZoneService _userTimeZoneService
 @inject IDeviceTypeIconStorageService _deviceTypeIconStorageService;
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <PageTitle>Device Configuration - BlazorCam Portal</PageTitle>
 
@@ -576,6 +577,11 @@
 
     private async Task ForgetCamera(Guid cameraId)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         await _deviceService.ChangeStatusAndInvalidateCameraAsync(cameraId, DevicePairStatus.Removed);
 
         await FetchDevices();
@@ -584,6 +590,11 @@
 
 	private async Task RestoreCamera(Guid cameraId)
 	{
+	    if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+	    {
+	        return;
+	    }
+
 		await _deviceService.ChangeStatusAndInvalidateCameraAsync(cameraId, DevicePairStatus.Paired);
 
         await FetchDevices();

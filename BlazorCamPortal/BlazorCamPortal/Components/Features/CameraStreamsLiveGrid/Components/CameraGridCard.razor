@@ -8,6 +8,7 @@
 @inject ICameraLiveTelemetry _liveTelemetry
 @inject ICameraSecurityService _securityService
 @inject IDialogService _dialogService
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <MudCard Elevation="6" Class="@GetCardClass()">
     <MudCardHeader>
@@ -86,7 +87,9 @@
             </MudButton>
         }
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="OpenConfigDialog" />
+        <AuthorizeView Roles="@Roles.Admin">
+            <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Default" Size="Size.Small" OnClick="OpenConfigDialog" />
+        </AuthorizeView>
     </MudCardActions>
 </MudCard>
 
@@ -183,6 +186,11 @@
 
     private async Task OpenConfigDialog()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         var parameters = new DialogParameters
         {
             ["CameraId"] = CameraInfo.Id

@@ -12,6 +12,7 @@
 @inject IDialogService _dialogService
 @inject ISnackbar _snackbar
 @inject AuthenticationStateProvider _authenticationStateProvider
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <PageTitle>Users - BlazorCam Portal</PageTitle>
 
@@ -202,6 +203,11 @@
 
     private async Task ShowDeleteDialogAsync(UserListItemDto user)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         if (!CanDelete(user))
         {
             _snackbar.Add(GetDeleteTooltip(user), Severity.Warning);

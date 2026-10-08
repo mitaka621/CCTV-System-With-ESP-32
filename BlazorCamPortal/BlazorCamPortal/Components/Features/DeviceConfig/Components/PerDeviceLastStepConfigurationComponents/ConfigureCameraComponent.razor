@@ -6,6 +6,7 @@
 @inject ICameraConfigurationService _cameraConfigurationService
 @inject ICameraFramesManagerService _cameraFramesManager
 @inject IDeviceService _deviceService
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 @implements IDisposable
 
 <MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
@@ -216,6 +217,11 @@
 
     private async Task OnConfigurationChanged()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         _isApplying = true;
         StateHasChanged();
 
@@ -279,6 +285,11 @@
 
     private async Task CreateDefaultCameraConfiguration()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         var totalCameras = await _deviceService.GetTotalCamerasAsync();
 
         _cameraConfigurationModel = new CameraConfigurationModel()

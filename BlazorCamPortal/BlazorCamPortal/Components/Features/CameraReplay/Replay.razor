@@ -80,13 +80,14 @@
                     </div>
                 </ItemTemplate>
                 <StaticContent>
-                    <MudSpacer></MudSpacer>
-                    <MudSwitch T="bool"
-                        Value="_showUnpairedCameras"
-                        ValueChanged="OnShowUnpairedCamerasChanged"
-                        Label="Show unpaired cameras"
-                        Color="Color.Primary"
-                        Class="ml-4" />
+                    <MudStack Row="true" Justify="Justify.FlexStart" Style="width:100%">
+                        <MudSwitch T="bool"
+                                   Value="_showUnpairedCameras"
+                                   ValueChanged="OnShowUnpairedCamerasChanged"
+                                   Label="Show unpaired cameras"
+                                   Color="Color.Primary"
+                                   Class="ml-4" />
+                    </MudStack>
                 </StaticContent>
             </MudSelectExtended>
         </MudItem>

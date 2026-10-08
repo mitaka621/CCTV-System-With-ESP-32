@@ -4,6 +4,7 @@
 @inject IDevicePreProvisionService _devicePreProvisionService
 @inject IDialogService _dialogService
 @inject ISnackbar _snackbar
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <MudDialog>
     <DialogContent>
@@ -103,6 +104,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            MudDialog?.Cancel();
+            return;
+        }
+
         if (!ResumeDeviceId.HasValue)
         {
             return;
@@ -126,6 +133,11 @@
 
     private async Task CancelAsync()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         if (!model.DeviceId.HasValue)
         {
             MudDialog?.Cancel();

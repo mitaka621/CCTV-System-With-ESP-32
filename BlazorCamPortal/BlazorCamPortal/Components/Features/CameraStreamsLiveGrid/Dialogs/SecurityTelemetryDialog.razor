@@ -8,6 +8,7 @@
 @inject ICameraStatusNotifier _statusNotifier
 @inject ISnackbar _snackbar
 @inject ISystemSettingsService _systemSettings
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <MudDialog>
     <TitleContent>
@@ -29,7 +30,7 @@
                 </MudButton>
             </MudStack>
             <div class="border-solid border-2 @(!_status.SecurityArmed ? "mud-border-error" : "mud-border-success") pa-1" style="min-width:320px; width: fit-content; border-radius:5px">
-                <MudSwitch T="bool" Value="_status.SecurityArmed" ValueChanged="OnArmChanged" Color="Color.Primary"
+                <MudSwitch T="bool" Value="_status.SecurityArmed" ValueChanged="OnArmChanged" Color="Color.Primary" Disabled="!_isAdmin"
                            Label="@(_status.SecurityArmed ? "Security armed" : "Security disarmed (maintenance)")" />
             </div>
         </MudStack>
@@ -105,7 +106,9 @@
                         </MudStack>
                     </MudStack>
                 </MudStack>
-                <MudIconButton Href="/system/settings/security" Size="Size.Small" Icon="@Icons.Material.Filled.Settings" Style="position:absolute; top:2px; right:2px;" />
+                <AuthorizeView Roles="@Roles.Admin">
+                    <MudIconButton Href="/system/settings/security" Size="Size.Small" Icon="@Icons.Material.Filled.Settings" Style="position:absolute; top:2px; right:2px;" />
+                </AuthorizeView>
             </MudPaper>
             <MudPaper Height="20" Outlined="true" Style="position:relative; height:300px">
                 <MudStack Justify="Justify.Center" Style="height:100%">
@@ -169,9 +172,9 @@
                                 <MudDivider Style="border-color: white;" DividerType="DividerType.FullWidth" Vertical="true" FlexItem="true" />
                                 <MudStack Style="flex:2; height:100%" Class="mt-2">
                                     <MudText Color="Color.Primary">Movement Thresholds Adjustments (per camera)</MudText>
-                                    <MudNumericField T="double" Label="Increased Movement Threshold (g)" Variant="Variant.Outlined" Min="0" Step="0.2"
+                                    <MudNumericField T="double" Label="Increased Movement Threshold (g)" Variant="Variant.Outlined" Min="0" Step="0.2" Disabled="!_isAdmin"
                                                      Value="_movementThresholdOffset" ValueChanged="OnMovementThresholdChanged" />
-                                    <MudNumericField T="double" Label="Increased Rotation Threshold (deg/s)" Variant="Variant.Outlined" Min="0" Step="5"
+                                    <MudNumericField T="double" Label="Increased Rotation Threshold (deg/s)" Variant="Variant.Outlined" Min="0" Step="5" Disabled="!_isAdmin"
                                                      Value="_rotationThresholdOffset" ValueChanged="OnRotationThresholdChanged" />
                                     <MudText Typo="Typo.caption">Increase these to widen the movement dead zone and suppress false detections. 0 = no dead zone.</MudText>
                                 </MudStack>
@@ -221,7 +224,7 @@
                             <MudStack Style="flex:2; height:100%" Class="mt-2">
                                 <MudText Color="Color.Success">Configuration</MudText>
                                 <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Start">
-                                    <MudSwitch T="bool" Value="_status.CaseSensorInstalled" ValueChanged="OnCaseSensorChanged" Color="Color.Secondary"
+                                    <MudSwitch T="bool" Value="_status.CaseSensorInstalled" ValueChanged="OnCaseSensorChanged" Color="Color.Secondary" Disabled="!_isAdmin"
                                                Label="@(_status.CaseSensorInstalled ? "Case sensor installed" : "Case sensor disabled")" />
                                 </MudStack>
                             </MudStack>
@@ -250,9 +253,11 @@
     private SystemSettingsDto _settings = new();
     private double _movementThresholdOffset;
     private double _rotationThresholdOffset;
+    private bool _isAdmin;
 
     protected override async Task OnInitializedAsync()
     {
+        _isAdmin = await _adminAuthorizationGuard.IsAdminAsync();
         _statusNotifier.StatusChanged += OnCameraStatusChanged;
         await RefreshStatus();
     }
@@ -279,6 +284,11 @@
 
     private async Task OnArmChanged(bool armed)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         await _securityService.ArmAsync(CameraId, armed);
         await RefreshStatus();
         _snackbar.Add(armed ? "Camera security armed." : "Camera security disarmed.", Severity.Info);
@@ -288,6 +298,11 @@
 
     private async Task OnCaseSensorChanged(bool installed)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         await _securityService.SetCaseSensorInstalledAsync(CameraId, installed);
         await RefreshStatus();
         _snackbar.Add(installed ? "Case sensor enabled." : "Case sensor disabled.", Severity.Info);
@@ -297,6 +312,11 @@
 
     private async Task OnMovementThresholdChanged(double value)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         _movementThresholdOffset = value < 0 ? 0 : value;
         await _securityService.SetMovementThresholdsAsync(CameraId, _movementThresholdOffset, _rotationThresholdOffset);
         _snackbar.Add("Movement thresholds updated.", Severity.Info);
@@ -304,6 +324,11 @@
 
     private async Task OnRotationThresholdChanged(double value)
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         _rotationThresholdOffset = value < 0 ? 0 : value;
         await _securityService.SetMovementThresholdsAsync(CameraId, _movementThresholdOffset, _rotationThresholdOffset);
         _snackbar.Add("Movement thresholds updated.", Severity.Info);

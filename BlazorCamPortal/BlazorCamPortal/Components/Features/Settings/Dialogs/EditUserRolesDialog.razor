@@ -2,6 +2,7 @@
 
 @inject IUserManagementService _userManagementService
 @inject ISnackbar _snackbar
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <MudDialog>
     <DialogContent>
@@ -72,6 +73,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            MudDialog?.Cancel();
+            return;
+        }
+
         _availableRoles = await _userManagementService.GetAllRolesAsync();
         _selectedRoleIds = InitialRoleIds.ToList();
     }
@@ -88,6 +95,11 @@
 
     private async Task SubmitAsync()
     {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
         _submitError = null;
 
         if (!_selectedRoleIds.Any())
