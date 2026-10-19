@@ -1,6 +1,7 @@
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
+using CamPortal.Contracts.Models;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -14,7 +15,8 @@ namespace CamPortal.Core.Services.Video
         private readonly IVideoChunkRepository _videoChunkRepository;
         private readonly IStorageLocationService _storageLocationService;
         private readonly ILogger<IVideoReplayService> _logger;
-
+        private readonly IVideoChunkReplicationRepository _videoChunkReplicationRepository;
+        private readonly IRemoteStorageTargetRepository _remoteStorageTargetRepository;
         private readonly string _defaultFramePathOnMissingChunk;
         private readonly int _encodedVideoOutputFps;
         private readonly int _maxChunksSizeInS;
@@ -23,11 +25,14 @@ namespace CamPortal.Core.Services.Video
             IVideoChunkRepository videoChunkRepository,
             IStorageLocationService storageLocationService,
             IConfiguration configuration,
-            ILogger<IVideoReplayService> logger)
+            ILogger<IVideoReplayService> logger,
+            IVideoChunkReplicationRepository videoChunkReplicationRepository,
+            IRemoteStorageTargetRepository remoteStorageTargetRepository)
         {
             _videoChunkRepository = videoChunkRepository;
             _storageLocationService = storageLocationService;
             _logger = logger;
+            _remoteStorageTargetRepository = remoteStorageTargetRepository;
 
             _defaultFramePathOnMissingChunk = configuration.GetSection("VideoEncoderConfig")["DefaultFramePathOnMissingChunk"]
                ?? throw new ArgumentNullException("DefaultFramePathOnMissingChunk not configured");
@@ -41,6 +46,7 @@ namespace CamPortal.Core.Services.Video
                 configuration.GetSection("VideoEncoderConfig")["VideoChunksSizeInS"]
                 ?? throw new ArgumentNullException("Video chunk size not configured")
             );
+            _videoChunkReplicationRepository = videoChunkReplicationRepository;
         }
 
         public async Task<Guid> SaveVideoChunkInfoAsync(CreateVideoChunkDto createVideoChunkDto)
@@ -50,9 +56,18 @@ namespace CamPortal.Core.Services.Video
             return id;
         }
 
-        public async Task<List<HLSPlaylistDto>> GenerateHLSPlaylistsAsync(List<Guid> cameraIds, DateTime startTime, DateTime endTime)
+        public async Task<List<HLSPlaylistDto>> GenerateHLSPlaylistsAsync(List<Guid> cameraIds, DateTime startTime, DateTime endTime, Guid sourceTargetId)
         {
-            var availableChunksByCameraId = await _videoChunkRepository.GetVideoChunksForPeriodForCameraAsync(cameraIds, startTime, endTime);
+            Dictionary<Guid, List<VideoChunkShortInfoDto>> availableChunksByCameraId = new();
+
+            if (sourceTargetId == Guid.Empty)
+            {
+                availableChunksByCameraId = await _videoChunkRepository.GetVideoChunksForPeriodForCameraFromLocalStorageAsync(cameraIds, startTime, endTime);
+            }
+            else
+            {
+                availableChunksByCameraId = await _videoChunkReplicationRepository.GetVideoChunksForPeriodForCameraFromRemoteStorageAsync(sourceTargetId, cameraIds, startTime, endTime);
+            }
 
             List<HLSPlaylistDto> playlists = new();
 
@@ -81,7 +96,10 @@ namespace CamPortal.Core.Services.Video
                 {
                     sb.AppendLine("#EXT-X-DISCONTINUITY");
                     sb.AppendLine($"#EXTINF:{(segment.ChunkEndTime - segment.ChunkStartTime).TotalSeconds:0.###},");
-                    sb.AppendLine(_storageLocationService.BuildChunkUrl(segment.CameraFolder!, segment.FileName));
+
+                    //either local server-side storage or from some smb share (when null, local storage will be used)
+                    var source = sourceTargetId != Guid.Empty && !segment.IsMissingChunk ? sourceTargetId.ToString() : null;
+                    sb.AppendLine(_storageLocationService.BuildChunkUrl(segment.CameraFolder!, segment.FileName, source));
                 }
 
                 sb.AppendLine("#EXT-X-ENDLIST");
@@ -104,7 +122,7 @@ namespace CamPortal.Core.Services.Video
         public async Task<List<string>> GetExportTimelineSegmentsAsync(Guid cameraId, DateTime startTime, DateTime endTime)
         {
             var availableChunksByCameraId = await _videoChunkRepository
-                .GetVideoChunksForPeriodForCameraAsync(new List<Guid> { cameraId }, startTime, endTime);
+                .GetVideoChunksForPeriodForCameraFromLocalStorageAsync(new List<Guid> { cameraId }, startTime, endTime);
 
             availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks);
 
@@ -196,6 +214,55 @@ namespace CamPortal.Core.Services.Video
             return chunksInMB / 1024.0;
         }
 
+        public async Task<List<ReplayFootageAvailabilityModel>> GetFootageAvailabilityForEachSourceAsync(List<Guid> cameraIds, DateTime startDate, DateTime endDate)
+        {
+            if (startDate >= endDate)
+            {
+                _logger.LogError("The provided startDate is after the endDate. Using a 1 hour diviation from end date as start date");
+                startDate = endDate.AddHours(-1);
+            }
+
+            var expectedNumberOfChunks = ((endDate - startDate).TotalSeconds / _maxChunksSizeInS) * cameraIds.Count;
+
+            var serverLocalStorageTotalChunkCount = await _videoChunkRepository
+                .CountTotalAvailableChunksForPeriodInLocalStorageAsync(cameraIds, startDate, endDate);
+
+            var result = new List<ReplayFootageAvailabilityModel>();
+
+            result.Add(new ReplayFootageAvailabilityModel()
+            {
+                LocationId = Guid.Empty,
+                LocationName = "Local Server-Side Storage",
+                AvailabilityPercentage = serverLocalStorageTotalChunkCount / expectedNumberOfChunks * 100
+            });
+
+            var countsPerRemotes = await _videoChunkReplicationRepository.GetAvailableChunksCountPerEnabledTargetsAsync(cameraIds, startDate, endDate);
+
+            foreach (var remoteCount in countsPerRemotes)
+            {
+                result.Add(new ReplayFootageAvailabilityModel()
+                {
+                    LocationId = remoteCount.Key.Id,
+                    LocationName = remoteCount.Key.SharePath,
+                    AvailabilityPercentage = remoteCount.Value / expectedNumberOfChunks * 100
+                });
+            }
+
+            var allEnabledTargets = await _remoteStorageTargetRepository.GetEnabledAsync();
+
+            var emptyRemoteTargets = allEnabledTargets.Where(x => !countsPerRemotes.Any(y => y.Key.Id == x.Key))
+                .Select(x => new ReplayFootageAvailabilityModel()
+                {
+                    LocationId = x.Key,
+                    LocationName = x.Value.SharePath,
+                    AvailabilityPercentage = 0
+                });
+
+            result.AddRange(emptyRemoteTargets);
+
+            return result;
+        }
+
         private void FillGap(DateTime gapStart, DateTime gapEnd, List<VideoChunkShortInfoDto> fullTimeline, List<VideoChunkDateTimeEventDto> missingVideoChunkEvents)
         {
             if (gapEnd <= gapStart)
@@ -224,7 +291,8 @@ namespace CamPortal.Core.Services.Video
                     FileName = _storageLocationService.GetPlaceholderChunkFileName(segmentSeconds),
                     CameraFolder = _storageLocationService.PlaceholderFolderName,
                     ChunkStartTime = current,
-                    ChunkEndTime = current.AddSeconds(segmentSeconds)
+                    ChunkEndTime = current.AddSeconds(segmentSeconds),
+                    IsMissingChunk = true
                 });
 
                 missingVideoChunkEvents.Add(new VideoChunkDateTimeEventDto

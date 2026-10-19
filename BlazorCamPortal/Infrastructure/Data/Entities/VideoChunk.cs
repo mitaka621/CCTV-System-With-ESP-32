@@ -28,5 +28,9 @@ namespace CamPortal.Infrastructure.Data.Entities
 
         [Required]
         public double SizeInMB { get; set; }
+
+        public bool IsDeletedFromLocalStorage { get; set; }
+
+        public List<VideoChunkReplication> VideoChunkReplications { get; set; } = new();
     }
 }

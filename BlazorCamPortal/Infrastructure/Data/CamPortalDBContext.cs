@@ -39,6 +39,10 @@ namespace CamPortal.Infrastructure.Data
 
         public DbSet<SmokeAlarmDetectorConfiguration> SmokeAlarmDetectorConfigurations { get; set; }
 
+        public DbSet<RemoteStorageTarget> RemoteStorageTargets { get; set; }
+
+        public DbSet<VideoChunkReplication> VideoChunkReplications { get; set; }
+
         public static readonly Guid SystemSettingsId = Guid.Parse("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d");
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

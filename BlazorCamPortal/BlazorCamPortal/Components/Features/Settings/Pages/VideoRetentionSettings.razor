@@ -8,19 +8,134 @@
 @attribute [Authorize(Roles = Roles.Admin)]
 
 @inject ISystemSettingsService _systemSettingsService
+@inject IRemoteStorageService _remoteStorageService
 @inject ISnackbar _snackbar
 @inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
 <PageTitle>Video Retention - BlazorCam Portal</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
-    <MudStack Spacing="4">
-        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.AutoDelete" Color="Color.Primary" />
-            <MudText Typo="Typo.h4">Video Retention</MudText>
-        </MudStack>
+<MudStack Spacing="4">
+<MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+    <MudIcon Icon="@Icons.Material.Filled.AutoDelete" Color="Color.Primary" />
+    <MudText Typo="Typo.h4">Video Retention</MudText>
+</MudStack>
 
+<MudStack Row="true">
         <MudCard Elevation="4" Style="width:800px;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudSync" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Remote Storage (SMB)</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Recorded camera chunks are copied to every server with video sync enabled. Local chunks are not removed by retention until they are copied. Saved changes apply within the next few recorded chunks.
+                    </MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudTooltip Text="Add server connection">
+                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Size="Size.Small"
+                                       OnClick="AddTarget" />
+                    </MudTooltip>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    @if (_targets.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No server connections. Use + to add one.</MudText>
+                    }
+
+                    @foreach (var target in _targets)
+                    {
+                        <MudPaper Outlined="true" Class="pa-3" Style="position:relative">
+                            <div class="video-sync-switch">
+                                <MudSwitch T="bool"
+                                           Value="target.IsSyncEnabled"
+                                           ValueChanged="@((bool isEnabled) => OnSyncChangedAsync(target, isEnabled))"
+                                           Color="Color.Success"
+                                           Label="Video sync"
+                                           LabelPlacement="Placement.Left"
+                                           Disabled="target.IsVerifying" />
+                            </div>
+                            <MudStack Row Spacing="4" AlignItems="AlignItems.Center">
+                                <MudStack Spacing="2" Style="flex:1;">
+                                    <MudTextField T="string"
+                                                  @bind-Value="target.SharePath"
+                                                  Label="Share path"
+                                                  Placeholder="\\192.168.0.67\cctv" />
+                                    <MudTextField T="string"
+                                                  @bind-Value="target.Username"
+                                                  Label="Username" />
+                                    <MudTextField T="string"
+                                                  @bind-Value="target.Password"
+                                                  Label="Password"
+                                                  InputType="InputType.Password"
+                                                  HelperText="@(target.HasStoredPassword ? "Leave empty to keep the current password." : null)" />
+                                    <MudSelect T="RetentionPeriod"
+                                               Label="Camera chunks removal"
+                                               @bind-Value="target.Retention"
+                                               HelperText="Footage on this server is deleted after this period, only if the video sync is enabled">
+                                        @foreach (var period in Enum.GetValues<RetentionPeriod>())
+                                        {
+                                            <MudSelectItem Value="@period">@MiscUtilities.GetDisplayNameAttributeValue(period)</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudStack>
+                                <MudStack Spacing="2" Style="width:180px;">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.NetworkCheck"
+                                               OnClick="() => SaveAndVerifyTargetAsync(target)"
+                                               Disabled="_isSavingRemoteStorage">
+                                        @if (_isSavingRemoteStorage)
+                                        {
+                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                            <MudText Class="ms-2">Verifying</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText>Save And Verify</MudText>
+                                        }
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.Delete"
+                                               OnClick="() => RemoveTarget(target)"
+                                               Disabled="target.IsVerifying">
+                                        Remove
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+
+                            @if (!string.IsNullOrEmpty(target.VerificationMessage) && target.VerificationSucceeded == false)
+                            {
+                                <MudAlert Class="mt-3"
+                                          Dense="true"
+                                          Severity="Severity.Error">
+                                    @target.VerificationMessage
+                                </MudAlert>
+                            }
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+        <MudCard Elevation="4" Style="width:800px; height:350px">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Local Server-Side Storage</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Retention settings for the localy saved/encoded footage.
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
             <MudCardContent>
                 <MudStack Spacing="4">
                     <MudSelect T="RetentionPeriod"
@@ -45,10 +160,10 @@
                 </MudStack>
             </MudCardContent>
             <MudCardActions>
-                <MudButton Variant="Variant.Filled"
+                <MudButton Variant="Variant.Outlined"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Save"
-                           OnClick="SaveAsync"
+                           OnClick="SaveServerSideStorageSettingsAsync"
                            Disabled="_isSaving">
                     @if (_isSaving)
                     {
@@ -63,18 +178,124 @@
             </MudCardActions>
         </MudCard>
     </MudStack>
-</MudContainer>
+</MudStack>
 
 @code {
     private SystemSettingsDto _settings = new();
+    private List<RemoteStorageTargetModel> _targets = new();
     private bool _isSaving = false;
+    private bool _isSavingRemoteStorage = false;
 
     protected override async Task OnInitializedAsync()
     {
         _settings = await _systemSettingsService.GetSystemSettingsAsync();
+        _targets = await _remoteStorageService.GetTargetsAsync();
+
+        if (_targets.Count == 0)
+            AddTarget();
     }
 
-    private async Task SaveAsync()
+    private void AddTarget()
+    {
+        _targets.Add(new RemoteStorageTargetModel
+        {
+            Retention = RetentionPeriod.ThreeMonths
+        });
+    }
+
+    private void RemoveTarget(RemoteStorageTargetModel target)
+    {
+        _targets.Remove(target);
+    }
+
+    private async Task SaveAndVerifyTargetAsync(RemoteStorageTargetModel target)
+    {
+        try
+        {
+            if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+            {
+                return;
+            }
+
+            _isSavingRemoteStorage = true;
+
+            await InvokeAsync(StateHasChanged);
+
+            if (!await RunVerificationAsync(target))
+            {
+                return;
+            }
+
+            await SaveRemoteStorageAsync(target);
+        }
+        finally
+        {
+            _isSavingRemoteStorage = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnSyncChangedAsync(RemoteStorageTargetModel target, bool isEnabled)
+    {
+        if (!isEnabled)
+        {
+            target.IsSyncEnabled = false;
+
+            await SaveRemoteStorageAsync(target);
+
+            return;
+        }
+
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
+        target.IsSyncEnabled = await RunVerificationAsync(target);
+
+        if (target.IsSyncEnabled)
+        {
+            await SaveRemoteStorageAsync(target);
+        }
+    }
+
+    private async Task<bool> RunVerificationAsync(RemoteStorageTargetModel target)
+    {
+        target.VerificationMessage = null;
+
+        var result = await _remoteStorageService.VerifyTargetAsync(target);
+
+        target.VerificationSucceeded = result.Succeeded;
+        target.VerificationMessage = result.Message;
+
+        if (result.Succeeded)
+        {
+            _snackbar.Add("Connection verified.", Severity.Info);
+        }
+        else
+        {
+            _snackbar.Add("Connection verification failed.", Severity.Error);
+        }
+        
+
+        return result.Succeeded;
+    }
+
+    private async Task SaveRemoteStorageAsync(RemoteStorageTargetModel target)
+    {
+        var result = await _remoteStorageService.SaveTargetAsync(target);
+
+        if (!result.Succeeded)
+        {
+            _snackbar.Add(result.Message, Severity.Error);
+            return;
+        }
+
+        _snackbar.Add(result.Message, Severity.Success);
+        _targets = await _remoteStorageService.GetTargetsAsync();
+    }
+
+    private async Task SaveServerSideStorageSettingsAsync()
     {
         if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
         {

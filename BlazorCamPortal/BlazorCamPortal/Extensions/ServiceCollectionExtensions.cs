@@ -8,6 +8,7 @@ using CamPortal.Core.LoggerProviders.DatabaseLogger;
 using CamPortal.Core.Services.Devices;
 using CamPortal.Core.Services.DeviceSessionHandlers;
 using CamPortal.Core.Services.Provisioning;
+using CamPortal.Core.Services.RemoteStorage;
 using CamPortal.Core.Services.SecureStreaming;
 using CamPortal.Core.Services.Security;
 using CamPortal.Core.Services.SystemSettings;
@@ -21,6 +22,7 @@ using CamPortal.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MudBlazor.Services;
@@ -34,7 +36,12 @@ namespace CamPortal.Extensions
     {
         public static IServiceCollection AddServices(this IServiceCollection services)
         {
-            services.AddMudServices();
+            services.AddMudServices(config =>
+            {
+                config.SnackbarConfiguration.PreventDuplicates = false;
+                config.SnackbarConfiguration.ShowTransitionDuration = 200;
+                config.SnackbarConfiguration.HideTransitionDuration = 200;
+            });
             services.AddMudExtensions();
 
             services.AddScoped<IUserTimeZoneService, UserTimeZoneService>();
@@ -79,9 +86,15 @@ namespace CamPortal.Extensions
             services.AddSingleton<ICameraRepository, CameraRepository>();
             services.AddSingleton<ISmokeAlarmRepository, SmokeAlarmRepository>();
             services.AddSingleton<ISecureHandshake, SecureHandshake>();
+            services.AddSingleton<IRemoteStorageTargetRepository, RemoteStorageTargetRepository>();
+            services.AddSingleton<ISmbConnectionService, SmbConnectionService>();
+            services.AddSingleton<ISmbReadSessionManager, SmbReadSessionManager>();
+            services.AddSingleton<IRemoteStorageService, RemoteStorageTargetService>();
+            services.AddSingleton<IVideoChunkReplicationRepository, VideoChunkReplicationRepository>();
 
             services.AddSingleton<VideoExportEncoderService>();
             services.AddSingleton<IVideoExportCanceller>(sp => sp.GetRequiredService<VideoExportEncoderService>());
+            services.AddHostedService(sp => sp.GetRequiredService<VideoExportEncoderService>());
 
             services.AddSingleton<CameraSessionHandler>();
             services.AddSingleton<SmokeAlarmSessionHandler>();
@@ -104,9 +117,36 @@ namespace CamPortal.Extensions
             services.AddHostedService<SecureTcpServer>();
             services.AddHostedService<VideoEncoderService>();
             services.AddHostedService<RawFrameProcessorService>();
-            services.AddHostedService(sp => sp.GetRequiredService<VideoExportEncoderService>());
+
             services.AddHostedService<VideoRetentionCleanupService>();
             services.AddHostedService<CameraTelemetryWriterService>();
+
+            services.AddSingleton<RemoteStorageReplicationService>();
+            services.AddSingleton<IChunkReplicationQueue>(sp => sp.GetRequiredService<RemoteStorageReplicationService>());
+            services.AddHostedService(sp => sp.GetRequiredService<RemoteStorageReplicationService>());
+
+            return services;
+        }
+
+        public static IServiceCollection AddDataProtectionKeyStorage(this IServiceCollection services, IConfiguration configuration)
+        {
+            var configuredRoot = configuration.GetSection("ServerStorage")["RootPath"] ?? string.Empty;
+
+            var keysFolder = configuration.GetSection("ServerStorage")["DataProtectionKeysFolder"]
+                ?? throw new ArgumentNullException("DataProtectionKeysFolder not configured");
+
+            var storageRoot = string.IsNullOrWhiteSpace(configuredRoot)
+                ? Directory.GetCurrentDirectory()
+                : Path.GetFullPath(configuredRoot, Directory.GetCurrentDirectory());
+
+            var dataProtectionBuilder = services.AddDataProtection()
+                .SetApplicationName("CamPortal")
+                .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(storageRoot, keysFolder)));
+
+            if (OperatingSystem.IsWindows())
+            {
+                dataProtectionBuilder.ProtectKeysWithDpapi();
+            }
 
             return services;
         }

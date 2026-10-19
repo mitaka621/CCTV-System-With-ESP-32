@@ -6,8 +6,8 @@ body {
   overflow-x: hidden;
 }
 
-html:has(.mud-overlay),
-body:has(.mud-overlay) {
+html:has(.mud-overlay-dialog),
+body:has(.mud-overlay-dialog) {
   overflow: hidden !important;
 }
 
@@ -208,11 +208,14 @@ textarea,
 
 .mud-alert {
   border-radius: 12px !important;
+}
+
+.mud-alert:not(.mud-snackbar) {
   border-left: 4px solid;
   backdrop-filter: blur(10px);
 }
 
-.mud-alert-filled-success {
+.mud-alert-filled-success:not(.mud-snackbar) {
   background: linear-gradient(
     45deg,
     rgba(76, 175, 80, 0.1),
@@ -221,7 +224,7 @@ textarea,
   border-left-color: #4caf50;
 }
 
-.mud-alert-filled-info {
+.mud-alert-filled-info:not(.mud-snackbar) {
   background: linear-gradient(
     45deg,
     rgba(33, 150, 243, 0.1),

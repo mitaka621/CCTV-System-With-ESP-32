@@ -314,7 +314,7 @@ namespace CamPortal.Infrastructure.Repositories
 
         public async Task<int> CountAllDevicesFromCategoryAsync(DeviceTypeCategories category)
         {
-            var db = await DbContextFactory.CreateDbContextAsync();
+            await using var db = await DbContextFactory.CreateDbContextAsync();
 
             return await db.Devices
                 .AsNoTracking()

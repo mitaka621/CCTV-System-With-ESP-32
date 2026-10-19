@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 
 namespace CamPortal.Core.Services.Video
@@ -74,9 +75,11 @@ namespace CamPortal.Core.Services.Video
             return Path.Combine(_exportsRoot, exportFileName);
         }
 
-        public string BuildChunkUrl(string cameraFolder, string chunkName)
+        public string BuildChunkUrl(string cameraFolder, string chunkName, string? sourceTargetId = null)
         {
-            return $"{_chunkBaseApiUrl}{cameraFolder}/{chunkName}";
+            return string.IsNullOrEmpty(sourceTargetId)
+                ? $"{_chunkBaseApiUrl}{cameraFolder}/{chunkName}"
+                : $"{_chunkBaseApiUrl}{cameraFolder}/{chunkName}?sourceTargetId={sourceTargetId}";
         }
 
         public string BuildExportUrl(string exportFileName)
@@ -95,8 +98,23 @@ namespace CamPortal.Core.Services.Video
 
             fullPath = cameraFolder == _placeholderFolderName
                 ? Path.Combine(_footageRoot, _placeholderFolderName, fileName)
-                : Path.Combine(_footageRoot, cameraFolder, GetChunkDayFolder(fileName), fileName);
+                : Path.Combine(_footageRoot, cameraFolder, VideoChunkStorageUtilities.GetChunkDayFolder(fileName), fileName);
 
+            return true;
+        }
+
+        public bool TryGetRemoteCameraChunkRelativePath(string cameraFolder, string fileName, out string relativePath)
+        {
+            relativePath = string.Empty;
+
+            if (!Guid.TryParse(cameraFolder, out var cameraId)
+                || !IsSafeRemoteChunkFileName(fileName)
+                || !VideoChunkStorageUtilities.TryGetChunkDayFolder(fileName, out var dayFolder))
+            {
+                return false;
+            }
+
+            relativePath = $@"{cameraId}\{dayFolder}\{fileName}";
             return true;
         }
 
@@ -113,15 +131,7 @@ namespace CamPortal.Core.Services.Video
             return true;
         }
 
-        private static string GetChunkDayFolder(string fileName)
-        {
-            const string marker = "_=";
-            var start = fileName.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
-
-            return fileName.Substring(start, 10);
-        }
-
-        private static string ResolveRoot(string configuredRoot)
+        private string ResolveRoot(string configuredRoot)
         {
             if (string.IsNullOrWhiteSpace(configuredRoot))
             {
@@ -131,7 +141,7 @@ namespace CamPortal.Core.Services.Video
             return Path.GetFullPath(configuredRoot, Directory.GetCurrentDirectory());
         }
 
-        private static bool IsSafeSegment(string segment)
+        private bool IsSafeSegment(string segment)
         {
             if (string.IsNullOrWhiteSpace(segment) || segment.Contains("..", StringComparison.Ordinal))
             {
@@ -144,6 +154,15 @@ namespace CamPortal.Core.Services.Video
             }
 
             return Path.GetFileName(segment) == segment;
+        }
+
+        private static bool IsSafeRemoteChunkFileName(string fileName)
+        {
+            return !string.IsNullOrWhiteSpace(fileName)
+                && !fileName.Contains("..", StringComparison.Ordinal)
+                && fileName.IndexOfAny(['\\', '/', ':', '*', '?', '"', '<', '>', '|']) < 0
+                && !fileName.Any(char.IsControl)
+                && fileName.EndsWith(".ts", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -42,6 +42,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 builder.Services.AddServices();
+builder.Services.AddDataProtectionKeyStorage(builder.Configuration);
 builder.Services.AddForwardedHeaders(builder.Configuration);
 builder.Services.AddRateLimiterPolicy();
 builder.Services.AddAuth();

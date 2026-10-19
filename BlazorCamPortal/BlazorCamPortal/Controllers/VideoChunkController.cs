@@ -13,22 +13,56 @@ namespace CamPortal.Controllers
     public class VideoChunkController : ControllerBase
     {
         private readonly IStorageLocationService _storageLocationService;
+        private readonly IRemoteStorageService _remoteStorageService;
+        private readonly ISmbReadSessionManager _smbReadSessionManager;
+        private readonly IDeviceService _deviceService;
 
-        public VideoChunkController(IStorageLocationService storageLocationService)
+        public VideoChunkController(
+            IStorageLocationService storageLocationService,
+            IRemoteStorageService remoteStorageService,
+            ISmbReadSessionManager smbReadSessionManager,
+            IDeviceService deviceService)
         {
             _storageLocationService = storageLocationService;
+            _remoteStorageService = remoteStorageService;
+            _smbReadSessionManager = smbReadSessionManager;
+            _deviceService = deviceService;
         }
 
         [HttpGet("chunk/{cameraId}/{chunkName}")]
         [HttpHead("chunk/{cameraId}/{chunkName}")]
-        public IActionResult GetChunk(string cameraId, string chunkName)
+        public async Task<IActionResult> GetChunkAsync(string cameraId, string chunkName, [FromQuery] string? sourceTargetId)
         {
-            if (!_storageLocationService.TryGetCameraChunkFullPath(cameraId, chunkName, out var fullPath))
+            if (string.IsNullOrEmpty(sourceTargetId))
+            {
+                if (!_storageLocationService.TryGetCameraChunkFullPath(cameraId, chunkName, out var fullPath))
+                {
+                    return BadRequest("Invalid chunk identifier.");
+                }
+
+                return ServeFile(fullPath);
+            }
+
+            var target = await _remoteStorageService.GetEnabledTargetAsync(Guid.Parse(sourceTargetId));
+
+            if (target == null)
+            {
+                return NotFound("Remote storage not found.");
+            }
+
+            if (!_storageLocationService.TryGetRemoteCameraChunkRelativePath(cameraId, chunkName, out var relativePath))
             {
                 return BadRequest("Invalid chunk identifier.");
             }
 
-            return ServeFile(fullPath, "Video chunk not found.");
+            var content = await _smbReadSessionManager.ReadFileAsync(target, relativePath, HttpContext.RequestAborted);
+
+            if (content == null)
+            {
+                return NotFound("Video chunk not found.");
+            }
+
+            return File(content, "video/mp2t", enableRangeProcessing: true);
         }
 
         [HttpGet("export/{fileName}")]
@@ -40,14 +74,14 @@ namespace CamPortal.Controllers
                 return BadRequest("Invalid export identifier.");
             }
 
-            return ServeFile(fullPath, "Exported video not found.");
+            return ServeFile(fullPath);
         }
 
-        private IActionResult ServeFile(string fullPath, string notFoundMessage)
+        private IActionResult ServeFile(string fullPath)
         {
             if (!System.IO.File.Exists(fullPath))
             {
-                return NotFound(notFoundMessage);
+                return NotFound();
             }
 
             var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);

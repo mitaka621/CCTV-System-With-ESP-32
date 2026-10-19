@@ -384,6 +384,37 @@ namespace CamPortal.Infrastructure.Migrations
                     b.ToTable("PreprovisionAttempts");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.RemoteStorageTarget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsSyncEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ProtectedPassword")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Retention")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SharePath")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RemoteStorageTargets");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -636,6 +667,9 @@ namespace CamPortal.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<bool>("IsDeletedFromLocalStorage")
+                        .HasColumnType("bit");
+
                     b.Property<double>("SizeInMB")
                         .HasColumnType("float");
 
@@ -644,6 +678,34 @@ namespace CamPortal.Infrastructure.Migrations
                     b.HasIndex("DeviceId", "ChunkStartTime");
 
                     b.ToTable("VideoChunks");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunkReplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("RemoteStorageTargetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ReplicatedDateUTC")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("VideoChunkId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VideoChunkId");
+
+                    b.HasIndex("RemoteStorageTargetId", "VideoChunkId")
+                        .IsUnique();
+
+                    b.ToTable("VideoChunkReplications");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.CameraConfiguration", b =>
@@ -791,6 +853,25 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Navigation("Device");
                 });
 
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunkReplication", b =>
+                {
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.RemoteStorageTarget", "RemoteStorageTarget")
+                        .WithMany("VideoChunkReplications")
+                        .HasForeignKey("RemoteStorageTargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.VideoChunk", "VideoChunk")
+                        .WithMany("VideoChunkReplications")
+                        .HasForeignKey("VideoChunkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RemoteStorageTarget");
+
+                    b.Navigation("VideoChunk");
+                });
+
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Device", b =>
                 {
                     b.Navigation("CameraConfiguration");
@@ -798,6 +879,11 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Navigation("PreprovisionAttempts");
 
                     b.Navigation("SmokeAlarmTelemetries");
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.RemoteStorageTarget", b =>
+                {
+                    b.Navigation("VideoChunkReplications");
                 });
 
             modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.Role", b =>
@@ -813,6 +899,11 @@ namespace CamPortal.Infrastructure.Migrations
 
                     b.Navigation("UserSettings")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("CamPortal.Infrastructure.Data.Entities.VideoChunk", b =>
+                {
+                    b.Navigation("VideoChunkReplications");
                 });
 #pragma warning restore 612, 618
         }

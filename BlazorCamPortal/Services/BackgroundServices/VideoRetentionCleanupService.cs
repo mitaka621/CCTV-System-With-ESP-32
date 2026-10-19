@@ -1,5 +1,6 @@
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.RemoteStorageDtos;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -15,6 +16,9 @@ namespace CamPortal.Core.BackgroundServices
         private readonly IVideoExportNotifier _videoExportNotifier;
         private readonly IStorageLocationService _storageLocationService;
         private readonly ILogger<VideoRetentionCleanupService> _logger;
+        private readonly IRemoteStorageTargetRepository _remoteStorageTargetRepository;
+        private readonly ISmbConnectionService _smbConnectionService;
+        private readonly IVideoChunkReplicationRepository _videoChunkReplicationRepository;
 
         private readonly TimeSpan _cleanupInterval;
 
@@ -25,7 +29,10 @@ namespace CamPortal.Core.BackgroundServices
             IVideoExportNotifier videoExportNotifier,
             IStorageLocationService storageLocationService,
             IConfiguration configuration,
-            ILogger<VideoRetentionCleanupService> logger)
+            ILogger<VideoRetentionCleanupService> logger,
+            IRemoteStorageTargetRepository remoteStorageTargetRepository,
+            ISmbConnectionService smbConnectionService,
+            IVideoChunkReplicationRepository videoChunkReplicationRepository)
         {
             _exportedVideoRepository = exportedVideoRepository;
             _videoChunkRepository = videoChunkRepository;
@@ -33,12 +40,15 @@ namespace CamPortal.Core.BackgroundServices
             _videoExportNotifier = videoExportNotifier;
             _storageLocationService = storageLocationService;
             _logger = logger;
+            _remoteStorageTargetRepository = remoteStorageTargetRepository;
+            _videoChunkReplicationRepository = videoChunkReplicationRepository;
 
             var cleanupIntervalInMinutes = int.Parse(
                 configuration.GetSection("VideoExportConfig")["CleanupIntervalInMinutes"]
                 ?? throw new ArgumentNullException("CleanupIntervalInMinutes not configured"));
 
             _cleanupInterval = TimeSpan.FromMinutes(cleanupIntervalInMinutes);
+            _smbConnectionService = smbConnectionService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -49,7 +59,11 @@ namespace CamPortal.Core.BackgroundServices
             {
                 try
                 {
+                    _logger.LogInformation("Video retention cleanup started.");
+
                     await RunCleanupAsync();
+
+                    _logger.LogInformation("Video retention cleanup finished.");
                 }
                 catch (Exception ex)
                 {
@@ -65,7 +79,15 @@ namespace CamPortal.Core.BackgroundServices
 
             await CleanupExpiredExportedVideosAsync(settings.EncodedVideoRetention.ToTimeSpan());
 
-            await CleanupExpiredCameraChunksAsync(settings.CameraChunkRetention.ToTimeSpan());
+            await CleanupExpiredCameraChunksFromLocalStorageAsync(settings.CameraChunkRetention.ToTimeSpan());
+
+            var enabledTargets = await _remoteStorageTargetRepository.GetEnabledAsync();
+            foreach (var remoteTarget in enabledTargets.Values)
+            {
+                await CleanupExpiredCameraChunksFromRemoteStorageAsync(remoteTarget);
+            }
+
+            await DeleteDbVideoChunkRecordsWithNoFootagePresentAnywhereAsync();
         }
 
         private async Task CleanupExpiredExportedVideosAsync(TimeSpan? retention)
@@ -106,10 +128,10 @@ namespace CamPortal.Core.BackgroundServices
                 }
             }
 
-            _logger.LogInformation("Expired {Count} encoded videos during retention cleanup.", expiredIds.Count);
+            _logger.LogInformation("{Count} expired, encoded videos cleaned during retention cleanup.", expiredIds.Count);
         }
 
-        private async Task CleanupExpiredCameraChunksAsync(TimeSpan? retention)
+        private async Task CleanupExpiredCameraChunksFromLocalStorageAsync(TimeSpan? retention)
         {
             if (retention == null)
             {
@@ -136,9 +158,47 @@ namespace CamPortal.Core.BackgroundServices
                 }
             }
 
-            await _videoChunkRepository.DeleteVideoChunksAsync(expiredChunks.Select(x => x.Id).ToList());
+            await _videoChunkRepository.MarkVideoChunksAsDeletedInLocalStorageAsync(expiredChunks.Select(x => x.Id).ToList());
 
-            _logger.LogInformation("Deleted {Count} expired camera chunks during retention cleanup.", expiredChunks.Count);
+            _logger.LogInformation("Deleted and marked {Count} expired camera chunks from the server's local storage during retention cleanup.", expiredChunks.Count);
+        }
+
+        private async Task CleanupExpiredCameraChunksFromRemoteStorageAsync(RemoteStorageTargetDto target)
+        {
+            using var session = _smbConnectionService.OpenSession(target);
+
+            if (!session.IsConnected)
+            {
+                _logger.LogError("Failed to connect to {SmbShare}", target.SharePath);
+                return;
+            }
+
+            var cutoffUtc = DateTime.UtcNow - target.Retention.ToTimeSpan();
+
+            var chunksToDelete = await _videoChunkReplicationRepository.GetAllExpiredReplicatedChunksForTargetAsync(target.Id, cutoffUtc!.Value);
+
+            foreach (var chunk in chunksToDelete)
+            {
+                var smbChunkFilePath = $@"{chunk.DeviceId}\{VideoChunkStorageUtilities.GetChunkDayFolder(chunk.FileName)}\{chunk.FileName}";
+
+                session.DeleteFile(smbChunkFilePath);
+            }
+
+            var deletionCount = await _videoChunkReplicationRepository.MarkReplicatedChunksAsDeletedAsync(target.Id, chunksToDelete.Select(x => x.Id).ToList());
+
+            _logger.LogInformation("Deleted and marked {Count} expired video chunks from {SmbShare}", deletionCount, target.SharePath);
+        }
+
+        private async Task DeleteDbVideoChunkRecordsWithNoFootagePresentAnywhereAsync()
+        {
+            var deletedRecordsCount = await _videoChunkRepository.DeleteChunksWhichAreNotAvailbileInAnyStorageLocationAsync();
+
+            if (deletedRecordsCount < 0)
+            {
+                return;
+            }
+
+            _logger.LogInformation("Deleted {deletedRecordsCount} video chunkl db records, since the footage associated with them, was already deleted from all sources", deletedRecordsCount);
         }
 
         private void TryDeleteFile(string path)

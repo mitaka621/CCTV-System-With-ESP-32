@@ -16,15 +16,9 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task<List<CameraDisplayModel>> GetAllCamerasAsync(params List<Guid> cameraIds);
 
-        Task<List<CameraDisplayModel>> GetAllCamerasAsync(params DevicePairStatus[] statuses);
-
-        Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllActiveCameraIpsAsync();
-
         Task ChangeStatusAndInvalidateCameraAsync(Guid cameraId, DevicePairStatus newStatus);
 
         Task<List<NameAndIdWithStatusModel>> GetAllCameraNameAndIdAsync();
-
-        Task<List<PreprovisionDeviceModel>> GetCamerasByIdAsync(List<Guid> cameraIds);
 
         Task<int> GetTotalCamerasAsync(params List<DevicePairStatus> status);
 

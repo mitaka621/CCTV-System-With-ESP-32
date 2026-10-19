@@ -136,20 +136,6 @@ namespace CamPortal.Core.Services.Devices
             return _mapper.Map<List<CameraDisplayModel>>(result);
         }
 
-        public async Task<List<CameraDisplayModel>> GetAllCamerasAsync(params DevicePairStatus[] statuses)
-        {
-            var result = await _deviceRepository.GetAllDevicesWithStatusesAsync(statuses);
-
-            return _mapper.Map<List<CameraDisplayModel>>(result);
-        }
-
-        public async Task<List<DeviceWithPreprovisionAttemptsDto>> GetAllActiveCameraIpsAsync()
-        {
-            var cameras = await _deviceRepository.GetAllDevicesWithStatusesAsync(DevicePairStatus.Paired);
-
-            return cameras;
-        }
-
         public async Task ChangeStatusAndInvalidateCameraAsync(Guid cameraId, DevicePairStatus newStatus)
         {
             var result = await _deviceRepository.SetDeviceStatusAsync(cameraId, newStatus);
@@ -175,13 +161,6 @@ namespace CamPortal.Core.Services.Devices
             var result = await _deviceRepository.GetAllDeviceNameAndIdAsync(DeviceTypeCategories.Camera);
 
             return _mapper.Map<List<NameAndIdWithStatusModel>>(result);
-        }
-
-        public async Task<List<PreprovisionDeviceModel>> GetCamerasByIdAsync(List<Guid> cameraIds)
-        {
-            var allCameras = await _deviceRepository.GetAllDevicesAsync();
-            var filteredCameras = allCameras.Where(c => cameraIds.Contains(c.Id)).ToList();
-            return _mapper.Map<List<PreprovisionDeviceModel>>(filteredCameras);
         }
 
         public async Task<int> GetTotalCamerasAsync(params List<DevicePairStatus> status)

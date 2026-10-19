@@ -1,0 +1,9 @@
+﻿.video-sync-switch {
+    position: absolute;
+    right: 0px;
+    top:0px;
+}
+
+.video-sync-switch ::deep .mud-switch {
+    white-space: nowrap;
+}

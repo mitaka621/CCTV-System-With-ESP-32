@@ -15,6 +15,7 @@
 @inject IVideoExportService _videoExportService
 @inject AuthenticationStateProvider _authenticationStateProvider
 @inject ISnackbar _snackbar
+@inject IRemoteStorageService _remoteStorageService
 
 <PageTitle>Replay - BlazorCam Portal</PageTitle>
 
@@ -24,7 +25,7 @@
 </MudText>
 
 <MudPaper Elevation="4" Class="pa-6 mb-6" Style="border-radius: 20px;">
-    <MudGrid>
+    <MudGrid >
         <MudItem xs="12" lg="6">
             <div class="interval-groups">
                 <div class="interval-group">
@@ -37,7 +38,8 @@
                             @bind-Date:after="OnStartDateChanged"
                             MaxDate="@GetUserNow().Date" />
                         <MudTimePicker Label="Time"
-                            @bind-Time="_selectedStartTime" />
+                            @bind-Time="_selectedStartTime"
+                            @bind-Time:after="UpdateFootageAvailability" />
                     </div>
                 </div>
                 <div class="interval-group">
@@ -50,7 +52,8 @@
                             @bind-Date:after="OnEndDateChanged"
                             MaxDate="@GetUserNow().Date" />
                         <MudTimePicker Label="Time"
-                            @bind-Time="_selectedEndTime" />
+                            @bind-Time="_selectedEndTime"
+                            @bind-Time:after="UpdateFootageAvailability" />
                     </div>
                 </div>
             </div>
@@ -68,7 +71,8 @@
                 SearchBoxPlaceholder="Search cameras..."
                 SearchFunc="@CameraFilterSearch"
                 ToStringFunc="@(camera => GetCameraLabel(camera))"
-                @bind-SelectedValues="_selectedCameraIds">
+                @bind-SelectedValues="_selectedCameraIds"
+                @bind-SelectedValues:after="UpdateFootageAvailability">
                 <ItemTemplate>
                     <MudCheckBox T="bool"
                         Value="@context.IsSelected"
@@ -90,6 +94,34 @@
                     </MudStack>
                 </StaticContent>
             </MudSelectExtended>
+            <MudSelect T="Guid" Label="Footage Source Location"
+                       @bind-Value="_selectedFootageTargetLocationId"
+                       ToStringFunc="@(locationId => GetFootageAvailabilityLocation(locationId)?.LocationName ?? string.Empty)"
+                       Class="mt-5"
+                       MultiSelection="false">
+                @foreach (var locationId in _replayFootageAvailabilityLocations.Select(x => x.LocationId))
+                {
+                    <MudSelectItem Value="@locationId">
+                        @{
+                            var location = GetFootageAvailabilityLocation(locationId);
+                        }
+                        @if (location != null)
+                        {
+                            <MudGrid>
+                                <MudItem xs="12" lg="8">
+                                    <MudText>@location.LocationName</MudText>
+                                </MudItem>
+                                <MudItem xs="12" lg="4">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd">
+                                        <MudProgressLinear Style="width:50px" Color="@(location.AvailabilityPercentage < 70 ? Color.Error : Color.Success)" Value="location.AvailabilityPercentage" />
+                                        <MudText Style="text-wrap:nowrap" Typo="Typo.subtitle1">@Math.Floor(location.AvailabilityPercentage) %</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            </MudGrid>
+                        }
+                    </MudSelectItem>
+                }
+            </MudSelect>
         </MudItem>
         <MudItem xs="12" md="6" lg="3">
             <MudSelect T="CameraEvents" Label="Event Type Filter"
@@ -402,9 +434,12 @@ else
 @code {
     private const int _maxNumberOfTimeMarkersPerCamera=10;
     private const int _maxPlaybackRateExponent = 4;
+    private const int _footageAvailabilityDebounceMilliseconds = 300;
 
     private List<NameAndIdWithStatusModel> _allCamerasNameAndId = new();
     private List<CameraDisplayModel> _currentCameras = new();
+    private List<ReplayFootageAvailabilityModel> _replayFootageAvailabilityLocations = new();
+    private Guid _selectedFootageTargetLocationId = Guid.Empty;
     private IEnumerable<NameAndIdWithStatusModel> _selectedCameraIds = new List<NameAndIdWithStatusModel>();
     private IEnumerable<CameraEvents> _selectedEventTypes = Enum.GetValues<CameraEvents>();
     private DateTime? _selectedStartDate;
@@ -419,6 +454,7 @@ else
     private int _totalTimelineDurationInMinutes=0;
     private Guid _currentUserId;
     private bool _showUnpairedCameras = false;
+    private int _footageAvailabilityRequestVersion = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -428,6 +464,8 @@ else
         Guid.TryParse(authState.User.FindFirst(CustomClaimTypes.Id)?.Value, out _currentUserId);
 
         _allCamerasNameAndId = await _cameraService.GetAllCameraNameAndIdAsync();
+
+        await UpdateFootageAvailability();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -471,13 +509,15 @@ else
         return camera.PairStatus!=DevicePairStatus.Paired?$"{name} - ({camera.PairStatus})":name;
     }
 
-    private void OnShowUnpairedCamerasChanged(bool showUnpairedCameras)
+    private async Task OnShowUnpairedCamerasChanged(bool showUnpairedCameras)
     {
         _showUnpairedCameras = showUnpairedCameras;
 
         _selectedCameraIds = new List<NameAndIdWithStatusModel>();
 
         StateHasChanged();
+
+        await UpdateFootageAvailability();
     }
 
     private bool CameraFilterSearch(NameAndIdWithStatusModel camera, string searchText)
@@ -490,64 +530,159 @@ else
         return GetCameraLabel(camera).Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 
-    private void OnStartDateChanged()
+    private async Task OnStartDateChanged()
     {
         if (_selectedStartDate > _selectedEndDate)
         {
             _selectedEndDate = _selectedStartDate;
         }
+
+        await UpdateFootageAvailability();
     }
 
-    private void OnEndDateChanged()
+    private async Task OnEndDateChanged()
     {
         if (_selectedEndDate < _selectedStartDate)
         {
             _selectedStartDate = _selectedEndDate;
         }
+
+        await UpdateFootageAvailability();
+    }
+
+    private async Task UpdateFootageAvailability()
+    {
+        var requestVersion = ++_footageAvailabilityRequestVersion;
+
+        await Task.Delay(_footageAvailabilityDebounceMilliseconds);
+
+        if (requestVersion != _footageAvailabilityRequestVersion)
+        {
+            return;
+        }
+
+        var availabilityLocations = await GetFootageAvailabilityLocationsAsync();
+
+        if (availabilityLocations == null || requestVersion != _footageAvailabilityRequestVersion)
+        {
+            return;
+        }
+
+        _replayFootageAvailabilityLocations = availabilityLocations;
+
+        if (!_replayFootageAvailabilityLocations.Any(x => x.LocationId == _selectedFootageTargetLocationId))
+        {
+            _selectedFootageTargetLocationId = Guid.Empty;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task<List<ReplayFootageAvailabilityModel>?> GetFootageAvailabilityLocationsAsync()
+    {
+        if (!_selectedCameraIds.Any())
+        {
+            var availabilityLocations = new List<ReplayFootageAvailabilityModel>()
+            {
+                new ReplayFootageAvailabilityModel()
+                {
+                    LocationId = Guid.Empty,
+                    LocationName = "Local Server-Side Storage",
+                    AvailabilityPercentage = 100
+                }
+            };
+
+            var targets = await _remoteStorageService.GetTargetsAsync();
+
+            availabilityLocations.AddRange(targets.Where(x => x.IsSyncEnabled)
+                .Select(x => new ReplayFootageAvailabilityModel()
+                {
+                    LocationName = x.SharePath,
+                    AvailabilityPercentage = 100,
+                    LocationId = x.Id!.Value
+                }));
+
+            return availabilityLocations;
+        }
+
+        var startDateTime = GetSelectedStartDateTime();
+        var endDateTime = GetSelectedEndDateTime();
+
+        if (startDateTime == null || endDateTime == null || endDateTime < startDateTime)
+        {
+            return null;
+        }
+
+        var startDateTimeUtc = _userTimeZoneService.ToUtc(startDateTime.Value);
+        var endDateTimeUtc = _userTimeZoneService.ToUtc(endDateTime.Value);
+
+        var selectedCameraIdsList = _selectedCameraIds.Select(x => x.Id).Distinct().ToList();
+
+        return await _videoReplayService.GetFootageAvailabilityForEachSourceAsync(selectedCameraIdsList, startDateTimeUtc, endDateTimeUtc);
+    }
+
+    private ReplayFootageAvailabilityModel? GetFootageAvailabilityLocation(Guid locationId)
+    {
+        return _replayFootageAvailabilityLocations.FirstOrDefault(x => x.LocationId == locationId);
+    }
+
+    private (DateTime StartDateTime, DateTime EndDateTime)? ValidateAndExtractStartAndEndDates()
+    {
+        var startDateTime = GetSelectedStartDateTime();
+        var endDateTime = GetSelectedEndDateTime();
+
+        if (startDateTime == null || endDateTime == null || _selectedCameraIds.Count() == 0)
+        {
+            _currentCameras = new();
+            return null;
+        }
+
+        if (endDateTime < startDateTime)
+        {
+            _error = "The start date and time cannot be before the end date and time";
+
+            return null;
+        }
+
+        _error = string.Empty;
+
+        return (startDateTime.Value, endDateTime.Value);
     }
 
     private async Task FilterCameras()
     {
+        var interval = ValidateAndExtractStartAndEndDates();
+
+        if (interval == null)
+        {
+            return;
+        }
+
         try
         {
-            var startDateTime = GetSelectedStartDateTime();
-            var endDateTime = GetSelectedEndDateTime();
-
-            if (startDateTime == null || endDateTime == null || _selectedCameraIds.Count() == 0)
-            {
-                _currentCameras = new();
-                return;
-            }
-
-            if (endDateTime<startDateTime)
-            {
-                _error = "The start date and time cannot be before the end date and time";
-
-                return;
-            }
-
-            _error = string.Empty;
-
-            _appliedStartDateTime = startDateTime;
-            _appliedEndDateTime = endDateTime;
-
             _isFiltering = true;
 
-            var startDateTimeUtc = _userTimeZoneService.ToUtc(startDateTime.Value);
-            var endDateTimeUtc = _userTimeZoneService.ToUtc(endDateTime.Value);
+            var startDateTimeUtc = _userTimeZoneService.ToUtc(interval.Value.StartDateTime);
+            var endDateTimeUtc = _userTimeZoneService.ToUtc(interval.Value.EndDateTime);
 
             var selectedCameraIdsList = _selectedCameraIds.Select(x=>x.Id).Distinct().ToList();
 
-            _currentCameras = await _cameraService.GetAllCamerasAsync(selectedCameraIdsList);
+            var cameras = await _cameraService.GetAllCamerasAsync(selectedCameraIdsList);
 
-            _hLSPlaylists = await _videoReplayService
-                .GenerateHLSPlaylistsAsync(selectedCameraIdsList, startDateTimeUtc, endDateTimeUtc);
+            List<HLSPlaylistDto> hLSPlaylists=new();
 
-            var missingChunks = _hLSPlaylists.SelectMany(x => x.MissingVideoChunkEvents.Select(x=>x.TotalDuration))
+            hLSPlaylists = await _videoReplayService
+                    .GenerateHLSPlaylistsAsync(selectedCameraIdsList, startDateTimeUtc, endDateTimeUtc, _selectedFootageTargetLocationId);
+
+            var missingChunks = hLSPlaylists.SelectMany(x => x.MissingVideoChunkEvents.Select(x=>x.TotalDuration))
                 .Distinct();
 
             await _videoReplayService.GeneratePlaceholderChunksForMissingOnesAsync(missingChunks);
 
+            _currentCameras = cameras;
+            _hLSPlaylists = hLSPlaylists;
+            _appliedStartDateTime = interval.Value.StartDateTime;
+            _appliedEndDateTime = interval.Value.EndDateTime;
             _totalTimelineDurationInMinutes = GetTimelineDurationInMinutes();
         }
         finally
@@ -661,7 +796,7 @@ else
         return 0;
     }
 
-    private void AutoApplyFilters(int minutesAgo)
+    private async Task AutoApplyFilters(int minutesAgo)
     {
         var now = GetUserNow();
         var start = now.AddMinutes(-minutesAgo);
@@ -670,5 +805,7 @@ else
         _selectedStartTime = new TimeSpan(start.Hour, start.Minute, start.Second);
         _selectedEndDate = now.Date;
         _selectedEndTime = new TimeSpan(now.Hour, now.Minute, now.Second);
+
+        await UpdateFootageAvailability();
     }
 }

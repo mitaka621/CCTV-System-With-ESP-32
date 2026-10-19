@@ -1,5 +1,6 @@
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.RemoteStorageDtos;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
@@ -20,6 +21,7 @@ namespace CamPortal.Core.BackgroundServices
         private readonly IVideoReplayService _videoChunkService;
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
         private readonly IStorageLocationService _storageLocationService;
+        private readonly IChunkReplicationQueue _chunkReplicationQueue;
         private readonly byte[] _placeholderFrame;
         private readonly int _encodedVideoOutputFps;
         private readonly int _videoChunksSizeInS;
@@ -27,7 +29,7 @@ namespace CamPortal.Core.BackgroundServices
         private readonly int _maxVideoBitrateKbps;
         private readonly int _videoBitrateBufferSizeKbps;
         private readonly int _timeoutInS;
-        private readonly VideoHardwareEncoder _activeEncoder;
+        private readonly VideoEncoderSelection _activeEncoder;
 
         private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cameraEncodersCancelationSources = new();
 
@@ -37,12 +39,14 @@ namespace CamPortal.Core.BackgroundServices
             IServiceProvider serviceProvider,
             ICameraConfigurationRepository cameraConfigurationRepository,
             IStorageLocationService storageLocationService,
+            IChunkReplicationQueue chunkReplicationQueue,
             ILogger<VideoEncoderService> logger)
         {
             _framesManager = framesManager;
             _logger = logger;
             _cameraConfigurationRepository = cameraConfigurationRepository;
             _storageLocationService = storageLocationService;
+            _chunkReplicationQueue = chunkReplicationQueue;
 
             _videoChunkService = serviceProvider.CreateScope()
                 .ServiceProvider
@@ -151,7 +155,7 @@ namespace CamPortal.Core.BackgroundServices
             int start = ffmpegLine.IndexOf("\'") + 1;
             int end = ffmpegLine.LastIndexOf("\'");
             if (start > 0 && end > start)
-                return ffmpegLine[start..end].Split("\\").Last();
+                return Path.GetFileName(ffmpegLine[start..end]);
             return "unknown.mp4";
         }
 
@@ -242,7 +246,7 @@ namespace CamPortal.Core.BackgroundServices
                                 SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                             };
 
-                            await _videoChunkService.SaveVideoChunkInfoAsync(lastFileDto!);
+                            await SaveVideoChunkAsync(lastFileDto);
                         }
 
                         lastFileName = currentFile;
@@ -281,10 +285,23 @@ namespace CamPortal.Core.BackgroundServices
                         SizeInMB = Math.Round(new FileInfo(fileName).Length / (1024.0 * 1024.0), 2)
                     };
 
-                    await _videoChunkService.SaveVideoChunkInfoAsync(lastFileDto);
+                    await SaveVideoChunkAsync(lastFileDto);
                 }
 
             }, stoppingToken);
+        }
+
+        private async Task SaveVideoChunkAsync(CreateVideoChunkDto videoChunkDto)
+        {
+            var videoChunkId = await _videoChunkService.SaveVideoChunkInfoAsync(videoChunkDto);
+
+            _chunkReplicationQueue.Enqueue(new VideoChunkReplicationItemDto
+            {
+                VideoChunkId = videoChunkId,
+                DeviceId = videoChunkDto.DeviceId,
+                FileName = videoChunkDto.FileName,
+                ChunkEndTime = videoChunkDto.ChunkEndTime
+            });
         }
 
         private void LogFfmpegExit(Guid cameraId, Process ffmpeg, IEnumerable<string> recentStderrLines, bool cancellationRequested)
@@ -463,26 +480,30 @@ namespace CamPortal.Core.BackgroundServices
             int gop = fps * _videoChunksSizeInS;
 
             string inputSection =
-                $"-f mjpeg -framerate {fps} -i pipe:0 -map 0:v:0 -an ";
+                $"{_activeEncoder.DeviceArguments}-f mjpeg -framerate {fps} -i pipe:0 -map 0:v:0 -an ";
 
-            string filterSection = outputResolution.Width > 0 && outputResolution.Height > 0
-                ? $"-vf scale={outputResolution.Width}:{outputResolution.Height}:force_original_aspect_ratio=decrease,pad={outputResolution.Width}:{outputResolution.Height}:(ow-iw)/2:(oh-ih)/2,setsar=1 "
-                : "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2 ";
+            string scaleFilter = outputResolution.Width > 0 && outputResolution.Height > 0
+                ? $"scale={outputResolution.Width}:{outputResolution.Height}:force_original_aspect_ratio=decrease,pad={outputResolution.Width}:{outputResolution.Height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
+                : "scale=trunc(iw/2)*2:trunc(ih/2)*2";
 
-            string codecSection = _activeEncoder switch
+            string filterSection = $"-vf {scaleFilter}{_activeEncoder.UploadFilter} ";
+
+            string codecSection = _activeEncoder.CodecName switch
             {
-                VideoHardwareEncoder.Nvidia =>
+                VideoEncoderSelection.NvidiaCodecName =>
                     $"-c:v h264_nvenc -preset p4 -tune ll -rc cbr -no-scenecut 1 -g {gop} -keyint_min {gop} ",
-                VideoHardwareEncoder.Intel =>
+                VideoEncoderSelection.IntelQuickSyncCodecName =>
                     $"-c:v h264_qsv -preset veryfast -look_ahead 0 -g {gop} ",
-                VideoHardwareEncoder.Amd =>
+                VideoEncoderSelection.AmdAmfCodecName =>
                     $"-c:v h264_amf -quality balanced -rc cbr -g {gop} ",
+                VideoEncoderSelection.VaapiCodecName =>
+                    $"-c:v h264_vaapi -rc_mode CBR -bf 0 -g {gop} ",
                 _ =>
                     $"-c:v libx264 -preset veryfast -tune zerolatency -sc_threshold 0 -threads 2 -g {gop} -keyint_min {gop} "
             };
 
             string rateSection =
-                $"-pix_fmt yuv420p -r {fps} -b:v {_videoBitrateKbps}k -maxrate {_maxVideoBitrateKbps}k -bufsize {_videoBitrateBufferSizeKbps}k ";
+                $"{_activeEncoder.PixelFormatArguments}-r {fps} -b:v {_videoBitrateKbps}k -maxrate {_maxVideoBitrateKbps}k -bufsize {_videoBitrateBufferSizeKbps}k ";
 
             string outputSection =
                 $"-f segment -segment_time {_videoChunksSizeInS} -segment_format mpegts \"{filePath}\"";

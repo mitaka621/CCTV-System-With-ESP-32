@@ -1,0 +1,29 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace CamPortal.Infrastructure.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddRemoteStorageTargetRetention : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<int>(
+                name: "Retention",
+                table: "RemoteStorageTargets",
+                type: "int",
+                nullable: false,
+                defaultValue: 0);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "Retention",
+                table: "RemoteStorageTargets");
+        }
+    }
+}

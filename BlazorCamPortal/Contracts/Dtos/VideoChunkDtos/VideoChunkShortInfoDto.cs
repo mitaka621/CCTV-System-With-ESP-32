@@ -9,5 +9,7 @@
         public DateTime ChunkStartTime { get; set; }
 
         public DateTime ChunkEndTime { get; set; }
+
+        public bool IsMissingChunk { get; set; }
     }
 }

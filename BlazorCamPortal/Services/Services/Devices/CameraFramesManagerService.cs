@@ -155,8 +155,13 @@ namespace CamPortal.Core.Services.Devices
                     ctx.GaussianSharpen(cameraConfig.SharpenFactor);
                 }
 
-                ctx.DrawText(text, _stampFont, Color.White, new PointF(currentSize.Width - 320, currentSize.Height - 50));
-                ctx.DrawText(cameraName, _stampFont, Color.White, new PointF(10, currentSize.Height - 50));
+                var stampBrush = Brushes.Solid(Color.White);
+
+                ctx.Paint(canvas =>
+                {
+                    canvas.DrawText(new RichTextOptions(_stampFont) { Origin = new PointF(currentSize.Width - 320, currentSize.Height - 50) }, text, stampBrush, null);
+                    canvas.DrawText(new RichTextOptions(_stampFont) { Origin = new PointF(10, currentSize.Height - 50) }, cameraName, stampBrush, null);
+                });
             });
 
             using var originalResolution = new MemoryStream();
