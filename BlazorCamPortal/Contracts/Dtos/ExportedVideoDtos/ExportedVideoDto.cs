@@ -25,5 +25,7 @@ namespace CamPortal.Contracts.Dtos.ExportedVideoDtos
         public DateTime VideoEndDate { get; set; }
 
         public int SizeInMB { get; set; }
+
+        public Guid? SourceTargetId { get; set; }
     }
 }

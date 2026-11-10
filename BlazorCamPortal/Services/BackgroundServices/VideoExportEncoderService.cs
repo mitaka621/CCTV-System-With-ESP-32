@@ -1,6 +1,8 @@
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.ExportedVideoDtos;
+using CamPortal.Contracts.Dtos.RemoteStorageDtos;
+using CamPortal.Contracts.Dtos.VideoChunkDtos;
 using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Hosting;
@@ -16,7 +18,11 @@ namespace CamPortal.Core.BackgroundServices
         private readonly IExportedVideoRepository _exportedVideoRepository;
         private readonly IVideoReplayService _videoReplayService;
         private readonly IVideoExportNotifier _videoExportNotifier;
+        private const int _maxParallelRemoteChunkDownloads = 4;
+
         private readonly IStorageLocationService _storageLocationService;
+        private readonly IRemoteStorageService _remoteStorageService;
+        private readonly ISmbReadSessionManager _smbReadSessionManager;
         private readonly ILogger<VideoExportEncoderService> _logger;
 
         private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _runningExports = new();
@@ -28,6 +34,8 @@ namespace CamPortal.Core.BackgroundServices
             IVideoReplayService videoReplayService,
             IVideoExportNotifier videoExportNotifier,
             IStorageLocationService storageLocationService,
+            IRemoteStorageService remoteStorageService,
+            ISmbReadSessionManager smbReadSessionManager,
             ILogger<VideoExportEncoderService> logger)
         {
             _videoExportJobQueue = videoExportJobQueue;
@@ -35,6 +43,8 @@ namespace CamPortal.Core.BackgroundServices
             _videoReplayService = videoReplayService;
             _videoExportNotifier = videoExportNotifier;
             _storageLocationService = storageLocationService;
+            _remoteStorageService = remoteStorageService;
+            _smbReadSessionManager = smbReadSessionManager;
             _logger = logger;
         }
 
@@ -138,23 +148,122 @@ namespace CamPortal.Core.BackgroundServices
                 return;
             }
 
-            var segmentPaths = await _videoReplayService.GetExportTimelineSegmentsAsync(
+            var timelineSegments = await _videoReplayService.GetExportTimelineSegmentsAsync(
                 export.CameraId,
                 export.VideoStartDate,
-                export.VideoEndDate);
+                export.VideoEndDate,
+                export.SourceTargetId);
 
-            var existingChunkPaths = segmentPaths
-                .Where(File.Exists)
-                .ToList();
+            var remoteChunksDirectory = _storageLocationService.GetExportFullPath(exportId.ToString());
 
-            if (existingChunkPaths.Count == 0)
+            try
             {
-                _logger.LogWarning("No timeline segments available to export for {ExportId}.", exportId);
+                var existingChunkPaths = await ResolveExistingChunkPathsAsync(
+                    export.SourceTargetId,
+                    timelineSegments,
+                    remoteChunksDirectory,
+                    stoppingToken);
 
-                await FinishWithStatusAsync(exportId, ExportVideoStatuses.Failed, null, null, 0);
-                return;
+                if (existingChunkPaths.Count == 0)
+                {
+                    _logger.LogWarning("No timeline segments available to export for {ExportId}.", exportId);
+
+                    await FinishWithStatusAsync(exportId, ExportVideoStatuses.Failed, null, null, 0);
+                    return;
+                }
+
+                await EncodeExportAsync(exportId, export, existingChunkPaths, stoppingToken);
+            }
+            finally
+            {
+                TryDeleteDirectory(remoteChunksDirectory);
+            }
+        }
+
+        private async Task<List<string>> ResolveExistingChunkPathsAsync(
+            Guid? sourceTargetId,
+            List<VideoChunkShortInfoDto> timelineSegments,
+            string remoteChunksDirectory,
+            CancellationToken stoppingToken)
+        {
+            if (sourceTargetId == null)
+            {
+                return timelineSegments
+                    .Select(GetLocalChunkPath)
+                    .Where(File.Exists)
+                    .ToList();
             }
 
+            var target = await _remoteStorageService.GetEnabledTargetAsync(sourceTargetId.Value);
+
+            if (target == null)
+            {
+                _logger.LogWarning("Remote storage target {SourceTargetId} is not available for export.", sourceTargetId);
+
+                return new List<string>();
+            }
+
+            Directory.CreateDirectory(remoteChunksDirectory);
+
+            var chunkPaths = new string?[timelineSegments.Count];
+
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = _maxParallelRemoteChunkDownloads,
+                CancellationToken = stoppingToken
+            };
+
+            await Parallel.ForAsync(0, timelineSegments.Count, parallelOptions, async (index, cancellationToken) =>
+            {
+                var segment = timelineSegments[index];
+
+                chunkPaths[index] = segment.IsMissingChunk
+                    ? GetLocalChunkPath(segment)
+                    : await DownloadRemoteChunkAsync(target, segment, remoteChunksDirectory, cancellationToken);
+            });
+
+            return chunkPaths
+                .Where(path => path != null && File.Exists(path))
+                .Select(path => path!)
+                .ToList();
+        }
+
+        private string GetLocalChunkPath(VideoChunkShortInfoDto segment)
+        {
+            _storageLocationService.TryGetCameraChunkFullPath(segment.CameraFolder!, segment.FileName, out var fullPath);
+
+            return fullPath;
+        }
+
+        private async Task<string?> DownloadRemoteChunkAsync(
+            RemoteStorageTargetDto target,
+            VideoChunkShortInfoDto segment,
+            string remoteChunksDirectory,
+            CancellationToken cancellationToken)
+        {
+            if (!_storageLocationService.TryGetRemoteCameraChunkRelativePath(segment.CameraFolder!, segment.FileName, out var relativePath))
+            {
+                return null;
+            }
+
+            var content = await _smbReadSessionManager.ReadFileAsync(target, relativePath, cancellationToken);
+
+            if (content == null)
+            {
+                _logger.LogWarning("Remote chunk {RelativePath} was not found on {SharePath}.", relativePath, target.SharePath);
+
+                return null;
+            }
+
+            var localPath = Path.Combine(remoteChunksDirectory, segment.FileName);
+
+            await File.WriteAllBytesAsync(localPath, content, cancellationToken);
+
+            return localPath;
+        }
+
+        private async Task EncodeExportAsync(Guid exportId, ExportedVideoDto export, List<string> existingChunkPaths, CancellationToken stoppingToken)
+        {
             var outputFileName = $"{exportId}.mp4";
             var outputPath = _storageLocationService.GetExportFullPath(outputFileName);
 
@@ -407,6 +516,21 @@ namespace CamPortal.Core.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to delete temporary file {Path}", path);
+            }
+        }
+
+        private void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete temporary directory {Path}", path);
             }
         }
     }

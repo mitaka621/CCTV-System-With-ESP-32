@@ -38,5 +38,9 @@ namespace CamPortal.Infrastructure.Data.Entities
         public DateTime VideoEndDate { get; set; }
 
         public int SizeInMB { get; set; }
+
+        public Guid? SourceTargetId { get; set; }
+        [ForeignKey(nameof(SourceTargetId))]
+        public RemoteStorageTarget? SourceTarget { get; set; }
     }
 }

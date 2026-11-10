@@ -9,5 +9,7 @@ namespace CamPortal.Contracts.Dtos.ExportedVideoDtos
         public DateTime VideoStartDate { get; set; }
 
         public DateTime VideoEndDate { get; set; }
+
+        public Guid SourceTargetId { get; set; }
     }
 }

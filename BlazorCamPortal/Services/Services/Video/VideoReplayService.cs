@@ -119,10 +119,13 @@ namespace CamPortal.Core.Services.Video
             return playlists;
         }
 
-        public async Task<List<string>> GetExportTimelineSegmentsAsync(Guid cameraId, DateTime startTime, DateTime endTime)
+        public async Task<List<VideoChunkShortInfoDto>> GetExportTimelineSegmentsAsync(Guid cameraId, DateTime startTime, DateTime endTime, Guid? sourceTargetId)
         {
-            var availableChunksByCameraId = await _videoChunkRepository
-                .GetVideoChunksForPeriodForCameraFromLocalStorageAsync(new List<Guid> { cameraId }, startTime, endTime);
+            var cameraIds = new List<Guid> { cameraId };
+
+            var availableChunksByCameraId = sourceTargetId == null
+                ? await _videoChunkRepository.GetVideoChunksForPeriodForCameraFromLocalStorageAsync(cameraIds, startTime, endTime)
+                : await _videoChunkReplicationRepository.GetVideoChunksForPeriodForCameraFromRemoteStorageAsync(sourceTargetId.Value, cameraIds, startTime, endTime);
 
             availableChunksByCameraId.TryGetValue(cameraId, out var availableChunks);
 
@@ -136,14 +139,7 @@ namespace CamPortal.Core.Services.Video
 
             await GeneratePlaceholderChunksForMissingOnesAsync(missingDurations);
 
-            return fullTimeline
-                .Select(x =>
-                {
-                    _storageLocationService.TryGetCameraChunkFullPath(x.CameraFolder!, x.FileName, out var fullPath);
-
-                    return fullPath;
-                })
-                .ToList();
+            return fullTimeline;
         }
 
         public async Task GeneratePlaceholderChunksForMissingOnesAsync(IEnumerable<double> durationSeconds)

@@ -13,6 +13,7 @@ namespace CamPortal.Core.Services.Security
         public double RotationThresholdOffset;
         public bool AlarmActive;
         public bool AwaitingClear;
+        public DateTime AwaitingClearUntil;
         public bool Warning;
         public string? WarningReason;
         public DateTime SuppressTamperUntil;

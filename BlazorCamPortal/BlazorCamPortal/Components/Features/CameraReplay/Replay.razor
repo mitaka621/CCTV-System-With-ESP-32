@@ -448,6 +448,7 @@ else
     private TimeSpan? _selectedEndTime;
     private DateTime? _appliedStartDateTime;
     private DateTime? _appliedEndDateTime;
+    private Guid _appliedFootageTargetLocationId = Guid.Empty;
     private List<HLSPlaylistDto> _hLSPlaylists = new();
     private bool _isFiltering = false;
     private string _error = string.Empty;
@@ -683,6 +684,7 @@ else
             _hLSPlaylists = hLSPlaylists;
             _appliedStartDateTime = interval.Value.StartDateTime;
             _appliedEndDateTime = interval.Value.EndDateTime;
+            _appliedFootageTargetLocationId = _selectedFootageTargetLocationId;
             _totalTimelineDurationInMinutes = GetTimelineDurationInMinutes();
         }
         finally
@@ -751,7 +753,8 @@ else
             UserId = _currentUserId,
             CameraId = cameraId,
             VideoStartDate = _userTimeZoneService.ToUtc(startDateTime.Value),
-            VideoEndDate = _userTimeZoneService.ToUtc(endDateTime.Value)
+            VideoEndDate = _userTimeZoneService.ToUtc(endDateTime.Value),
+            SourceTargetId = _appliedFootageTargetLocationId
         });
 
         _snackbar.Add("Export started. Track its progress in the export manager.", Severity.Success);

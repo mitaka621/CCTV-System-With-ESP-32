@@ -31,7 +31,8 @@ namespace CamPortal.Infrastructure.Repositories
                 VideoStartDate = createExportDto.VideoStartDate,
                 VideoEndDate = createExportDto.VideoEndDate,
                 ExportStartedDate = DateTime.UtcNow,
-                ExportStatus = ExportVideoStatuses.Started
+                ExportStatus = ExportVideoStatuses.Started,
+                SourceTargetId = createExportDto.SourceTargetId == Guid.Empty ? null : createExportDto.SourceTargetId
             };
 
             db.ExportedVideos.Add(entity);
@@ -61,7 +62,8 @@ namespace CamPortal.Infrastructure.Repositories
                     ExportStatus = x.ExportStatus,
                     VideoStartDate = x.VideoStartDate,
                     VideoEndDate = x.VideoEndDate,
-                    SizeInMB = x.SizeInMB
+                    SizeInMB = x.SizeInMB,
+                    SourceTargetId = x.SourceTargetId
                 })
                 .ToListAsync();
         }
@@ -97,7 +99,8 @@ namespace CamPortal.Infrastructure.Repositories
                     ExportStatus = x.ExportStatus,
                     VideoStartDate = x.VideoStartDate,
                     VideoEndDate = x.VideoEndDate,
-                    SizeInMB = x.SizeInMB
+                    SizeInMB = x.SizeInMB,
+                    SourceTargetId = x.SourceTargetId
                 })
                 .FirstOrDefaultAsync();
         }

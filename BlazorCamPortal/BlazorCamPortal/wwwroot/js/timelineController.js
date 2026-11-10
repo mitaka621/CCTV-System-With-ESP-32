@@ -1,6 +1,7 @@
 let timelines = new Map();
 
 const DEFAULT_PLAYBACK_RATE = 1;
+const REWIND_STEP_INTERVAL_MS = 250;
 
 function formatTimeFromPercentage(startTime, durationSeconds, percentage) {
   const targetMs =
@@ -239,24 +240,36 @@ function getSeekableStart(video) {
   return video.seekable && video.seekable.length > 0 ? video.seekable.start(0) : 0;
 }
 
-function stepRewind(state, timestamp) {
+function stepRewind(state) {
+  state.rewindTimeoutId = null;
+
   if (!state.isRewinding) {
     return;
   }
 
-  const elapsedSeconds = Math.max(0, (timestamp - state.rewindLastTimestamp) / 1000);
-  state.rewindLastTimestamp = timestamp;
-  state.rewindTargetTime = Math.max(
+  const targetTime = Math.max(
     getSeekableStart(state.video),
-    state.rewindTargetTime - elapsedSeconds * state.rewindRate,
+    state.video.currentTime - state.rewindRate * (REWIND_STEP_INTERVAL_MS / 1000),
   );
 
-  // Seeking again before the previous seek finishes only restarts decoding, so the target keeps accumulating instead.
-  if (!state.video.seeking) {
-    state.video.currentTime = state.rewindTargetTime;
+  if (targetTime >= state.video.currentTime) {
+    return;
   }
 
-  state.rewindFrameId = requestAnimationFrame((nextTimestamp) => stepRewind(state, nextTimestamp));
+  state.isRewindSeekPending = true;
+  state.video.currentTime = targetTime;
+}
+
+function onRewindSeeked(state) {
+  if (!state.isRewindSeekPending) {
+    return;
+  }
+
+  state.isRewindSeekPending = false;
+
+  if (state.isRewinding) {
+    state.rewindTimeoutId = setTimeout(() => stepRewind(state), REWIND_STEP_INTERVAL_MS);
+  }
 }
 
 function startRewind(state, rate) {
@@ -269,9 +282,7 @@ function startRewind(state, rate) {
   state.isRewinding = true;
   state.video.playbackRate = DEFAULT_PLAYBACK_RATE;
   state.video.pause();
-  state.rewindTargetTime = state.video.currentTime;
-  state.rewindLastTimestamp = performance.now();
-  state.rewindFrameId = requestAnimationFrame((timestamp) => stepRewind(state, timestamp));
+  stepRewind(state);
   updatePlayPauseUi(state);
 }
 
@@ -281,8 +292,9 @@ function stopRewind(state) {
   }
 
   state.isRewinding = false;
-  cancelAnimationFrame(state.rewindFrameId);
-  state.rewindFrameId = null;
+  state.isRewindSeekPending = false;
+  clearTimeout(state.rewindTimeoutId);
+  state.rewindTimeoutId = null;
   updatePlayPauseUi(state);
 }
 
@@ -430,9 +442,8 @@ window.initTimelineForCamera = function (
     isUpdating: false,
     isRewinding: false,
     rewindRate: DEFAULT_PLAYBACK_RATE,
-    rewindTargetTime: 0,
-    rewindLastTimestamp: 0,
-    rewindFrameId: null,
+    rewindTimeoutId: null,
+    isRewindSeekPending: false,
   };
 
   timelines.set(cameraId, state);
@@ -491,6 +502,7 @@ window.initTimelineForCamera = function (
   );
   video.addEventListener("waiting", () => setLoading(true), { signal });
   video.addEventListener("seeked", () => setLoading(false), { signal });
+  video.addEventListener("seeked", () => onRewindSeeked(state), { signal });
   video.addEventListener("playing", () => setLoading(false), { signal });
   video.addEventListener("canplay", () => setLoading(false), { signal });
 };

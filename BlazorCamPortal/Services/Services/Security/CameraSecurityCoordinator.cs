@@ -17,6 +17,7 @@ namespace CamPortal.Core.Services.Security
     {
         private static readonly TimeSpan _notifyThrottle = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan _resetGrace = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan _awaitClearTimeout = TimeSpan.FromSeconds(10);
 
         private readonly ILogger<CameraSecurityCoordinator> _logger;
         private readonly ICameraConfigurationRepository _deviceRepository;
@@ -150,12 +151,14 @@ namespace CamPortal.Core.Services.Security
                 var motionTamper = sample.MotionEvents != CameraMotionEvents.None || sample.MotionActive;
                 var anyTamper = caseTamper || motionTamper;
 
-                if (state.AwaitingClear && !anyTamper)
+                var now = DateTime.UtcNow;
+
+                if (state.AwaitingClear && (!anyTamper || now >= state.AwaitingClearUntil))
                 {
                     state.AwaitingClear = false;
                 }
 
-                var suppressed = state.AwaitingClear || DateTime.UtcNow < state.SuppressTamperUntil;
+                var suppressed = state.AwaitingClear || now < state.SuppressTamperUntil;
 
                 if (state.Armed && !suppressed && anyTamper)
                 {
@@ -165,7 +168,6 @@ namespace CamPortal.Core.Services.Security
                 becameAlarm = !wasAlarm && state.AlarmActive;
                 var stateChanged = becameAlarm || previousWarning != warning;
 
-                var now = DateTime.UtcNow;
                 if (stateChanged || now - state.LastNotifyUtc >= _notifyThrottle)
                 {
                     state.LastNotifyUtc = now;
@@ -200,14 +202,17 @@ namespace CamPortal.Core.Services.Security
             await _deviceRepository.SetSecurityArmedAsync(cameraId, true);
 
             var state = _states.GetOrAdd(cameraId, _ => new CameraState());
+            var now = DateTime.UtcNow;
             lock (state.Sync)
             {
                 state.Armed = true;
                 state.AlarmActive = false;
                 state.AwaitingClear = true;
-                state.SuppressTamperUntil = DateTime.UtcNow + _resetGrace;
+                state.AwaitingClearUntil = now + _awaitClearTimeout;
+                state.SuppressTamperUntil = now + _resetGrace;
             }
 
+            RemoveFromAlarmSet(cameraId);
             SyncDeviceToClearBaseline(cameraId);
 
             NotifyStatusChanged(cameraId);
@@ -323,11 +328,13 @@ namespace CamPortal.Core.Services.Security
         {
             if (_states.TryGetValue(cameraId, out var state))
             {
+                var now = DateTime.UtcNow;
                 lock (state.Sync)
                 {
                     state.AlarmActive = false;
                     state.AwaitingClear = true;
-                    state.SuppressTamperUntil = DateTime.UtcNow + _resetGrace;
+                    state.AwaitingClearUntil = now + _awaitClearTimeout;
+                    state.SuppressTamperUntil = now + _resetGrace;
                 }
             }
 

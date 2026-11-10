@@ -284,6 +284,9 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<int>("SizeInMB")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("SourceTargetId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -298,6 +301,8 @@ namespace CamPortal.Infrastructure.Migrations
                     b.HasIndex("CameraId");
 
                     b.HasIndex("ExportFinishedDate");
+
+                    b.HasIndex("SourceTargetId");
 
                     b.HasIndex("UserId");
 
@@ -749,6 +754,10 @@ namespace CamPortal.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CamPortal.Infrastructure.Data.Entities.RemoteStorageTarget", "SourceTarget")
+                        .WithMany()
+                        .HasForeignKey("SourceTargetId");
+
                     b.HasOne("CamPortal.Infrastructure.Data.Entities.User", "User")
                         .WithMany("ExportedVideos")
                         .HasForeignKey("UserId")
@@ -756,6 +765,8 @@ namespace CamPortal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Camera");
+
+                    b.Navigation("SourceTarget");
 
                     b.Navigation("User");
                 });
