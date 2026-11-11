@@ -60,9 +60,6 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<bool>("SecurityArmed")
                         .HasColumnType("bit");
 
-                    b.Property<float>("SharpenFactor")
-                        .HasColumnType("real");
-
                     b.Property<float>("ZoomFactor")
                         .HasColumnType("real");
 

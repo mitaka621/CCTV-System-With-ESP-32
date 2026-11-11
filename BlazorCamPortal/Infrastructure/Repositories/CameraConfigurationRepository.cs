@@ -55,7 +55,6 @@ namespace CamPortal.Infrastructure.Repositories
                 .Where(x => x.DeviceId == deviceId)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.Contrast, dto.Contrast)
                     .SetProperty(y => y.Brightness, dto.Brightness)
-                    .SetProperty(y => y.SharpenFactor, dto.SharpenFactor)
                     .SetProperty(y => y.FlipMode, dto.FlipMode)
                     .SetProperty(y => y.ZoomFactor, dto.ZoomFactor)
                     .SetProperty(y => y.ZoomStartX, dto.ZoomStartX)

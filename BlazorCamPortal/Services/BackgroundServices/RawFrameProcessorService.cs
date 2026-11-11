@@ -1,44 +1,56 @@
 ﻿using CamPortal.Contracts.Abstractions.Services;
-using Microsoft.Extensions.Configuration;
+using CamPortal.Contracts.Dtos.CameraFrameDtos;
+using CamPortal.Contracts.Dtos.DeviceDtos;
+using CamPortal.Core.Services.Devices;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace CamPortal.Core.BackgroundServices
 {
     public class RawFrameProcessorService : BackgroundService
     {
+        private static readonly TimeSpan _idleStamperTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan _failedStamperRestartDelay = TimeSpan.FromSeconds(5);
+
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
         private readonly ILogger<RawFrameProcessorService> _logger;
         private readonly IActiveCameraConnections _activeCameraConnections;
-
-        private readonly int _numberOfWorkers;
+        private readonly ConcurrentDictionary<Guid, CameraFrameStamper> _stampersByCamera = new();
+        private readonly ConcurrentDictionary<Guid, DateTime> _stamperRestartNotBeforeByCamera = new();
 
         public RawFrameProcessorService(
             ICameraFramesManagerService cameraFramesManagerService,
             ILogger<RawFrameProcessorService> logger,
-            IConfiguration configuration,
             IActiveCameraConnections activeCameraConnections)
         {
             _cameraFramesManagerService = cameraFramesManagerService;
             _logger = logger;
-            _numberOfWorkers = Math.Max(1, Environment.ProcessorCount / 2);
             _activeCameraConnections = activeCameraConnections;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            List<Task> workerTasks = new();
-            for (int i = 0; i < _numberOfWorkers; i++)
-            {
-                workerTasks.Add(StartWorkerLoopAsync(stoppingToken));
-            }
+            var idleStamperCleanupTask = StopIdleStampersAsync(stoppingToken);
 
-            await Task.WhenAll(workerTasks);
+            try
+            {
+                await DispatchFramesAsync(stoppingToken);
+            }
+            finally
+            {
+                await idleStamperCleanupTask;
+
+                await Task.WhenAll(_stampersByCamera.Values.Select(StopStamperAsync));
+                _stampersByCamera.Clear();
+            }
         }
 
-        private async Task StartWorkerLoopAsync(CancellationToken stoppingToken)
+        private async Task DispatchFramesAsync(CancellationToken stoppingToken)
         {
             var rawFramesReader = _cameraFramesManagerService.RawFramesChannelReader;
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -48,13 +60,130 @@ namespace CamPortal.Core.BackgroundServices
                     if (!_activeCameraConnections.IsCameraActive(device.Id))
                         continue;
 
-                    var stampedFrame = _cameraFramesManagerService.StampFrame(frame, device);
-
-                    _cameraFramesManagerService.PublishProcessedFrame(device.Id, stampedFrame);
+                    GetRunningStamper(device, frame)?.EnqueueFrame(frame);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
                 catch (Exception ex) { _logger.LogError(ex, "Error processing raw camera frames"); }
             }
+        }
+
+        private CameraFrameStamper? GetRunningStamper(DeviceStreamingHandshakeWithCameraConfigDto device, byte[] frame)
+        {
+            if (!JpegHeaderReader.TryReadDimensions(frame, out var frameWidth, out var frameHeight))
+            {
+                _logger.LogWarning("Dropped a frame from camera {CameraId} because its JPEG header could not be read.", device.Id);
+                return null;
+            }
+
+            var settings = CreateStampSettings(device, frameWidth, frameHeight);
+
+            if (_stampersByCamera.TryGetValue(device.Id, out var currentStamper))
+            {
+                if (!currentStamper.HasExited && currentStamper.Settings == settings)
+                {
+                    return currentStamper;
+                }
+
+                if (currentStamper.HasExited)
+                {
+                    _stamperRestartNotBeforeByCamera[device.Id] = DateTime.UtcNow + _failedStamperRestartDelay;
+                }
+
+                if (_stampersByCamera.TryRemove(new KeyValuePair<Guid, CameraFrameStamper>(device.Id, currentStamper)))
+                {
+                    _ = StopStamperAsync(currentStamper);
+                }
+            }
+
+            if (_stamperRestartNotBeforeByCamera.TryGetValue(device.Id, out var restartNotBefore) && DateTime.UtcNow < restartNotBefore)
+            {
+                return null;
+            }
+
+            try
+            {
+                var stamper = new CameraFrameStamper(settings, _cameraFramesManagerService, _logger);
+
+                _stampersByCamera[device.Id] = stamper;
+
+                _logger.LogInformation(
+                    "Frame stamping ffmpeg started for camera {CameraId} (PID {Pid}, input {Width}x{Height}).",
+                    device.Id,
+                    stamper.ProcessId,
+                    frameWidth,
+                    frameHeight);
+
+                return stamper;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start frame stamping ffmpeg for camera {CameraId}.", device.Id);
+
+                _stamperRestartNotBeforeByCamera[device.Id] = DateTime.UtcNow + _failedStamperRestartDelay;
+
+                return null;
+            }
+        }
+
+        private async Task StopIdleStampersAsync(CancellationToken stoppingToken)
+        {
+            using var timer = new PeriodicTimer(_idleStamperTimeout);
+
+            try
+            {
+                while (await timer.WaitForNextTickAsync(stoppingToken))
+                {
+                    foreach (var (cameraId, stamper) in _stampersByCamera)
+                    {
+                        if (DateTime.UtcNow - stamper.LastFrameReceivedUtc < _idleStamperTimeout
+                            || !_stampersByCamera.TryRemove(new KeyValuePair<Guid, CameraFrameStamper>(cameraId, stamper)))
+                        {
+                            continue;
+                        }
+
+                        _logger.LogInformation("Frame stamping ffmpeg stopped for camera {CameraId} because no frames arrived.", cameraId);
+
+                        await StopStamperAsync(stamper);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+            }
+        }
+
+        private async Task StopStamperAsync(CameraFrameStamper stamper)
+        {
+            try
+            {
+                await stamper.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to stop frame stamping ffmpeg for camera {CameraId}.", stamper.Settings.CameraId);
+            }
+        }
+
+        private static CameraFrameStampSettingsDto CreateStampSettings(DeviceStreamingHandshakeWithCameraConfigDto device, int frameWidth, int frameHeight)
+        {
+            var configuration = device.CameraConfiguration;
+
+            return new CameraFrameStampSettingsDto
+            {
+                CameraId = device.Id,
+                CameraName = device.DeviceName ?? $"<No Name Set, Device id {device.Id}>",
+                FrameWidth = frameWidth,
+                FrameHeight = frameHeight,
+                FrameRotation = configuration.FrameRotation,
+                ZoomFactor = configuration.ZoomFactor,
+                ZoomStartX = configuration.ZoomStartX,
+                ZoomStartY = configuration.ZoomStartY,
+                Brightness = configuration.Brightness,
+                Contrast = configuration.Contrast,
+                FlipMode = configuration.FlipMode,
+                CameraAspectRatio = configuration.CameraAspectRatio,
+                UtcOffsetSeconds = (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalSeconds
+            };
         }
     }
 }

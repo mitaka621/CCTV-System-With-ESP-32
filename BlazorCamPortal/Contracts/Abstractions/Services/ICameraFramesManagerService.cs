@@ -1,4 +1,3 @@
-using CamPortal.Contracts.Dtos.CameraFrameDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using System.Threading.Channels;
 
@@ -18,11 +17,11 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         void CloseProcessedFramesCameraChannel(Guid cameraId);
 
-        CameraFrameDto StampFrame(byte[] frame, DeviceStreamingHandshakeWithCameraConfigDto camera);
-
         Channel<byte[]> GetOrCreateProcessedFramesCameraChannel(Guid cameraId);
 
-        void PublishProcessedFrame(Guid cameraId, CameraFrameDto dto);
+        void PublishOriginalResolutionFrame(Guid cameraId, byte[] frame);
+
+        void PublishReducedResolutionFrame(Guid cameraId, byte[] frame);
 
         void PublishPlaceholderToViewers(Guid cameraId);
 

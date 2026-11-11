@@ -124,16 +124,6 @@
                                ValueLabel="true"
                                Color="Color.Error" />
                 </div>
-                <div class="slider-row">
-                    <MudText Typo="Typo.body2" Class="slider-label">Sharpen Factor</MudText>
-                    <MudSlider T="float"
-                               @bind-Value="_cameraConfigurationModel.SharpenFactor"
-                               @bind-Value:after="OnConfigurationChanged"
-                               Immediate="false"
-                               Min="0f" Max="2f" Step="0.05f"
-                               ValueLabel="true"
-                               Color="Color.Error" />
-                </div>
                 <MudButton Color="Color.Error" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CreateDefaultCameraConfiguration">
                     Reset to Defaults
                 </MudButton>

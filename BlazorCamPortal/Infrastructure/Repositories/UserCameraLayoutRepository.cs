@@ -53,7 +53,6 @@ namespace CamPortal.Infrastructure.Repositories
                             FlipMode = x.Camera.CameraConfiguration.FlipMode,
                             CameraAspectRatio = x.Camera.CameraConfiguration.CameraAspectRatio,
                             FrameRotation = x.Camera.CameraConfiguration.FrameRotation,
-                            SharpenFactor = x.Camera.CameraConfiguration.SharpenFactor,
                             ZoomFactor = x.Camera.CameraConfiguration.ZoomFactor,
                             ZoomStartX = x.Camera.CameraConfiguration.ZoomStartX,
                             ZoomStartY = x.Camera.CameraConfiguration.ZoomStartY,

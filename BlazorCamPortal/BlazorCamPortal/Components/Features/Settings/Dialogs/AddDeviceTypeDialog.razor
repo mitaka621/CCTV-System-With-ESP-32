@@ -155,7 +155,7 @@
 
         _previewIconUrl =_deviceTypeIconStorageService
             .BuildPublicUrl( _configuration.GetSection("DeviceTypeIconsConfig")["DefaultIconName"]
-                ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"), DateTime.Now);
+                ?? throw new ArgumentNullException("DeviceTypeIconsConfig:MaxIconSizeBytes not configured"), DateTime.MinValue);
     }
     private async Task OnFileChanged(IBrowserFile? file)
     {

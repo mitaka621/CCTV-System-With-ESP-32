@@ -1,14 +1,9 @@
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.CameraFrameDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Enums;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
@@ -24,7 +19,6 @@ namespace CamPortal.Core.Services.Devices
         private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, CameraFramesForViewerDto>> _viewerWritersByCamera = new();
         private readonly ConcurrentDictionary<Guid, byte[]> _latestFrameByCamera = new();
         private readonly byte[] _defaultFrame;
-        private readonly Font _stampFont = SystemFonts.CreateFont("Arial", 28, FontStyle.Bold);
 
         private readonly Channel<(DeviceStreamingHandshakeWithCameraConfigDto, byte[])> _rawFramesChannel;
         private int _highWaterMark = 0;
@@ -112,104 +106,17 @@ namespace CamPortal.Core.Services.Devices
             return _processedFramesCameraChannels[cameraId];
         }
 
-        public CameraFrameDto StampFrame(byte[] frame, DeviceStreamingHandshakeWithCameraConfigDto camera)
+        public void PublishOriginalResolutionFrame(Guid cameraId, byte[] frame)
         {
-            using var image = Image.Load(frame);
-
-            string text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-            var cameraName = camera.DeviceName ?? $"<No Name Set, Device id {camera.Id}>";
-
-            var cameraConfig = camera.CameraConfiguration;
-
-            image.Mutate(ctx =>
-            {
-                if (cameraConfig.FrameRotation != 0)
-                {
-                    ctx.Rotate(cameraConfig.FrameRotation);
-                }
-
-                var currentSize = ctx.GetCurrentSize();
-
-                if (cameraConfig.ZoomFactor > 1 || cameraConfig.CameraAspectRatio != CameraAspectRatios.Original)
-                {
-                    (int frameWidth, int frameHeight) = CameraAspectRatioResolver.CalculateActualResolution(currentSize.Width, currentSize.Height, cameraConfig.CameraAspectRatio);
-
-                    var cropWidth = Math.Clamp((int)(frameWidth / cameraConfig.ZoomFactor), 1, currentSize.Width);
-                    var cropHeight = Math.Clamp((int)(frameHeight / cameraConfig.ZoomFactor), 1, currentSize.Height);
-                    var startX = Math.Clamp(cameraConfig.ZoomStartX, 0, currentSize.Width - cropWidth);
-                    var startY = Math.Clamp(cameraConfig.ZoomStartY, 0, currentSize.Height - cropHeight);
-                    ctx.Crop(new Rectangle(startX, startY, cropWidth, cropHeight));
-                    currentSize = ctx.GetCurrentSize();
-                }
-
-                ctx.Brightness(cameraConfig.Brightness);
-                ctx.Contrast(cameraConfig.Contrast);
-
-                if (cameraConfig.FlipMode != FlipMode.None)
-                {
-                    ctx.Flip(cameraConfig.FlipMode);
-                }
-
-                if (cameraConfig.SharpenFactor > 0)
-                {
-                    ctx.GaussianSharpen(cameraConfig.SharpenFactor);
-                }
-
-                var stampBrush = Brushes.Solid(Color.White);
-
-                ctx.Paint(canvas =>
-                {
-                    canvas.DrawText(new RichTextOptions(_stampFont) { Origin = new PointF(currentSize.Width - 320, currentSize.Height - 50) }, text, stampBrush, null);
-                    canvas.DrawText(new RichTextOptions(_stampFont) { Origin = new PointF(10, currentSize.Height - 50) }, cameraName, stampBrush, null);
-                });
-            });
-
-            using var originalResolution = new MemoryStream();
-            image.SaveAsJpeg(originalResolution, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
-            {
-                Quality = 95,
-            });
-
-            using var reducedResolution = new MemoryStream();
-            image.Mutate(ctx => ctx.Resize(new ResizeOptions()
-            {
-                Size = new Size(640, 0),
-                Mode = ResizeMode.Max,
-                Sampler = KnownResamplers.Triangle
-            }));
-            image.SaveAsJpeg(reducedResolution, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
-            {
-                Quality = 70,
-            });
-
-            return new CameraFrameDto
-            {
-                ProccessedFrameOriginalResolution = originalResolution.ToArray(),
-                ProccessedFrameReducedResolution = reducedResolution.ToArray()
-            };
-        }
-
-        public void PublishProcessedFrame(Guid cameraId, CameraFrameDto dto)
-        {
-            //client live view update (dashboard camera live grid) in original (for full screen) and reduced resolutions (for camera grid previews)
+            //recording (processed channel) and full screen live view viewers receive the original resolution
             var channel = GetOrCreateProcessedFramesCameraChannel(cameraId);
-            channel.Writer.TryWrite(dto.ProccessedFrameOriginalResolution);
-
-            _latestFrameByCamera[cameraId] = dto.ProccessedFrameReducedResolution;
+            channel.Writer.TryWrite(frame);
 
             if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers))
             {
                 foreach (var writers in viewers.Values)
                 {
-                    if (writers.OriginalFrameResolutionChannel != null)
-                    {
-                        writers.OriginalFrameResolutionChannel.TryWrite(dto.ProccessedFrameOriginalResolution);
-                    }
-
-                    if (writers.ReducedFrameResolutionChannel != null)
-                    {
-                        writers.ReducedFrameResolutionChannel.TryWrite(dto.ProccessedFrameReducedResolution);
-                    }
+                    writers.OriginalFrameResolutionChannel?.TryWrite(frame);
                 }
             }
 
@@ -222,9 +129,22 @@ namespace CamPortal.Core.Services.Devices
                     var localHandler = handler;
                     _ = Task.Run(async () =>
                     {
-                        try { await localHandler(cameraId, dto.ProccessedFrameOriginalResolution); }
+                        try { await localHandler(cameraId, frame); }
                         catch (Exception ex) { _logger.LogError(ex, "Frame handler failed for camera {CameraId}", cameraId); }
                     });
+                }
+            }
+        }
+
+        public void PublishReducedResolutionFrame(Guid cameraId, byte[] frame)
+        {
+            _latestFrameByCamera[cameraId] = frame;
+
+            if (_viewerWritersByCamera.TryGetValue(cameraId, out var viewers))
+            {
+                foreach (var writers in viewers.Values)
+                {
+                    writers.ReducedFrameResolutionChannel?.TryWrite(frame);
                 }
             }
         }

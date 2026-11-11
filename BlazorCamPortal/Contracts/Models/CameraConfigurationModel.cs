@@ -35,8 +35,5 @@ namespace CamPortal.Contracts.Models
         public FlipMode FlipMode { get; set; } = FlipMode.None;
 
         public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
-
-        [Range(0, 2, ErrorMessage = "Sharpen factor must be between 0 and 2.")]
-        public float SharpenFactor { get; set; } = 0;
     }
 }

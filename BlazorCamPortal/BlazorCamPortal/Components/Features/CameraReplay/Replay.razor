@@ -1,5 +1,6 @@
 @page "/replay"
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 @using CamPortal.Contracts.Constants
 @using CamPortal.Contracts.Dtos.VideoChunkDtos
 @using CamPortal.Contracts.Dtos.ExportedVideoDtos
@@ -427,10 +428,6 @@ else
     </MudStack>
 }
 
-<script src="@Assets["/js/Libraries/hls.js"]"></script>
-<script src="@Assets["/js/hlsPlayback.js"]"></script>
-<script src="@Assets["/js/timelineController.js"]"></script>
-
 @code {
     private const int _maxNumberOfTimeMarkersPerCamera=10;
     private const int _maxPlaybackRateExponent = 4;
@@ -699,6 +696,9 @@ else
 
     private async Task BeginHLSStream()
     {
+        await _js.InvokeVoidAsync("destroyAllHlsStreams");
+        await _js.InvokeVoidAsync("resetTimelines");
+
         if (!_hLSPlaylists.Any())
         {
             return;
@@ -710,8 +710,6 @@ else
             ? (end.Value - start.Value).TotalSeconds
             : 0;
         var startIso = start?.ToString("o") ?? string.Empty;
-
-        await _js.InvokeVoidAsync("resetTimelines");
 
         foreach (var cam in _hLSPlaylists)
         {
@@ -810,5 +808,17 @@ else
         _selectedEndTime = new TimeSpan(now.Hour, now.Minute, now.Second);
 
         await UpdateFootageAvailability();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await _js.InvokeVoidAsync("destroyAllHlsStreams");
+            await _js.InvokeVoidAsync("resetTimelines");
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException)
+        {
+        }
     }
 }

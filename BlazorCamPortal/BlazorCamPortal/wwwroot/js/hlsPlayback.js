@@ -1,4 +1,6 @@
-﻿window.initHlsStream = (videoId, playlistContent, startPercentage = 0) => {
+﻿window.hlsStreams = window.hlsStreams || new Map();
+
+window.initHlsStream = (videoId, playlistContent, startPercentage = 0) => {
   const video = document.getElementById(videoId);
   if (!video) {
     return;
@@ -26,7 +28,8 @@
     type: "application/vnd.apple.mpegurl",
   });
   const manifestUrl = URL.createObjectURL(manifestBlob);
-  video._manifestUrl = manifestUrl;
+  const stream = { video, hls: null, manifestUrl };
+  window.hlsStreams.set(videoId, stream);
 
   const seekToStartPercentage = () => {
     if (startPercentage <= 0) {
@@ -78,7 +81,7 @@
 
   if (Hls.isSupported()) {
     const hls = new Hls({ lowLatencyMode: true, debug: true, maxBufferLength: 120 });
-    video._hlsInstance = hls;
+    stream.hls = hls;
     console.log("initHlsStream: attaching media", { videoId, manifestUrl });
     hls.loadSource(manifestUrl);
     hls.attachMedia(video);
@@ -119,24 +122,31 @@
 };
 
 window.destroyHlsStream = (videoId) => {
-  const video = document.getElementById(videoId);
+  const stream = window.hlsStreams.get(videoId);
+  window.hlsStreams.delete(videoId);
+
+  // the stored element is used because Blazor may already have removed it from the page
+  const video = stream?.video ?? document.getElementById(videoId);
+
+  if (stream?.hls) {
+    stream.hls.destroy();
+  }
+
+  if (stream?.manifestUrl) {
+    URL.revokeObjectURL(stream.manifestUrl);
+  }
+
   if (!video) {
     return;
-  }
-
-  if (video._hlsInstance) {
-    video._hlsInstance.destroy();
-    video._hlsInstance = null;
-  }
-
-  if (video._manifestUrl) {
-    URL.revokeObjectURL(video._manifestUrl);
-    video._manifestUrl = null;
   }
 
   video.pause();
   video.removeAttribute("src");
   video.load();
+};
+
+window.destroyAllHlsStreams = () => {
+  [...window.hlsStreams.keys()].forEach((videoId) => window.destroyHlsStream(videoId));
 };
 
 window.openFullScreen = async (videoId) => {

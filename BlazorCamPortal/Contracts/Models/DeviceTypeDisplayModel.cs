@@ -19,7 +19,7 @@ namespace CamPortal.Contracts.Models
 
         public string GetIconUrl(IDeviceTypeIconStorageService service)
         {
-            return service.BuildPublicUrl(IconName, DateTime.Now);
+            return service.BuildPublicUrl(IconName, IconUpdatedAt);
         }
     }
 }

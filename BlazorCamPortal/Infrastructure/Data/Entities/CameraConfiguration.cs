@@ -28,8 +28,6 @@ namespace CamPortal.Infrastructure.Data.Entities
 
         public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
 
-        public float SharpenFactor { get; set; } = 0;
-
         public int ResolutionWidth { get; set; } = 0;
 
         public int ResolutionHeight { get; set; } = 0;
