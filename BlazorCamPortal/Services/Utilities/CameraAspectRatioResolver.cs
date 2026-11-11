@@ -35,9 +35,10 @@ namespace CamPortal.Core.Utilities
 
         public static CameraLayoutType GetLayoutType(CameraStreamingConfigurationDto cameraConfig)
         {
-            if (cameraConfig.CameraAspectRatio == CameraAspectRatios.Original && cameraConfig.ResolutionWidth > 0 && cameraConfig.ResolutionHeight > 0)
+            if (cameraConfig.CameraAspectRatio == CameraAspectRatios.Original)
             {
-                var layoutType = cameraConfig.ResolutionWidth > cameraConfig.ResolutionHeight ? CameraLayoutType.Horizontal : CameraLayoutType.Vertical;
+                var (sensorWidth, sensorHeight) = cameraConfig.SensorResolution.GetSize();
+                var layoutType = sensorWidth > sensorHeight ? CameraLayoutType.Horizontal : CameraLayoutType.Vertical;
 
                 if ((cameraConfig.FrameRotation / 90) % 2 != 0)
                 {
@@ -57,13 +58,7 @@ namespace CamPortal.Core.Utilities
 
         public static (int Width, int Height) GetEncodingResolution(CameraStreamingConfigurationDto cameraConfig)
         {
-            int width = cameraConfig.ResolutionWidth;
-            int height = cameraConfig.ResolutionHeight;
-
-            if (width <= 0 || height <= 0)
-            {
-                return (0, 0);
-            }
+            var (width, height) = cameraConfig.SensorResolution.GetSize();
 
             if ((int)(cameraConfig.FrameRotation / 90) % 2 != 0)
             {

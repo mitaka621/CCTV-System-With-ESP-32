@@ -13,17 +13,15 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<bool> UpdateDeviceConfigurationAsync(Guid deviceId, CameraStreamingConfigurationDto dto);
 
-        Task<bool> UpdateCameraResolutionAsync(CameraResolutionDto dto);
-
         Task<CameraStreamingConfigurationDto?> GetCameraConfigurationAsync(Guid deviceId);
-
-        Task<CameraResolutionDto?> GetCameraResolutionAsync(Guid deviceId);
 
         Task<bool> SetSecurityArmedAsync(Guid deviceId, bool armed);
 
         Task<bool> SetCaseSensorInstalledAsync(Guid deviceId, bool installed);
 
         Task<bool> SetMovementThresholdsAsync(Guid deviceId, double movementThresholdOffset, double rotationThresholdOffset);
+
+        Task<bool> SetSensorResolutionAsync(Guid deviceId, CameraSensorResolutions sensorResolution);
 
         Task<DeviceSecurityConfigDto?> GetDeviceSecurityConfigAsync(Guid deviceId);
     }

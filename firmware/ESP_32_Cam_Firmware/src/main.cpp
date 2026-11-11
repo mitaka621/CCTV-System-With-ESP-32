@@ -48,16 +48,28 @@ static void applyNewConfig(const uint8_t *json, size_t len)
     return;
   }
 
-  bool caseSensor = doc["caseSensor"] | true;
-  float moveOffset = doc["moveOffset"] | 0.0f;
-  float rotateOffset = doc["rotateOffset"] | 0.0f;
+  JsonVariant caseSensor = doc["CaseSensorInstalled"];
+  if (caseSensor.is<bool>())
+  {
+    DEBUG_PRINT(String("Config: caseSensor=") + (caseSensor.as<bool>() ? "1" : "0"));
+    sensor_hub::setCaseSwitchInstalled(caseSensor.as<bool>());
+  }
 
-  DEBUG_PRINT(String("Config: caseSensor=") + (caseSensor ? "1" : "0") +
-              " moveOffset=" + String(moveOffset, 2) +
-              " rotateOffset=" + String(rotateOffset, 2));
+  JsonVariant moveOffset = doc["MovementThresholdOffset"];
+  JsonVariant rotateOffset = doc["RotationThresholdOffset"];
+  if (moveOffset.is<float>() && rotateOffset.is<float>())
+  {
+    DEBUG_PRINT(String("Config: moveOffset=") + String(moveOffset.as<float>(), 2) + " rotateOffset=" + String(rotateOffset.as<float>(), 2));
+    sensor_hub::setMotionTuning(moveOffset.as<float>(), rotateOffset.as<float>());
+  }
 
-  sensor_hub::setCaseSwitchInstalled(caseSensor);
-  sensor_hub::setMotionTuning(moveOffset, rotateOffset);
+  JsonVariant sensorWidth = doc["SensorResolutionWidth"];
+  JsonVariant sensorHeight = doc["SensorResolutionHeight"];
+  if (sensorWidth.is<uint16_t>() && sensorHeight.is<uint16_t>())
+  {
+    DEBUG_PRINT(String("Config: resolution=") + sensorWidth.as<uint16_t>() + "x" + sensorHeight.as<uint16_t>());
+    frame_streamer::requestResolution(sensorWidth.as<uint16_t>(), sensorHeight.as<uint16_t>());
+  }
 }
 
 static void onCameraCommand(CameraCommand command, const uint8_t *payload, size_t payloadLen)
@@ -167,30 +179,30 @@ void setup()
     Serial.begin(115200);
   
     unsigned long serialStart = millis();
-  while (!Serial && (millis() - serialStart) < 3000)
-  {
-    delay(10);
-  }
-  delay(300);
+    while (!Serial && (millis() - serialStart) < 3000)
+    {
+      delay(10);
+    }
+    delay(300);
 
-  DEBUG_PRINT("=================================");
-  DEBUG_PRINT("CamPortal device firmware " FIRMWARE_VERSION);
-  DEBUG_PRINT("=================================");
+    DEBUG_PRINT("=================================");
+    DEBUG_PRINT("CamPortal device firmware " FIRMWARE_VERSION);
+    DEBUG_PRINT("=================================");
 
-  led_indicator::begin();
-  led_indicator::setState(led_indicator::BOOTING);
-  status_led::begin();
-  ir_cut_controller::begin();
-  sensor_hub::begin();
-  buzzer::begin();
-  data_channel::SetMessageHandler(onChannelMessage);
+    led_indicator::begin();
+    led_indicator::setState(led_indicator::BOOTING);
+    status_led::begin();
+    ir_cut_controller::begin();
+    sensor_hub::begin();
+    buzzer::begin();
+    data_channel::SetMessageHandler(onChannelMessage);
 
-  if (!secret_store::begin())
-  {
-    DEBUG_PRINT("Failed to open NVS namespace");
-  }
+    if (!secret_store::begin())
+    {
+      DEBUG_PRINT("Failed to open NVS namespace");
+    }
 
-  enterState(STATE_LOAD_CREDENTIALS);
+    enterState(STATE_LOAD_CREDENTIALS);
 }
 
 static void doLoadCredentials()

@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Dtos.TelemetryDtos;
+using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Contracts.Abstractions.Services
 {
@@ -9,5 +10,9 @@ namespace CamPortal.Contracts.Abstractions.Services
         void OnCameraDisconnected(Guid cameraId);
 
         void Ingest(CameraTelemetrySampleDto sample);
+
+        bool RequestSensorResolutionChange(Guid cameraId, CameraSensorResolutions sensorResolution);
+
+        Task<CameraSensorResolutions> SyncCameraResolutionAsync(Guid cameraId, CameraSensorResolutions reportedResolution);
     }
 }

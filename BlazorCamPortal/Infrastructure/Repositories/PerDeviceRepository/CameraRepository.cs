@@ -40,12 +40,11 @@ namespace CamPortal.Infrastructure.Repositories.PerDeviceRepository
                         Contrast = y.CameraConfiguration.Contrast,
                         FlipMode = y.CameraConfiguration.FlipMode,
                         CameraAspectRatio = y.CameraConfiguration.CameraAspectRatio,
+                        SensorResolution = y.CameraConfiguration.SensorResolution,
                         FrameRotation = y.CameraConfiguration.FrameRotation,
                         ZoomFactor = y.CameraConfiguration.ZoomFactor,
                         ZoomStartX = y.CameraConfiguration.ZoomStartX,
-                        ZoomStartY = y.CameraConfiguration.ZoomStartY,
-                        ResolutionHeight = y.CameraConfiguration.ResolutionHeight,
-                        ResolutionWidth = y.CameraConfiguration.ResolutionWidth
+                        ZoomStartY = y.CameraConfiguration.ZoomStartY
                     }
                 });
         }

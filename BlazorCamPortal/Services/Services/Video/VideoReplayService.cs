@@ -218,10 +218,8 @@ namespace CamPortal.Core.Services.Video
                 startDate = endDate.AddHours(-1);
             }
 
-            var expectedNumberOfChunks = ((endDate - startDate).TotalSeconds / _maxChunksSizeInS) * cameraIds.Count;
-
-            var serverLocalStorageTotalChunkCount = await _videoChunkRepository
-                .CountTotalAvailableChunksForPeriodInLocalStorageAsync(cameraIds, startDate, endDate);
+            var localChunksByCameraId = await _videoChunkRepository
+                .GetVideoChunksForPeriodForCameraFromLocalStorageAsync(cameraIds, startDate, endDate);
 
             var result = new List<ReplayFootageAvailabilityModel>();
 
@@ -229,34 +227,50 @@ namespace CamPortal.Core.Services.Video
             {
                 LocationId = Guid.Empty,
                 LocationName = "Local Server-Side Storage",
-                AvailabilityPercentage = serverLocalStorageTotalChunkCount / expectedNumberOfChunks * 100
+                AvailabilityPercentage = GetAvailabilityPercentage(cameraIds, localChunksByCameraId, startDate, endDate)
             });
 
-            var countsPerRemotes = await _videoChunkReplicationRepository.GetAvailableChunksCountPerEnabledTargetsAsync(cameraIds, startDate, endDate);
+            var enabledTargets = await _remoteStorageTargetRepository.GetEnabledAsync();
 
-            foreach (var remoteCount in countsPerRemotes)
+            foreach (var target in enabledTargets)
             {
+                var remoteChunksByCameraId = await _videoChunkReplicationRepository
+                    .GetVideoChunksForPeriodForCameraFromRemoteStorageAsync(target.Key, cameraIds, startDate, endDate);
+
                 result.Add(new ReplayFootageAvailabilityModel()
                 {
-                    LocationId = remoteCount.Key.Id,
-                    LocationName = remoteCount.Key.SharePath,
-                    AvailabilityPercentage = remoteCount.Value / expectedNumberOfChunks * 100
+                    LocationId = target.Key,
+                    LocationName = target.Value.SharePath,
+                    AvailabilityPercentage = GetAvailabilityPercentage(cameraIds, remoteChunksByCameraId, startDate, endDate)
                 });
             }
 
-            var allEnabledTargets = await _remoteStorageTargetRepository.GetEnabledAsync();
-
-            var emptyRemoteTargets = allEnabledTargets.Where(x => !countsPerRemotes.Any(y => y.Key.Id == x.Key))
-                .Select(x => new ReplayFootageAvailabilityModel()
-                {
-                    LocationId = x.Key,
-                    LocationName = x.Value.SharePath,
-                    AvailabilityPercentage = 0
-                });
-
-            result.AddRange(emptyRemoteTargets);
-
             return result;
+        }
+
+        // missing time is measured with the same gap rules as the replay timeline, so footage the timeline shows as complete is 100 %
+        private double GetAvailabilityPercentage(List<Guid> cameraIds, Dictionary<Guid, List<VideoChunkShortInfoDto>> chunksByCameraId, DateTime startDate, DateTime endDate)
+        {
+            var expectedSeconds = (endDate - startDate).TotalSeconds * cameraIds.Count;
+
+            if (expectedSeconds <= 0)
+            {
+                return 0;
+            }
+
+            var missingSeconds = 0.0;
+
+            foreach (var cameraId in cameraIds)
+            {
+                chunksByCameraId.TryGetValue(cameraId, out var chunks);
+
+                var missingChunkEvents = new List<VideoChunkDateTimeEventDto>();
+                BuildFullTimeline(cameraId, chunks, startDate, endDate, missingChunkEvents);
+
+                missingSeconds += missingChunkEvents.Sum(x => x.TotalDuration);
+            }
+
+            return Math.Clamp((expectedSeconds - missingSeconds) / expectedSeconds * 100, 0, 100);
         }
 
         private void FillGap(DateTime gapStart, DateTime gapEnd, List<VideoChunkShortInfoDto> fullTimeline, List<VideoChunkDateTimeEventDto> missingVideoChunkEvents)

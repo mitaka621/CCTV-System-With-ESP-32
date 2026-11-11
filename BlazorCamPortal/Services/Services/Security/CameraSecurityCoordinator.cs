@@ -1,8 +1,10 @@
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
+using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.SecurityDtos;
 using CamPortal.Contracts.Dtos.TelemetryDtos;
 using CamPortal.Contracts.Enums;
+using CamPortal.Core.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -37,6 +39,8 @@ namespace CamPortal.Core.Services.Security
 
         public event Action<Guid>? StatusChanged;
 
+        public event Action<SensorResolutionRejectedDto>? SensorResolutionRejected;
+
         public CameraSecurityCoordinator(
             ILogger<CameraSecurityCoordinator> logger,
             ICameraConfigurationRepository deviceRepository,
@@ -63,6 +67,7 @@ namespace CamPortal.Core.Services.Security
                 state.CaseSensorInstalled = config?.CaseSensorInstalled ?? true;
                 state.MovementThresholdOffset = config?.MovementThresholdOffset ?? 0;
                 state.RotationThresholdOffset = config?.RotationThresholdOffset ?? 0;
+                state.SensorResolution = config?.SensorResolution ?? CameraSensorResolutions.Resolution2048x1536;
                 state.Connected = true;
             }
 
@@ -80,6 +85,49 @@ namespace CamPortal.Core.Services.Security
             }
 
             NotifyStatusChanged(cameraId);
+        }
+
+        public async Task<CameraSensorResolutions> SyncCameraResolutionAsync(Guid cameraId, CameraSensorResolutions reportedResolution)
+        {
+            var state = _states.GetOrAdd(cameraId, _ => new CameraState());
+
+            CameraSensorResolutions requestedResolution;
+            bool isChangePending;
+
+            lock (state.Sync)
+            {
+                requestedResolution = state.SensorResolution;
+                isChangePending = state.IsSensorResolutionChangePending;
+                state.IsSensorResolutionChangePending = false;
+            }
+
+            if (isChangePending)
+            {
+                PushSensorResolutionToDevice(cameraId, requestedResolution);
+                return requestedResolution;
+            }
+
+            await _deviceRepository.SetSensorResolutionAsync(cameraId, reportedResolution);
+
+            _logger.LogWarning(
+                "Camera {CameraId} does not support {RequestedResolution} and kept {ReportedResolution}",
+                cameraId,
+                requestedResolution,
+                reportedResolution);
+
+            lock (state.Sync)
+            {
+                state.SensorResolution = reportedResolution;
+            }
+
+            NotifySensorResolutionRejected(new SensorResolutionRejectedDto
+            {
+                CameraId = cameraId,
+                RequestedResolution = requestedResolution,
+                AppliedResolution = reportedResolution
+            });
+
+            return reportedResolution;
         }
 
         public void OnCameraDisconnected(Guid cameraId)
@@ -197,49 +245,6 @@ namespace CamPortal.Core.Services.Security
             return armed ? ArmInternalAsync(cameraId) : DisarmInternalAsync(cameraId);
         }
 
-        private async Task ArmInternalAsync(Guid cameraId)
-        {
-            await _deviceRepository.SetSecurityArmedAsync(cameraId, true);
-
-            var state = _states.GetOrAdd(cameraId, _ => new CameraState());
-            var now = DateTime.UtcNow;
-            lock (state.Sync)
-            {
-                state.Armed = true;
-                state.AlarmActive = false;
-                state.AwaitingClear = true;
-                state.AwaitingClearUntil = now + _awaitClearTimeout;
-                state.SuppressTamperUntil = now + _resetGrace;
-            }
-
-            RemoveFromAlarmSet(cameraId);
-            SyncDeviceToClearBaseline(cameraId);
-
-            NotifyStatusChanged(cameraId);
-        }
-
-        private async Task DisarmInternalAsync(Guid cameraId)
-        {
-            await _deviceRepository.SetSecurityArmedAsync(cameraId, false);
-
-            var state = _states.GetOrAdd(cameraId, _ => new CameraState());
-
-            bool wasAlarm;
-            lock (state.Sync)
-            {
-                state.Armed = false;
-                wasAlarm = state.AlarmActive;
-                state.AlarmActive = false;
-            }
-
-            if (wasAlarm)
-            {
-                ClearDeviceAlarm(cameraId);
-            }
-
-            NotifyStatusChanged(cameraId);
-        }
-
         public async Task SetCaseSensorInstalledAsync(Guid cameraId, bool installed)
         {
             await _deviceRepository.SetCaseSensorInstalledAsync(cameraId, installed);
@@ -281,32 +286,22 @@ namespace CamPortal.Core.Services.Security
             NotifyStatusChanged(cameraId);
         }
 
-        private void PushConfigToDevice(Guid cameraId, CameraState state)
+        public bool RequestSensorResolutionChange(Guid cameraId, CameraSensorResolutions sensorResolution)
         {
-            List<DeviceEspConfigDto> config;
+            var state = _states.GetOrAdd(cameraId, _ => new CameraState());
+
             lock (state.Sync)
             {
-                config =
-                [
-                     new DeviceEspConfigDto()
-                     {
-                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.CaseSensorInstalled),
-                         Value=state.CaseSensorInstalled
-                     },
-                     new DeviceEspConfigDto()
-                     {
-                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.MovementThresholdOffset),
-                         Value=state.MovementThresholdOffset
-                     },
-                     new DeviceEspConfigDto()
-                     {
-                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.RotationThresholdOffset),
-                         Value=state.RotationThresholdOffset
-                     }
-                ];
+                state.SensorResolution = sensorResolution;
+                state.IsSensorResolutionChangePending = !state.Connected;
+
+                if (state.IsSensorResolutionChangePending)
+                {
+                    return false;
+                }
             }
 
-            _dispatcher.TryEnqueueConfig(cameraId, config);
+            return PushSensorResolutionToDevice(cameraId, sensorResolution);
         }
 
         public Task TriggerAsync(Guid cameraId)
@@ -427,6 +422,116 @@ namespace CamPortal.Core.Services.Security
                     _logger.LogError(ex, "StatusChanged handler threw for camera {CameraId}", cameraId);
                 }
             }
+        }
+
+        private void NotifySensorResolutionRejected(SensorResolutionRejectedDto rejection)
+        {
+            var handlers = SensorResolutionRejected;
+            if (handlers == null)
+            {
+                return;
+            }
+
+            foreach (var handler in handlers.GetInvocationList().Cast<Action<SensorResolutionRejectedDto>>())
+            {
+                try
+                {
+                    handler(rejection);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "SensorResolutionRejected handler threw for camera {CameraId}", rejection.CameraId);
+                }
+            }
+        }
+
+        private async Task ArmInternalAsync(Guid cameraId)
+        {
+            await _deviceRepository.SetSecurityArmedAsync(cameraId, true);
+
+            var state = _states.GetOrAdd(cameraId, _ => new CameraState());
+            var now = DateTime.UtcNow;
+            lock (state.Sync)
+            {
+                state.Armed = true;
+                state.AlarmActive = false;
+                state.AwaitingClear = true;
+                state.AwaitingClearUntil = now + _awaitClearTimeout;
+                state.SuppressTamperUntil = now + _resetGrace;
+            }
+
+            RemoveFromAlarmSet(cameraId);
+            SyncDeviceToClearBaseline(cameraId);
+
+            NotifyStatusChanged(cameraId);
+        }
+
+        private async Task DisarmInternalAsync(Guid cameraId)
+        {
+            await _deviceRepository.SetSecurityArmedAsync(cameraId, false);
+
+            var state = _states.GetOrAdd(cameraId, _ => new CameraState());
+
+            bool wasAlarm;
+            lock (state.Sync)
+            {
+                state.Armed = false;
+                wasAlarm = state.AlarmActive;
+                state.AlarmActive = false;
+            }
+
+            if (wasAlarm)
+            {
+                ClearDeviceAlarm(cameraId);
+            }
+
+            NotifyStatusChanged(cameraId);
+        }
+
+        private bool PushSensorResolutionToDevice(Guid cameraId, CameraSensorResolutions sensorResolution)
+        {
+            var (sensorWidth, sensorHeight) = sensorResolution.GetSize();
+
+            return _dispatcher.TryEnqueueConfig(
+                cameraId,
+                new DeviceEspConfigDto()
+                {
+                    ConfigurationPropertyName = nameof(CameraOnboardEditableParameters.SensorResolutionWidth),
+                    Value = sensorWidth
+                },
+                new DeviceEspConfigDto()
+                {
+                    ConfigurationPropertyName = nameof(CameraOnboardEditableParameters.SensorResolutionHeight),
+                    Value = sensorHeight
+                });
+        }
+
+        private bool PushConfigToDevice(Guid cameraId, CameraState state)
+        {
+            List<DeviceEspConfigDto> config;
+            lock (state.Sync)
+            {
+                config =
+                [
+                     new DeviceEspConfigDto()
+                     {
+                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.CaseSensorInstalled),
+                         Value=state.CaseSensorInstalled
+                     },
+                     new DeviceEspConfigDto()
+                     {
+                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.MovementThresholdOffset),
+                         Value=state.MovementThresholdOffset
+                     },
+                     new DeviceEspConfigDto()
+                     {
+                         ConfigurationPropertyName=nameof(CameraOnboardEditableParameters.RotationThresholdOffset),
+                         Value=state.RotationThresholdOffset
+                     }
+                ];
+            }
+
+            return _dispatcher.TryEnqueueConfig(cameraId, config);
         }
 
         private void AddToAlarmSet(Guid cameraId)

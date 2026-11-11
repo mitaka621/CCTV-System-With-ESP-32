@@ -118,15 +118,5 @@ namespace CamPortal.Infrastructure.Repositories
                  .Where(x => x.IsDeletedFromLocalStorage && x.VideoChunkReplications.All(x => x.IsDeleted))
                  .ExecuteDeleteAsync();
         }
-
-        public async Task<int> CountTotalAvailableChunksForPeriodInLocalStorageAsync(List<Guid> cameraId, DateTime startDate, DateTime endDate)
-        {
-            await using var db = await _dbContextFactory.CreateDbContextAsync();
-
-            return await db.VideoChunks
-                 .Where(x => !x.IsDeletedFromLocalStorage && cameraId.Contains(x.DeviceId))
-                 .Where(x => x.ChunkStartTime < endDate && x.ChunkEndTime > startDate)
-                 .CountAsync();
-        }
     }
 }

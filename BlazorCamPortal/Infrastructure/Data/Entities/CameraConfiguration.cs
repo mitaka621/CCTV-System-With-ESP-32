@@ -28,9 +28,7 @@ namespace CamPortal.Infrastructure.Data.Entities
 
         public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
 
-        public int ResolutionWidth { get; set; } = 0;
-
-        public int ResolutionHeight { get; set; } = 0;
+        public CameraSensorResolutions SensorResolution { get; set; } = CameraSensorResolutions.Resolution2048x1536;
 
         public bool SecurityArmed { get; set; }
 

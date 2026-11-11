@@ -13,8 +13,7 @@ namespace CamPortal.Core.Utilities
 
         private const int _stampFontSize = 28;
         private const int _stampBottomOffset = 50;
-        private const int _timestampRightOffset = 320;
-        private const int _cameraNameLeftOffset = 10;
+        private const int _stampSidePadding = 10;
         private const int _reducedResolutionWidth = 640;
 
         private static readonly Lazy<string?> _stampFontFilePath = new(FindStampFontFilePath);
@@ -144,8 +143,8 @@ namespace CamPortal.Core.Utilities
 
             var textOptions = $"{fontOption}fontsize={_stampFontSize}:fontcolor=white";
 
-            filters.Add($@"drawtext={textOptions}:x=W-{_timestampRightOffset}:y=H-{_stampBottomOffset}:text='%{{localtime\:%Y-%m-%d %H\\\:%M\\\:%S}}'");
-            filters.Add($"drawtext={textOptions}:x={_cameraNameLeftOffset}:y=H-{_stampBottomOffset}:expansion=none:text={EscapeOptionValue(cameraName)}");
+            filters.Add($@"drawtext={textOptions}:x=W-tw-{_stampSidePadding}:y=H-{_stampBottomOffset}:text='%{{localtime\:%Y-%m-%d %H\\\:%M\\\:%S}}'");
+            filters.Add($"drawtext={textOptions}:x={_stampSidePadding}:y=H-{_stampBottomOffset}:expansion=none:text={EscapeOptionValue(cameraName)}");
         }
 
         private static string EscapeOptionValue(string value)

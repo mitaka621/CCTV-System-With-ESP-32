@@ -13,5 +13,7 @@ namespace frame_streamer
 
   void endSession();
 
+  void requestResolution(uint16_t width, uint16_t height);
+
   void tick();
 }

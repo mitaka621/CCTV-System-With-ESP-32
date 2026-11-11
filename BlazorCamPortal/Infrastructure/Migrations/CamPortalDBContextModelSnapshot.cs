@@ -48,17 +48,14 @@ namespace CamPortal.Infrastructure.Migrations
                     b.Property<double>("MovementThresholdOffset")
                         .HasColumnType("float");
 
-                    b.Property<int>("ResolutionHeight")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ResolutionWidth")
-                        .HasColumnType("int");
-
                     b.Property<double>("RotationThresholdOffset")
                         .HasColumnType("float");
 
                     b.Property<bool>("SecurityArmed")
                         .HasColumnType("bit");
+
+                    b.Property<int>("SensorResolution")
+                        .HasColumnType("int");
 
                     b.Property<float>("ZoomFactor")
                         .HasColumnType("real");
@@ -115,6 +112,12 @@ namespace CamPortal.Infrastructure.Migrations
 
                     b.Property<long>("FrameCount")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("FrameHeight")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FrameWidth")
+                        .HasColumnType("int");
 
                     b.Property<double>("HumidityPercent")
                         .HasColumnType("float");

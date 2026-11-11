@@ -60,19 +60,8 @@ namespace CamPortal.Infrastructure.Repositories
                     .SetProperty(y => y.ZoomStartX, dto.ZoomStartX)
                     .SetProperty(y => y.ZoomStartY, dto.ZoomStartY)
                     .SetProperty(y => y.FrameRotation, dto.FrameRotation)
-                    .SetProperty(y => y.CameraAspectRatio, dto.CameraAspectRatio));
-
-            return numberOfUpdates >= 1;
-        }
-
-        public async Task<bool> UpdateCameraResolutionAsync(CameraResolutionDto dto)
-        {
-            var dbContext = await _dbContextFactory.CreateDbContextAsync();
-
-            var numberOfUpdates = await dbContext.CameraConfigurations
-                .Where(x => x.DeviceId == dto.CameraId)
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.ResolutionWidth, dto.Width)
-                    .SetProperty(y => y.ResolutionHeight, dto.Height));
+                    .SetProperty(y => y.CameraAspectRatio, dto.CameraAspectRatio)
+                    .SetProperty(y => y.SensorResolution, dto.SensorResolution));
 
             return numberOfUpdates >= 1;
         }
@@ -84,20 +73,6 @@ namespace CamPortal.Infrastructure.Repositories
             return await dbContext.CameraConfigurations.AsNoTracking()
                 .Where(x => x.DeviceId == deviceId)
                 .Select(x => _mapper.Map<CameraStreamingConfigurationDto>(x))
-                .FirstOrDefaultAsync();
-        }
-
-        public async Task<CameraResolutionDto?> GetCameraResolutionAsync(Guid deviceId)
-        {
-            var dbContext = await _dbContextFactory.CreateDbContextAsync();
-
-            return await dbContext.CameraConfigurations.AsNoTracking()
-                .Where(x => x.DeviceId == deviceId)
-                .Select(x => new CameraResolutionDto
-                {
-                    Width = x.ResolutionWidth,
-                    Height = x.ResolutionHeight
-                })
                 .FirstOrDefaultAsync();
         }
 
@@ -133,6 +108,16 @@ namespace CamPortal.Infrastructure.Repositories
             return result != 0;
         }
 
+        public async Task<bool> SetSensorResolutionAsync(Guid deviceId, CameraSensorResolutions sensorResolution)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var result = await db.CameraConfigurations
+                .Where(x => x.DeviceId == deviceId)
+                .ExecuteUpdateAsync(x => x.SetProperty(c => c.SensorResolution, sensorResolution));
+
+            return result != 0;
+        }
+
         public async Task<DeviceSecurityConfigDto?> GetDeviceSecurityConfigAsync(Guid deviceId)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();
@@ -144,7 +129,8 @@ namespace CamPortal.Infrastructure.Repositories
                     SecurityArmed = x.SecurityArmed,
                     CaseSensorInstalled = x.CaseSensorInstalled,
                     MovementThresholdOffset = x.MovementThresholdOffset,
-                    RotationThresholdOffset = x.RotationThresholdOffset
+                    RotationThresholdOffset = x.RotationThresholdOffset,
+                    SensorResolution = x.SensorResolution
                 })
                 .FirstOrDefaultAsync();
 

@@ -8,9 +8,5 @@ namespace CamPortal.Contracts.Abstractions.Services
         Task<bool> UpdateCameraConfigurationAsync(CameraConfigurationModel dto);
 
         Task<CameraConfigurationModel?> GetCameraConfigurationAsync(Guid cameraId);
-
-        Task<CameraResolutionDto?> GetCameraResolutionAsync(Guid cameraId);
-
-        Task<bool> SetCameraResolutionAsync(CameraResolutionDto dto);
     }
 }

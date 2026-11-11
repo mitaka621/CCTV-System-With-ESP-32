@@ -4,6 +4,8 @@
     {
         CaseSensorInstalled,
         MovementThresholdOffset,
-        RotationThresholdOffset
+        RotationThresholdOffset,
+        SensorResolutionWidth,
+        SensorResolutionHeight
     }
 }

@@ -67,5 +67,9 @@ namespace CamPortal.Infrastructure.Data.Entities
         public bool MotionActive { get; set; }
 
         public CameraMotionEvents MotionEvents { get; set; }
+
+        public int FrameWidth { get; set; }
+
+        public int FrameHeight { get; set; }
     }
 }

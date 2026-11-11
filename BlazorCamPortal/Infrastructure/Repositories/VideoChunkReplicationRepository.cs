@@ -76,24 +76,6 @@ namespace CamPortal.Infrastructure.Repositories
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsDeleted, true));
         }
 
-        public async Task<Dictionary<RemoteStorageTargetDto, int>> GetAvailableChunksCountPerEnabledTargetsAsync(List<Guid> cameraIds, DateTime startDate, DateTime endDate)
-        {
-            await using var db = await _dbContextFactory.CreateDbContextAsync();
-
-            return await db.VideoChunkReplications
-                .AsNoTracking()
-                .Where(x => x.RemoteStorageTarget.IsSyncEnabled && cameraIds.Contains(x.VideoChunk.DeviceId) && !x.IsDeleted)
-                .Where(x => x.VideoChunk.ChunkStartTime < endDate && x.VideoChunk.ChunkEndTime > startDate)
-                .GroupBy(x => x.RemoteStorageTarget)
-                .ToDictionaryAsync(x => new RemoteStorageTargetDto()
-                {
-                    Id = x.Key.Id,
-                    IsSyncEnabled = x.Key.IsSyncEnabled,
-                    SharePath = x.Key.SharePath
-                },
-                y => y.Count());
-        }
-
         public async Task<Dictionary<Guid, List<VideoChunkShortInfoDto>>> GetVideoChunksForPeriodForCameraFromRemoteStorageAsync(Guid targetId, List<Guid> cameraId, DateTime startDate, DateTime endDate)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();

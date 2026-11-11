@@ -5,6 +5,7 @@
 #include "camera_pins.h"
 #include "ir_cut_controller.h"
 #include "sensor_hub.h"
+#include "secret_store.h"
 #include <esp_camera.h>
 #include <math.h>
 
@@ -38,6 +39,61 @@ namespace frame_streamer
 
   static uint8_t _telemetryBuf[TELEMETRY_PAYLOAD_LEN] = {TELEMETRY_VERSION};
   static uint8_t _frameHeader[FRAME_HEADER_LEN] = {};
+
+  static constexpr const char *FRAME_SIZE_NVS_KEY = "camResolution";
+
+  static framesize_t _frameSize = CAMERA_RESOLUTION;
+  static bool _savedFrameSizeLoaded = false;
+
+  // written by the data channel receiver task and consumed by the streaming loop, -1 means nothing pending
+  static volatile int _pendingFrameSize = -1;
+
+  static bool findFrameSize(uint16_t width, uint16_t height, framesize_t &out)
+  {
+    for (int i = 0; i < FRAMESIZE_INVALID; i++)
+    {
+      if (resolution[i].width == width && resolution[i].height == height)
+      {
+        out = (framesize_t)i;
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  static framesize_t sensorMaxFrameSize()
+  {
+    sensor_t *sensor = esp_camera_sensor_get();
+    if (sensor == nullptr)
+      return FRAMESIZE_INVALID;
+
+    camera_sensor_info_t *info = esp_camera_sensor_get_info(&sensor->id);
+    return info != nullptr ? info->max_size : FRAMESIZE_INVALID;
+  }
+
+  static void loadSavedFrameSize()
+  {
+    _savedFrameSizeLoaded = true;
+
+    String saved;
+    if (!secret_store::loadFromNvs(FRAME_SIZE_NVS_KEY, saved))
+      return;
+
+    int separator = saved.indexOf('x');
+    if (separator <= 0)
+      return;
+
+    framesize_t savedFrameSize;
+    if (findFrameSize((uint16_t)saved.substring(0, separator).toInt(), (uint16_t)saved.substring(separator + 1).toInt(), savedFrameSize))
+      _frameSize = savedFrameSize;
+  }
+
+  static void saveFrameSize(framesize_t frameSize)
+  {
+    String value = String(resolution[frameSize].width) + "x" + String(resolution[frameSize].height);
+    secret_store::saveToNvs(FRAME_SIZE_NVS_KEY, value);
+  }
 
   static uint16_t clampU16(uint32_t v)
   {
@@ -266,6 +322,9 @@ namespace frame_streamer
       return false;
     }
 
+    if (!_savedFrameSizeLoaded)
+      loadSavedFrameSize();
+
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;
@@ -287,7 +346,7 @@ namespace frame_streamer
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 30000000;
     config.pixel_format = PIXFORMAT_JPEG;
-    config.frame_size = CAMERA_RESOLUTION;
+    config.frame_size = _frameSize;
     config.jpeg_quality = 12;
     config.fb_count = STREAM_CAMERA_FB_COUNT;
     config.fb_location = CAMERA_FB_IN_PSRAM;
@@ -300,10 +359,14 @@ namespace frame_streamer
       return false;
     }
 
+    framesize_t maxFrameSize = sensorMaxFrameSize();
+    if (maxFrameSize != FRAMESIZE_INVALID && _frameSize > maxFrameSize)
+      _frameSize = maxFrameSize;
+
     sensor_t *sensor = esp_camera_sensor_get();
     if (sensor != nullptr)
     {
-      sensor->set_framesize(sensor, CAMERA_RESOLUTION);
+      sensor->set_framesize(sensor, _frameSize);
       sensor->set_quality(sensor, 12);
       sensor->set_whitebal(sensor, 1);
       sensor->set_awb_gain(sensor, 1);
@@ -337,8 +400,67 @@ namespace frame_streamer
     data_channel::End();
   }
 
+  void requestResolution(uint16_t width, uint16_t height)
+  {
+    framesize_t requested;
+    if (!findFrameSize(width, height, requested))
+    {
+      DEBUG_PRINT(String("Camera: unsupported resolution ") + width + "x" + height);
+      return;
+    }
+
+    if (requested != _frameSize)
+      _pendingFrameSize = (int)requested;
+  }
+
+  // the camera is reinitialized because its frame buffers are sized for the frame size used at init, and the session is
+  // always restarted, also for unsupported sizes, so the server compares the size of the next session's first frame with the requested one
+  static void applyPendingResolution()
+  {
+    int pending = _pendingFrameSize;
+    if (pending < 0)
+      return;
+
+    _pendingFrameSize = -1;
+
+    framesize_t requested = (framesize_t)pending;
+    framesize_t maxFrameSize = sensorMaxFrameSize();
+
+    if (requested == _frameSize)
+      return;
+
+    if (maxFrameSize != FRAMESIZE_INVALID && requested > maxFrameSize)
+    {
+      DEBUG_PRINT(String("Camera: ") + resolution[requested].width + "x" + resolution[requested].height + " is not supported by this sensor");
+      data_channel::End();
+      return;
+    }
+
+    framesize_t previous = _frameSize;
+
+    data_channel::End();
+    esp_camera_deinit();
+
+    _frameSize = requested;
+    if (beginCamera())
+    {
+      saveFrameSize(_frameSize);
+      DEBUG_PRINT(String("Camera: resolution changed to ") + resolution[_frameSize].width + "x" + resolution[_frameSize].height);
+      return;
+    }
+
+    DEBUG_PRINT("Camera: reinit with the new resolution failed, restoring the previous one");
+
+    esp_camera_deinit();
+    _frameSize = previous;
+    if (!beginCamera())
+      ESP.restart();
+  }
+
   void tick()
   {
+    applyPendingResolution();
+
     if (!data_channel::IsActive())
     {
       delay(50);

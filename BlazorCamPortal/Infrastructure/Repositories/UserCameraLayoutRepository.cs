@@ -52,12 +52,11 @@ namespace CamPortal.Infrastructure.Repositories
                             Contrast = x.Camera.CameraConfiguration.Contrast,
                             FlipMode = x.Camera.CameraConfiguration.FlipMode,
                             CameraAspectRatio = x.Camera.CameraConfiguration.CameraAspectRatio,
+                            SensorResolution = x.Camera.CameraConfiguration.SensorResolution,
                             FrameRotation = x.Camera.CameraConfiguration.FrameRotation,
                             ZoomFactor = x.Camera.CameraConfiguration.ZoomFactor,
                             ZoomStartX = x.Camera.CameraConfiguration.ZoomStartX,
-                            ZoomStartY = x.Camera.CameraConfiguration.ZoomStartY,
-                            ResolutionHeight = x.Camera.CameraConfiguration.ResolutionHeight,
-                            ResolutionWidth = x.Camera.CameraConfiguration.ResolutionWidth
+                            ZoomStartY = x.Camera.CameraConfiguration.ZoomStartY
                         }
                     }
                 })

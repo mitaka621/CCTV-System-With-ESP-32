@@ -88,6 +88,10 @@ namespace CamPortal.MapperConfiguration
             CreateMap<DeviceDto, CameraDisplayModel>()
                 .ReverseMap();
 
+            CreateMap<CameraDto, CameraDisplayModel>()
+                .IncludeBase<DeviceDto, CameraDisplayModel>()
+                .ForMember(x => x.SensorResolution, x => x.MapFrom(y => y.CameraConfiguration.SensorResolution));
+
             CreateMap<DeviceDto, SmokeAlarmDisplayModel>()
                 .ReverseMap();
 

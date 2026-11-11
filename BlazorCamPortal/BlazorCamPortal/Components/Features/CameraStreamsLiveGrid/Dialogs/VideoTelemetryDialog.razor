@@ -23,6 +23,7 @@
                 </tr>
             </thead>
             <tbody>
+                @RenderRow("Frame resolution", "-", FrameResolutionRealtime())
                 @RenderRow("Frames per second", $"{_averages.AvgFps:0.0}", _latest != null ? $"{_latest.Fps:0.0}" : "-")
                 @RenderRow("Capture (ms)", $"{_averages.AvgCaptureMs:0}", _latest != null ? $"{_latest.AvgCaptureMs}/{_latest.MaxCaptureMs}" : "-")
                 @RenderRow("Encrypt (ms)", $"{_averages.AvgEncryptMs:0}", _latest != null ? $"{_latest.AvgEncryptMs}/{_latest.MaxEncryptMs}" : "-")
@@ -82,6 +83,16 @@
 
         _latest = _liveTelemetry.GetLatest(CameraId);
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string FrameResolutionRealtime()
+    {
+        if (_latest == null || _latest.FrameWidth <= 0 || _latest.FrameHeight <= 0)
+        {
+            return "-";
+        }
+
+        return $"{_latest.FrameWidth} x {_latest.FrameHeight}";
     }
 
     private string DayNightRealtime()

@@ -89,7 +89,9 @@ namespace CamPortal.Core.BackgroundServices
                 MotionSensorPresent = sample.MotionSensorPresent,
                 CaseOpen = sample.CaseOpen,
                 MotionActive = sample.MotionActive,
-                MotionEvents = sample.MotionEvents
+                MotionEvents = sample.MotionEvents,
+                FrameWidth = sample.FrameWidth,
+                FrameHeight = sample.FrameHeight
             });
 
             try

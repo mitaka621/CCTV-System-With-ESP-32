@@ -18,7 +18,5 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<List<VideoChunkReplicationItemDto>> GetUnreplicatedVideoChunksAsync(Guid targetId);
 
         Task<int> DeleteChunksWhichAreNotAvailbileInAnyStorageLocationAsync();
-
-        Task<int> CountTotalAvailableChunksForPeriodInLocalStorageAsync(List<Guid> cameraId, DateTime startDate, DateTime endDate);
     }
 }

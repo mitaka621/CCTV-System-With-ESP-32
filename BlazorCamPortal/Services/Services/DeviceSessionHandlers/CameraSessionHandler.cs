@@ -1,7 +1,6 @@
 using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
 using CamPortal.Contracts.Dtos.SecurityDtos;
 using CamPortal.Contracts.Dtos.TelemetryDtos;
@@ -33,7 +32,6 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
         private readonly ILogger<CameraSessionHandler> _logger;
         private readonly IActiveCameraConnections _activeCameraConnections;
         private readonly ICameraFramesManagerService _cameraFramesManagerService;
-        private readonly ICameraConfigurationService _cameraConfigurationService;
         private readonly ICameraConfigurationRepository _cameraConfigurationRepository;
         private readonly CameraTelemetryQueue _telemetryQueue;
         private readonly ICameraSecurityCoordinator _securityCoordinator;
@@ -46,7 +44,6 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             ILogger<CameraSessionHandler> logger,
             IActiveCameraConnections activeCameraConnections,
             ICameraFramesManagerService cameraFramesManagerService,
-            ICameraConfigurationService cameraConfigurationService,
             CameraTelemetryQueue telemetryQueue,
             ICameraSecurityCoordinator securityCoordinator,
             IConfiguration configuration,
@@ -56,7 +53,6 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
             _logger = logger;
             _activeCameraConnections = activeCameraConnections;
             _cameraFramesManagerService = cameraFramesManagerService;
-            _cameraConfigurationService = cameraConfigurationService;
             _telemetryQueue = telemetryQueue;
             _securityCoordinator = securityCoordinator;
             _mapper = mapper;
@@ -101,7 +97,7 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 
                 var sessionExpiresAt = DateTime.UtcNow.AddMinutes(_maxSessionDurationMinutes);
                 ulong totalFrames = 0;
-                var resolutionSaved = false;
+                var isResolutionChecked = false;
                 var lastTelemetrySampleUtc = DateTime.MinValue;
 
                 while (!sessionToken.IsCancellationRequested)
@@ -167,19 +163,14 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 
                     totalFrames++;
 
-                    if (!resolutionSaved)
+                    var resolutionWidth = (int)BinaryPrimitives.ReadUInt32BigEndian(plaintext.AsSpan(0, 4));
+                    var resolutionHeight = (int)BinaryPrimitives.ReadUInt32BigEndian(plaintext.AsSpan(4, 4));
+
+                    if (!isResolutionChecked)
                     {
-                        resolutionSaved = true;
+                        isResolutionChecked = true;
 
-                        var resolutionWidth = (int)BinaryPrimitives.ReadUInt32BigEndian(plaintext.AsSpan(0, 4));
-                        var resolutionHeight = (int)BinaryPrimitives.ReadUInt32BigEndian(plaintext.AsSpan(4, 4));
-
-                        await _cameraConfigurationService.SetCameraResolutionAsync(new CameraResolutionDto()
-                        {
-                            CameraId = device.Id,
-                            Width = resolutionWidth,
-                            Height = resolutionHeight
-                        });
+                        await SyncCameraResolutionWIthServerAsync(deviceWithConfigDto, resolutionWidth, resolutionHeight);
                     }
 
                     var now = DateTime.UtcNow;
@@ -188,6 +179,9 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
 
                     if (telemetrySample != null)
                     {
+                        telemetrySample.FrameWidth = resolutionWidth;
+                        telemetrySample.FrameHeight = resolutionHeight;
+
                         _securityCoordinator.Ingest(telemetrySample);
 
                         if (telemetryLen > 0 && now - lastTelemetrySampleUtc >= _telemetrySampleInterval)
@@ -278,6 +272,31 @@ namespace CamPortal.Core.Services.DeviceSessionHandlers
                 SingleReader = false,
                 SingleWriter = false,
             }));
+        }
+
+        private async Task SyncCameraResolutionWIthServerAsync(DeviceStreamingHandshakeWithCameraConfigDto deviceWithConfigDto, int width, int height)
+        {
+            var reportedResolution = CameraSensorResolutionsExtensions.FindBySize(width, height);
+
+            if (reportedResolution == null)
+            {
+                _logger.LogWarning("Stream {DeviceId}: {Width}x{Height} is not a selectable sensor resolution", deviceWithConfigDto.Id, width, height);
+                return;
+            }
+
+            if (reportedResolution == deviceWithConfigDto.CameraConfiguration.SensorResolution)
+            {
+                return;
+            }
+
+            try
+            {
+                deviceWithConfigDto.CameraConfiguration.SensorResolution = await _securityCoordinator.SyncCameraResolutionAsync(deviceWithConfigDto.Id, reportedResolution.Value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Stream {DeviceId}: camera resolution sync failed", deviceWithConfigDto.Id);
+            }
         }
 
         private CameraTelemetrySampleDto? DecodeTelemetry(ReadOnlySpan<byte> payload, Guid cameraId, DateTime timestampUtc)

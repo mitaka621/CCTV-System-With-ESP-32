@@ -23,8 +23,6 @@ namespace CamPortal.Contracts.Dtos.CameraConfigurationDtos
 
         public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
 
-        public int ResolutionWidth { get; set; }
-
-        public int ResolutionHeight { get; set; }
+        public CameraSensorResolutions SensorResolution { get; set; } = CameraSensorResolutions.Resolution2048x1536;
     }
 }

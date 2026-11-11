@@ -14,14 +14,16 @@ namespace CamPortal.Core.Services.Devices
         private readonly IMapper _mapper;
         private readonly IActiveCameraConnections _activeCameraConnectionsService;
         private readonly IUserCameraLayoutRepository _userCameraLayoutRepository;
+        private readonly ICameraSecurityCoordinator _cameraSecurityCoordinator;
 
-        public CameraConfigurationService(ICameraConfigurationRepository cameraConfigurationRepository, IMapper mapper, IDeviceRepository deviceRepository, IActiveCameraConnections activeCameraConnectionsService, IUserCameraLayoutRepository userCameraLayoutRepository)
+        public CameraConfigurationService(ICameraConfigurationRepository cameraConfigurationRepository, IMapper mapper, IDeviceRepository deviceRepository, IActiveCameraConnections activeCameraConnectionsService, IUserCameraLayoutRepository userCameraLayoutRepository, ICameraSecurityCoordinator cameraSecurityCoordinator)
         {
             _cameraConfigurationRepository = cameraConfigurationRepository;
             _mapper = mapper;
             _deviceRepository = deviceRepository;
             _activeCameraConnectionsService = activeCameraConnectionsService;
             _userCameraLayoutRepository = userCameraLayoutRepository;
+            _cameraSecurityCoordinator = cameraSecurityCoordinator;
         }
 
         public async Task<bool> UpdateCameraConfigurationAsync(CameraConfigurationModel model)
@@ -31,11 +33,21 @@ namespace CamPortal.Core.Services.Devices
                 return false;
             }
 
+            var previousConfig = await _cameraConfigurationRepository.GetCameraConfigurationAsync(model.DeviceId);
+
             var cameraNameUpdate = await _deviceRepository.SetDeviceNameAsync(model.DeviceId, model.CameraName);
 
             var cameraConfigUpdate = await _cameraConfigurationRepository.UpdateDeviceConfigurationAsync(model.DeviceId, _mapper.Map<CameraStreamingConfigurationDto>(model));
 
-            _activeCameraConnectionsService.TryDisconnect(model.DeviceId);
+            // a connected camera reconnects by itself after applying a new sensor resolution, so the server disconnect is only needed otherwise
+            var isSensorResolutionSentToCamera = cameraConfigUpdate
+                && previousConfig?.SensorResolution != model.SensorResolution
+                && _cameraSecurityCoordinator.RequestSensorResolutionChange(model.DeviceId, model.SensorResolution);
+
+            if (!isSensorResolutionSentToCamera)
+            {
+                _activeCameraConnectionsService.TryDisconnect(model.DeviceId);
+            }
 
             var result = cameraNameUpdate && cameraConfigUpdate;
 
@@ -52,16 +64,5 @@ namespace CamPortal.Core.Services.Devices
             return _mapper.Map<CameraConfigurationModel>(await _cameraConfigurationRepository.GetCameraConfigurationAsync(cameraId));
         }
 
-        public async Task<CameraResolutionDto?> GetCameraResolutionAsync(Guid cameraId)
-        {
-            return await _cameraConfigurationRepository.GetCameraResolutionAsync(cameraId);
-        }
-
-        public async Task<bool> SetCameraResolutionAsync(CameraResolutionDto dto)
-        {
-            var result = await _cameraConfigurationRepository.UpdateCameraResolutionAsync(dto);
-
-            return result;
-        }
     }
 }

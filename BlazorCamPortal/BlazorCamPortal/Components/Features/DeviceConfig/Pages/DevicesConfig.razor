@@ -170,12 +170,12 @@
                                                     <strong>IP:</strong> @(string.IsNullOrWhiteSpace(camera.Ipv4Address) ? "Unknown" : camera.Ipv4Address)
                                                 </MudText>
                                             </div>
-                                            @if (camera.ResolutionWidth.HasValue && camera.ResolutionHeight.HasValue && camera.ResolutionWidth > 0)
+                                            @if (camera.SensorResolution.HasValue)
                                             {
                                                 <div class="d-flex align-center">
                                                     <MudIcon Icon="@Icons.Material.Filled.AspectRatio" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
                                                     <MudText Typo="Typo.body2">
-                                                        <strong>Resolution:</strong> @camera.ResolutionWidth x @camera.ResolutionHeight
+                                                        <strong>Resolution:</strong> @MiscUtilities.GetDisplayNameAttributeValue(camera.SensorResolution.Value)
                                                     </MudText>
                                                 </div>
                                             }

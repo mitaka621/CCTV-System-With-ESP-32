@@ -1,3 +1,5 @@
+using CamPortal.Contracts.Enums;
+
 namespace CamPortal.Contracts.Dtos.SecurityDtos
 {
     public class DeviceSecurityConfigDto
@@ -9,5 +11,7 @@ namespace CamPortal.Contracts.Dtos.SecurityDtos
         public double MovementThresholdOffset { get; set; }
 
         public double RotationThresholdOffset { get; set; }
+
+        public CameraSensorResolutions SensorResolution { get; set; }
     }
 }

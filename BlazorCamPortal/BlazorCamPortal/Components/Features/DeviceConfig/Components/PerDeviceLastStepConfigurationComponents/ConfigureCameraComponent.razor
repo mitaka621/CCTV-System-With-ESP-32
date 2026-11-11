@@ -7,6 +7,8 @@
 @inject ICameraFramesManagerService _cameraFramesManager
 @inject IDeviceService _deviceService
 @inject IAdminAuthorizationGuard _adminAuthorizationGuard
+@inject ICameraStatusNotifier _cameraStatusNotifier
+@inject ISnackbar _snackbar
 @implements IDisposable
 
 <MudText Typo="Typo.h4" Class="mb-3">Configure device</MudText>
@@ -94,6 +96,24 @@
                         <MudSelectItem Value="@ratio">@MiscUtilities.GetDisplayNameAttributeValue(ratio)</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="CameraSensorResolutions"
+                           Label="Raw camera sensor resolution"
+                           Variant="Variant.Outlined"
+                           ToStringFunc="@(resolution => MiscUtilities.GetDisplayNameAttributeValue(resolution))"
+                           @bind-Value="_cameraConfigurationModel.SensorResolution"
+                           @bind-Value:after="OnSensorResolutionChanged"
+                           For="@(() => _cameraConfigurationModel.SensorResolution)">
+                    @foreach (var resolution in _sensorResolutionsBySize)
+                    {
+                        <MudSelectItem Value="@resolution">
+                            @MiscUtilities.GetDisplayNameAttributeValue(resolution)
+                            @if (resolution.UsesFullSensor())
+                            {
+                                <span style="margin-left: 8px; padding: 0 8px; border: 1px solid var(--mud-palette-success); border-radius: 12px; color: var(--mud-palette-success); font-size: 0.75rem; font-weight: 600; line-height: 1.4; text-transform: uppercase; vertical-align: middle;">Full sensor</span>
+                            }
+                        </MudSelectItem>
+                    }
+                </MudSelect>
                 <div class="slider-row">
                     <MudText Typo="Typo.body2" Class="slider-label">Brightness</MudText>
                     <MudSlider T="float"
@@ -145,6 +165,11 @@
     [Parameter]
     public bool LoadExistingConfiguration { get; set; }
 
+    private static readonly CameraSensorResolutions[] _sensorResolutionsBySize = Enum.GetValues<CameraSensorResolutions>()
+        .OrderBy(resolution => resolution.GetSize().Width * resolution.GetSize().Height)
+        .ThenByDescending(resolution => resolution.GetSize().Width)
+        .ToArray();
+
     private int _cameraFeedWidth;
     private int _cameraFeedHeight;
     private bool _isApplying;
@@ -168,13 +193,6 @@
             throw new ArgumentNullException(nameof(CameraId), "CameraId cannot be empty when configuring the device.");
         }
 
-        var cameraResolution = await _cameraConfigurationService.GetCameraResolutionAsync(CameraId);
-
-        _defaultWidth = cameraResolution?.Width ?? 0;
-        _defaultHeight = cameraResolution?.Height ?? 0;
-
-        CalculateActualResolution();
-
         if (LoadExistingConfiguration)
         {
             var existingConfig = await _cameraConfigurationService.GetCameraConfigurationAsync(CameraId);
@@ -193,9 +211,68 @@
             await CreateDefaultCameraConfiguration();
         }
 
-        _verticalSliderRawValue = MaxZoomStartY;
+        (_defaultWidth, _defaultHeight) = _cameraConfigurationModel.SensorResolution.GetSize();
 
         CalculateActualResolution();
+
+        _verticalSliderRawValue = MaxZoomStartY;
+
+        _cameraStatusNotifier.SensorResolutionRejected += OnSensorResolutionRejected;
+    }
+
+    private void OnSensorResolutionRejected(SensorResolutionRejectedDto rejection)
+    {
+        if (rejection.CameraId != CameraId)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            _snackbar.Add(
+                $"{MiscUtilities.GetDisplayNameAttributeValue(rejection.RequestedResolution)} is not supported by this camera. " +
+                $"It keeps streaming at {MiscUtilities.GetDisplayNameAttributeValue(rejection.AppliedResolution)}.",
+                Severity.Warning);
+
+            var savedConfiguration = await _cameraConfigurationService.GetCameraConfigurationAsync(CameraId);
+
+            if (savedConfiguration != null)
+            {
+                savedConfiguration.DeviceId = CameraId;
+                savedConfiguration.CameraName = _cameraConfigurationModel.CameraName;
+                _cameraConfigurationModel = savedConfiguration;
+            }
+
+            (_defaultWidth, _defaultHeight) = _cameraConfigurationModel.SensorResolution.GetSize();
+
+            CalculateActualResolution();
+
+            _verticalSliderRawValue = MaxZoomStartY - _cameraConfigurationModel.ZoomStartY;
+
+            StateHasChanged();
+        });
+    }
+
+
+    private async Task OnSensorResolutionChanged()
+    {
+        var (width, height) = _cameraConfigurationModel.SensorResolution.GetSize();
+
+        if (_defaultWidth > 0 && _defaultHeight > 0)
+        {
+            _cameraConfigurationModel.ZoomStartX = _cameraConfigurationModel.ZoomStartX * width / _defaultWidth;
+            _cameraConfigurationModel.ZoomStartY = _cameraConfigurationModel.ZoomStartY * height / _defaultHeight;
+        }
+
+        _defaultWidth = width;
+        _defaultHeight = height;
+
+        CalculateActualResolution();
+        ClampZoomOffsets();
+
+        _verticalSliderRawValue = MaxZoomStartY - _cameraConfigurationModel.ZoomStartY;
+
+        await OnConfigurationChanged();
     }
 
     private async Task RecalculateVerticalSliderValue()
@@ -313,5 +390,6 @@
     public void Dispose()
     {
         _cameraFramesManager.FrameProcessed -= OnFrameProcessed;
+        _cameraStatusNotifier.SensorResolutionRejected -= OnSensorResolutionRejected;
     }
 }

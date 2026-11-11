@@ -4,6 +4,7 @@ using System.Buffers.Binary;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace ESP32MockClient.Services;
 
@@ -16,6 +17,7 @@ public class SecureSessionService : IDisposable
     private const int _maxCommandCipherBytes = 4096;
     private const byte _commandVersion = 1;
     private const byte _commandResetSecurityAlarm = 1;
+    private const byte _commandSaveNewConfig = 3;
 
     private readonly VideoFrameLoader _frameLoader;
 
@@ -35,6 +37,8 @@ public class SecureSessionService : IDisposable
     private Task? _receiveTask;
 
     private int _failedConnectionAttempts;
+
+    private string? _pendingResolution;
 
     public SecureSessionService(VideoFrameLoader frameLoader)
     {
@@ -70,6 +74,20 @@ public class SecureSessionService : IDisposable
                 startTime = DateTime.UtcNow;
             }
 
+            var pendingResolution = Interlocked.Exchange(ref _pendingResolution, null);
+
+            if (pendingResolution != null && pendingResolution != MockClientConfiguration.Resolution)
+            {
+                MockClientConfiguration.Resolution = pendingResolution;
+                (width, height) = ParseResolution(pendingResolution);
+
+                _frameLoader.RestartVideo();
+                EndSession();
+
+                Console.WriteLine($"[Stream] Resolution changed to {pendingResolution}, reconnecting");
+                continue;
+            }
+
             var frame = _frameLoader.GetNextFrame();
             if (frame == null)
             {
@@ -95,6 +113,11 @@ public class SecureSessionService : IDisposable
             await Task.Delay(MockClientConfiguration.FrameDelayMs, ct);
         }
 
+        EndSession();
+    }
+
+    public void Dispose()
+    {
         EndSession();
     }
 
@@ -337,7 +360,7 @@ public class SecureSessionService : IDisposable
 
                 if (cipherLen >= 2 && plain[0] == _commandVersion)
                 {
-                    HandleCommand(plain[1]);
+                    HandleCommand(plain[1], plain.AsSpan(2));
                 }
             }
         }
@@ -382,16 +405,44 @@ public class SecureSessionService : IDisposable
         return true;
     }
 
-    private void HandleCommand(byte code)
+    private void HandleCommand(byte code, ReadOnlySpan<byte> payload)
     {
         switch (code)
         {
             case _commandResetSecurityAlarm:
                 Console.WriteLine("[Command] Reset security alarm");
                 break;
+            case _commandSaveNewConfig:
+                ApplyNewConfig(payload);
+                break;
             default:
                 Console.WriteLine($"[Command] Unknown code {code}");
                 break;
+        }
+    }
+
+    private void ApplyNewConfig(ReadOnlySpan<byte> payload)
+    {
+        try
+        {
+            using var config = JsonDocument.Parse(payload.ToArray());
+            var root = config.RootElement;
+
+            Console.WriteLine($"[Command] Save new config: {root.GetRawText()}");
+
+            if (root.TryGetProperty("SensorResolutionWidth", out var widthElement)
+                && root.TryGetProperty("SensorResolutionHeight", out var heightElement)
+                && widthElement.TryGetInt32(out var width)
+                && heightElement.TryGetInt32(out var height)
+                && width > 0
+                && height > 0)
+            {
+                Volatile.Write(ref _pendingResolution, $"{width}x{height}");
+            }
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"[Command] Invalid config payload: {ex.Message}");
         }
     }
 
@@ -526,10 +577,5 @@ public class SecureSessionService : IDisposable
         }
 
         return (1280, 720);
-    }
-
-    public void Dispose()
-    {
-        EndSession();
     }
 }

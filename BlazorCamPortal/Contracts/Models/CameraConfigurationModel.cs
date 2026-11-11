@@ -35,5 +35,8 @@ namespace CamPortal.Contracts.Models
         public FlipMode FlipMode { get; set; } = FlipMode.None;
 
         public CameraAspectRatios CameraAspectRatio { get; set; } = CameraAspectRatios.Original;
+
+        [EnumDataType(typeof(CameraSensorResolutions), ErrorMessage = "Unsupported camera sensor resolution.")]
+        public CameraSensorResolutions SensorResolution { get; set; } = CameraSensorResolutions.Resolution2048x1536;
     }
 }

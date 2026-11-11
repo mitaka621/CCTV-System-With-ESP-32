@@ -47,6 +47,14 @@ public class VideoFrameLoader : IDisposable
 
     public void ReturnFrame() { }
 
+    public void RestartVideo()
+    {
+        if (_useVideoSource)
+        {
+            _useVideoSource = _videoSource.StartRandomVideo();
+        }
+    }
+
     public void Dispose()
     {
         _videoSource.Dispose();

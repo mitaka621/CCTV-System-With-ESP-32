@@ -1,4 +1,5 @@
 using CamPortal.Contracts.Dtos.TelemetryDtos;
+using CamPortal.Contracts.Enums;
 
 namespace CamPortal.Core.Services.Security
 {
@@ -11,6 +12,8 @@ namespace CamPortal.Core.Services.Security
         public bool CaseSensorInstalled = true;
         public double MovementThresholdOffset;
         public double RotationThresholdOffset;
+        public CameraSensorResolutions SensorResolution = CameraSensorResolutions.Resolution2048x1536;
+        public bool IsSensorResolutionChangePending;
         public bool AlarmActive;
         public bool AwaitingClear;
         public DateTime AwaitingClearUntil;
