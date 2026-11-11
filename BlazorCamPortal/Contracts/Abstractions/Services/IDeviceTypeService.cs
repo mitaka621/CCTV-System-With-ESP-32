@@ -1,3 +1,4 @@
+using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Models;
 
 namespace CamPortal.Contracts.Abstractions.Services
@@ -16,6 +17,8 @@ namespace CamPortal.Contracts.Abstractions.Services
 
         Task<bool> IsDeviceTypeInUseAsync(Guid deviceTypeId);
 
-        Task<List<DeviceTypeDisplayModel>> GetDevicesByNameAsync(string name);
+        Task<DeviceTypePageModel> GetDeviceTypesPageAsync(DeviceTypeCategories? category, string? name, int startIndex, int count, CancellationToken cancellationToken);
+
+        Task<Dictionary<DeviceTypeCategories, int>> GetDeviceTypeCountsByCategoryAsync();
     }
 }

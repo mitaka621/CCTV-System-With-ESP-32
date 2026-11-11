@@ -21,6 +21,8 @@ namespace CamPortal.Contracts.Abstractions.Repositories
 
         Task<DeviceTypeCategories> GetDeviceCategoryAsync(Guid typeId);
 
-        Task<List<DeviceTypeDto>> GetAllTypesByNameAsync(string name);
+        Task<DeviceTypePageDto> GetTypesPageAsync(DeviceTypeCategories? category, string? name, int startIndex, int count, CancellationToken cancellationToken);
+
+        Task<Dictionary<DeviceTypeCategories, int>> GetTypeCountsByCategoryAsync();
     }
 }

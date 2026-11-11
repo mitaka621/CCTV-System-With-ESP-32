@@ -6,7 +6,7 @@
 @inject ISnackbar _snackbar
 @inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
-<MudDialog>
+<MudDialog ContentStyle="@GetContentStyle()">
     <DialogContent>
         <MudText Align="Align.Center" Typo="Typo.h4">Add Device</MudText>
         <MudTimeline 
@@ -54,7 +54,7 @@
                 </ItemDot>
             </MudTimelineItem>
         </MudTimeline>
-        <div @onkeydown="HandleKeyDown" style="min-height:500px">
+        <div @onkeydown="HandleKeyDown" class="@GetStepContainerClass()">
         @switch (_currentStep)
         {
             case 0:
@@ -190,6 +190,25 @@
         }
 
         return choice;
+    }
+
+    private bool IsStepFillingDialog()
+    {
+        return _currentStep == 0;
+    }
+
+    private string GetContentStyle()
+    {
+        return IsStepFillingDialog()
+            ? "display: flex; flex-direction: column; overflow: hidden;"
+            : "display: flex; flex-direction: column;";
+    }
+
+    private string GetStepContainerClass()
+    {
+        return IsStepFillingDialog()
+            ? "wizard-step-container wizard-step-container-fill"
+            : "wizard-step-container";
     }
 
     private bool IsBackDisabled()

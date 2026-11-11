@@ -2,6 +2,7 @@ using AutoMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
+using CamPortal.Contracts.Enums;
 using CamPortal.Contracts.Models;
 using CamPortal.Core.Utilities;
 using Microsoft.Extensions.Configuration;
@@ -176,17 +177,20 @@ namespace CamPortal.Core.Services.Devices
             return _deviceTypeRepository.IsTypeInUseAsync(deviceTypeId);
         }
 
-        public async Task<List<DeviceTypeDisplayModel>> GetDevicesByNameAsync(string name)
+        public async Task<DeviceTypePageModel> GetDeviceTypesPageAsync(DeviceTypeCategories? category, string? name, int startIndex, int count, CancellationToken cancellationToken)
         {
-            var deviceTypes = await _deviceTypeRepository.GetAllTypesByNameAsync(name);
+            var page = await _deviceTypeRepository.GetTypesPageAsync(category, name?.Trim(), startIndex, count, cancellationToken);
 
-            return deviceTypes
-                .Select(dto =>
-                {
-                    var model = _mapper.Map<DeviceTypeDisplayModel>(dto);
-                    return model;
-                })
-                .ToList();
+            return new DeviceTypePageModel
+            {
+                Items = _mapper.Map<List<DeviceTypeDisplayModel>>(page.Items),
+                TotalCount = page.TotalCount,
+            };
+        }
+
+        public Task<Dictionary<DeviceTypeCategories, int>> GetDeviceTypeCountsByCategoryAsync()
+        {
+            return _deviceTypeRepository.GetTypeCountsByCategoryAsync();
         }
     }
 }

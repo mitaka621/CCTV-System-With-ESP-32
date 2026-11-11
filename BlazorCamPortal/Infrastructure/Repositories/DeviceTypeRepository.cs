@@ -118,17 +118,47 @@ namespace CamPortal.Infrastructure.Repositories
             return category;
         }
 
-        public async Task<List<DeviceTypeDto>> GetAllTypesByNameAsync(string name)
+        public async Task<DeviceTypePageDto> GetTypesPageAsync(DeviceTypeCategories? category, string? name, int startIndex, int count, CancellationToken cancellationToken)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            IQueryable<DeviceType> query = db.DeviceTypes.AsNoTracking();
+
+            if (category.HasValue)
+            {
+                query = query.Where(x => x.DeviceCategory == category.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(x => x.Name.Contains(name));
+            }
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var entities = await query
+                .OrderBy(x => x.Name)
+                .ThenBy(x => x.Id)
+                .Skip(startIndex)
+                .Take(count)
+                .ToListAsync(cancellationToken);
+
+            return new DeviceTypePageDto
+            {
+                Items = _mapper.Map<List<DeviceTypeDto>>(entities),
+                TotalCount = totalCount,
+            };
+        }
+
+        public async Task<Dictionary<DeviceTypeCategories, int>> GetTypeCountsByCategoryAsync()
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync();
 
-            var result = await db.DeviceTypes
+            return await db.DeviceTypes
                 .AsNoTracking()
-                .Where(x => x.Name.Contains(name))
-                .Select(type => _mapper.Map<DeviceTypeDto>(type))
-                .ToListAsync();
-
-            return result;
+                .GroupBy(x => x.DeviceCategory)
+                .Select(group => new { Category = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(x => x.Category, x => x.Count);
         }
     }
 }

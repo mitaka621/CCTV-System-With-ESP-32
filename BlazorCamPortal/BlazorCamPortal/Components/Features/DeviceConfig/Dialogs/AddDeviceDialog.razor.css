@@ -1,1 +1,10 @@
-﻿
+﻿.wizard-step-container {
+    min-height: 500px;
+}
+
+.wizard-step-container-fill {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}

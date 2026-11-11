@@ -1,22 +1,23 @@
 ﻿@inject IDeviceTypeService _deviceTypeService
 @inject IDeviceTypeIconStorageService _deviceTypeIconStorageService
 
-<MudStack Spacing="3">
+<MudStack Spacing="3" Style="flex: 1 1 auto; min-height: 0;">
     <MudStack Row="true" Spacing="6" Justify="Justify.Center">
-        <MudText Class="mt-1" Typo="Typo.h4">Select the Device Type</MudText>    
+        <MudText Class="mt-1" Typo="Typo.h4">Select the Device Type</MudText>
         <MudSpacer />
         <MudSpacer />
         <MudSpacer />
-        <MudTextField @bind-Value="searchPhrase"
-                      Label="Search for device types"
+        <MudTextField T="string"
+                      Value="_searchPhrase"
+                      ValueChanged="OnSearchPhraseChanged"
+                      Label="@GetSearchLabel()"
                       Variant="Variant.Filled"
                       Clearable="true"
                       Adornment="Adornment.End"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       AdornmentColor="Color.Primary"
                       Immediate="true"
-                      DebounceInterval="200"
-                      OnDebounceIntervalElapsed="OnSearchAsync"/>
+                      DebounceInterval="200" />
     </MudStack>
     <MudPaper Class="pa-4"
               Outlined="true">
@@ -36,79 +37,190 @@
         </MudStack>
     </MudPaper>
 
-    <div class="device-type-picker-scroll">
-        <Virtualize Items="_deviceTypeRows"
-                    Context="row"
-                    ItemSize="220"
-                    OverscanCount="2">
-            <ItemContent>
-                <MudStack Row="true" Spacing="2" Class="mb-2">
-                @foreach (var deviceType in row)
+    @if (IsShowingCategories())
+    {
+        <div class="device-type-picker-scroll">
+            <div class="device-category-grid">
+                @foreach (var category in Enum.GetValues<DeviceTypeCategories>())
                 {
-                    <MudPaper Class="pa-3" Elevation="6" Outlined="true" Width="400px">
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Style="height:120px">
-                            <MudImage Src="@deviceType.GetIconUrl(_deviceTypeIconStorageService)"
-                                        Alt="@deviceType.Name"
-                                        Height="120"
-                                        Width="120"
-                                        ObjectFit="ObjectFit.Cover" />
-                            <MudStack AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Style="height:100%">
-                                <MudText Style="max-width: 155px;">@deviceType.Name</MudText>
-                                <MudChip T="string"
-                                            Color="GetChipColor(deviceType.DeviceCategory)"
-                                            Variant="Variant.Outlined">
-                                    @deviceType.DeviceCategory
-                                </MudChip>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="@DeviceCategoryAppearance.GetColor(category)"
+                               Class="device-category-button"
+                               OnClick="() => SelectCategory(category)">
+                        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@DeviceCategoryAppearance.GetIcon(category)" Class="device-category-icon" />
+                            <MudText Typo="Typo.h6">@MiscUtilities.GetDisplayNameAttributeValue(category)</MudText>
+                            <MudText Typo="Typo.caption">@GetDeviceTypeCountText(GetDeviceTypeCount(category))</MudText>
+                        </MudStack>
+                    </MudButton>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="ReturnToCategories">
+                Categories
+            </MudButton>
+            <MudDivider Vertical="true" FlexItem="true" />
+            @if (_selectedCategory.HasValue)
+            {
+                <MudIcon Icon="@DeviceCategoryAppearance.GetIcon(_selectedCategory.Value)"
+                         Color="@DeviceCategoryAppearance.GetColor(_selectedCategory.Value)" />
+                <MudText Typo="Typo.h6">@MiscUtilities.GetDisplayNameAttributeValue(_selectedCategory.Value)</MudText>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Primary" />
+                <MudText Typo="Typo.h6">All Categories</MudText>
+            }
+            <MudSpacer />
+            @if (_filteredDeviceTypeCount.HasValue)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">@GetDeviceTypeCountText(_filteredDeviceTypeCount.Value)</MudText>
+            }
+        </MudStack>
 
+        <div class="device-type-picker-scroll">
+            <Virtualize @ref="_virtualize"
+                        TItem="DeviceTypeDisplayModel"
+                        ItemsProvider="LoadDeviceTypesAsync"
+                        Context="deviceType"
+                        ItemSize="134"
+                        OverscanCount="3">
+                <ItemContent>
+                    <MudPaper Class="@GetRowClass(deviceType)" Outlined="true" Elevation="0">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="device-type-row-content">
+                            <MudImage Src="@deviceType.GetIconUrl(_deviceTypeIconStorageService)"
+                                      Alt="@deviceType.Name"
+                                      Height="96"
+                                      Width="96"
+                                      ObjectFit="ObjectFit.Cover"
+                                      Class="device-type-image" />
+                            <MudStack Justify="Justify.Center" AlignItems="AlignItems.Start" Spacing="2" Class="device-type-name-column">
+                                <MudText Typo="Typo.h6" Class="device-type-name">@deviceType.Name</MudText>
+                                <DeviceCategoryChip Category="deviceType.DeviceCategory" Class="ma-0" />
                             </MudStack>
-                            <MudSpacer />
+                            <MudDivider Vertical="true" FlexItem="true" Class="device-type-separator" />
+                            @if (string.IsNullOrWhiteSpace(deviceType.Description))
+                            {
+                                <MudText Typo="Typo.body2" Class="device-type-description mud-text-disabled">No description provided.</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Class="device-type-description mud-text-secondary">@deviceType.Description</MudText>
+                            }
                             <MudFab Color="@(model.DeviceTypeId == deviceType.Id ? Color.Success : Color.Primary)"
                                     StartIcon="@Icons.Material.Filled.Check"
                                     OnClick="() => SelectDeviceType(deviceType.Id, deviceType.DeviceCategory)" />
                         </MudStack>
-                    </MudPaper>             
-                }
-                </MudStack>
-            </ItemContent>
-            <Placeholder>
-                <MudSkeleton SkeletonType="SkeletonType.Rectangle"
-                             Height="220px"
-                             Class="ma-2" />
-            </Placeholder>
-        </Virtualize>
-    </div>
+                    </MudPaper>
+                </ItemContent>
+                <Placeholder>
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle"
+                                 Height="122px"
+                                 Class="mb-3" />
+                </Placeholder>
+                <EmptyContent>
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="device-type-empty-state">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Class="mud-text-secondary" />
+                        <MudText Class="mud-text-secondary">No device types found.</MudText>
+                    </MudStack>
+                </EmptyContent>
+            </Virtualize>
+        </div>
+    }
 </MudStack>
 
 @code {
-    private const int _itemsPerRow = 3;
     [Parameter, EditorRequired]
     public PreprovisionDeviceModel model { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public EventCallback ModelChanged { get; set; }
 
-    public string searchPhrase { get; set; } = string.Empty;
-
-    private List<DeviceTypeDisplayModel> _deviceTypes = new();
-
-    private List<List<DeviceTypeDisplayModel>> _deviceTypeRows = new();
-
     protected override async Task OnInitializedAsync()
     {
-        _deviceTypes = await _deviceTypeService.GetAllDeviceTypesAsync();
-        BuildRows();
+        _deviceTypeCountsByCategory = await _deviceTypeService.GetDeviceTypeCountsByCategoryAsync();
+
+        if (model.DeviceTypeId != default)
+        {
+            _selectedCategory = model.DeviceCategory;
+        }
     }
 
-    private async Task OnSearchAsync(string value)
-    {
-        _deviceTypes = await _deviceTypeService.GetDevicesByNameAsync(value);
+    private Virtualize<DeviceTypeDisplayModel>? _virtualize;
 
-        BuildRows();
+    private Dictionary<DeviceTypeCategories, int> _deviceTypeCountsByCategory = new();
+
+    private int? _filteredDeviceTypeCount;
+
+    private DeviceTypeCategories? _selectedCategory;
+
+    private string _searchPhrase = string.Empty;
+
+    private bool IsShowingCategories()
+    {
+        return !_selectedCategory.HasValue && string.IsNullOrWhiteSpace(_searchPhrase);
+    }
+
+    private async Task OnSearchPhraseChanged(string? value)
+    {
+        var wasShowingDeviceTypes = !IsShowingCategories();
+
+        _searchPhrase = value ?? string.Empty;
+
+        if (wasShowingDeviceTypes && !IsShowingCategories() && _virtualize != null)
+        {
+            await _virtualize.RefreshDataAsync();
+        }
+    }
+
+    private void SelectCategory(DeviceTypeCategories category)
+    {
+        _selectedCategory = category;
+        _filteredDeviceTypeCount = null;
+    }
+
+    private void ReturnToCategories()
+    {
+        _selectedCategory = null;
+        _searchPhrase = string.Empty;
+        _filteredDeviceTypeCount = null;
+    }
+
+    private async ValueTask<ItemsProviderResult<DeviceTypeDisplayModel>> LoadDeviceTypesAsync(ItemsProviderRequest request)
+    {
+        try
+        {
+            var page = await _deviceTypeService.GetDeviceTypesPageAsync(
+                _selectedCategory,
+                _searchPhrase,
+                request.StartIndex,
+                request.Count,
+                request.CancellationToken);
+
+            if (_filteredDeviceTypeCount != page.TotalCount)
+            {
+                _filteredDeviceTypeCount = page.TotalCount;
+                StateHasChanged();
+            }
+
+            return new ItemsProviderResult<DeviceTypeDisplayModel>(page.Items, page.TotalCount);
+        }
+        catch (Exception) when (request.CancellationToken.IsCancellationRequested)
+        {
+            return new ItemsProviderResult<DeviceTypeDisplayModel>(Array.Empty<DeviceTypeDisplayModel>(), 0);
+        }
     }
 
     private async Task SelectDeviceType(Guid deviceTypeId, DeviceTypeCategories variant)
     {
-        if (model.DeviceTypeId!=deviceTypeId)
+        if (model.DeviceTypeId != deviceTypeId)
         {
             model.DeviceTypeId = deviceTypeId;
             model.DeviceCategory = variant;
@@ -117,46 +229,32 @@
         {
             model.DeviceTypeId = default;
             model.DeviceCategory = default;
-        }    
+        }
 
         await ModelChanged.InvokeAsync();
     }
 
-    private Color GetChipColor(DeviceTypeCategories category)
+    private int GetDeviceTypeCount(DeviceTypeCategories category)
     {
-        if ((int)category%2==0)
-        {
-            return Color.Success;
-        }
-
-        if ((int)category % 3 == 0)
-        {
-            return Color.Error;
-        }
-
-        if ((int)category % 5 == 0)
-        {
-            return Color.Warning;
-        }
-
-        if ((int)category % 7 == 0)
-        {
-            return Color.Dark;
-        }
-
-        if ((int)category % 11 == 0)
-        {
-            return Color.Dark;
-        }
-
-        return Color.Primary;
+        return _deviceTypeCountsByCategory.GetValueOrDefault(category);
     }
 
-    private void BuildRows()
+    private string GetDeviceTypeCountText(int count)
     {
-        _deviceTypeRows = _deviceTypes
-            .Chunk(_itemsPerRow)
-            .Select(chunk => chunk.ToList())
-            .ToList();
+        return count == 1 ? "1 device type" : $"{count} device types";
+    }
+
+    private string GetSearchLabel()
+    {
+        return _selectedCategory.HasValue
+            ? $"Search in {MiscUtilities.GetDisplayNameAttributeValue(_selectedCategory.Value)}"
+            : "Search for device types";
+    }
+
+    private string GetRowClass(DeviceTypeDisplayModel deviceType)
+    {
+        return model.DeviceTypeId == deviceType.Id
+            ? "device-type-row device-type-row-selected"
+            : "device-type-row";
     }
 }

@@ -1,7 +1,7 @@
 <MudChip T="string"
          Size="Size.Small"
-         Color="@GetCategoryColor()"
-         Icon="@GetCategoryIcon()"
+         Color="@DeviceCategoryAppearance.GetColor(Category)"
+         Icon="@DeviceCategoryAppearance.GetIcon(Category)"
          Class="@Class"
          Style="@Style">
     @MiscUtilities.GetDisplayNameAttributeValue(Category)
@@ -16,24 +16,4 @@
 
     [Parameter]
     public string? Style { get; set; }
-
-    private Color GetCategoryColor()
-    {
-        return Category switch
-        {
-            DeviceTypeCategories.Camera => Color.Primary,
-            DeviceTypeCategories.SmokeAlarm => Color.Secondary,
-            _ => Color.Default,
-        };
-    }
-
-    private string GetCategoryIcon()
-    {
-        return Category switch
-        {
-            DeviceTypeCategories.Camera => Icons.Material.Filled.Videocam,
-            DeviceTypeCategories.SmokeAlarm => Icons.Material.Filled.LocalFireDepartment,
-            _ => Icons.Material.Filled.DeviceHub,
-        };
-    }
 }
