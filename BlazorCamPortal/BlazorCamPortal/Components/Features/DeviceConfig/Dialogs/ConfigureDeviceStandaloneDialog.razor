@@ -1,0 +1,69 @@
+﻿@using CamPortal.Components.Features.DeviceConfig.Components.PerDeviceLastStepConfigurationComponents
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
+@inject IDeviceService _deviceService
+@inject ISnackbar _snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_isAuthorized)
+        {
+            switch (_deviceCategory)
+            {
+                case DeviceTypeCategories.Camera:
+                    <ConfigureCameraComponent CameraId="DeviceId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
+                    break;
+                case DeviceTypeCategories.SmokeAlarm:
+                    <ConfigureSmokeAlarmDetectorComponent SmokeAlarmId="DeviceId" ModelChanged="StateHasChanged" LoadExistingConfiguration="true" />
+                    break;
+                default:
+                <MudText>Device type does not e exist</MudText>
+                    break;
+            }
+            
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid DeviceId { get; set; }
+
+    private bool _isAuthorized;
+    private DeviceTypeCategories _deviceCategory;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            _snackbar.Add("Unauthorized", Severity.Error);
+
+            MudDialog?.Cancel();
+            return;
+        }
+
+        try
+        {
+            _deviceCategory = await _deviceService.GetDeviceCategoryAsync(DeviceId);
+        }
+        catch (KeyNotFoundException)
+        {
+            _snackbar.Add("Device does not exist", Severity.Error);
+
+            MudDialog?.Cancel();
+            return;
+        }
+
+        _isAuthorized = true;
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}

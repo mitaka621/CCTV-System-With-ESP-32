@@ -322,6 +322,24 @@ namespace CamPortal.Infrastructure.Repositories
                 .CountAsync();
         }
 
+        public async Task<DeviceTypeCategories?> GetDeviceCategoryAsync(Guid deviceId)
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            var query = db.Devices
+                 .AsNoTracking()
+                 .Where(x => x.Id == deviceId);
+
+            if (!await query.AnyAsync())
+            {
+                return null;
+            }
+
+            return await query
+                .Select(x => x.DeviceType.DeviceCategory)
+                .FirstAsync();
+        }
+
         protected IQueryable<Device> GetDeviceBaseFilterQuery(CamPortalDBContext db, DeviceFilterModel filterModel)
         {
             var query = db.Devices

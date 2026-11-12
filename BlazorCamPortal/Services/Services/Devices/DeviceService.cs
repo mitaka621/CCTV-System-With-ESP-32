@@ -181,6 +181,12 @@ namespace CamPortal.Core.Services.Devices
             return await _deviceRepository.DeleteDeviceAsync(deviceId);
         }
 
+        public async Task<DeviceTypeCategories> GetDeviceCategoryAsync(Guid deviceId)
+        {
+            return await _deviceRepository.GetDeviceCategoryAsync(deviceId)
+                ?? throw new KeyNotFoundException("Device not found");
+        }
+
         private void InvalidateCamera(Guid cameraId)
         {
             _cameraFramesManagerService.CloseProcessedFramesCameraChannel(cameraId);

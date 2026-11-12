@@ -43,5 +43,7 @@ namespace CamPortal.Contracts.Abstractions.Repositories
         Task<DeviceStreamingHandshakeDto?> GetDeviceForStreamingHandshakeAsync(Guid deviceId);
 
         Task<int> CountAllDevicesFromCategoryAsync(DeviceTypeCategories category);
+
+        Task<DeviceTypeCategories?> GetDeviceCategoryAsync(Guid deviceId);
     }
 }

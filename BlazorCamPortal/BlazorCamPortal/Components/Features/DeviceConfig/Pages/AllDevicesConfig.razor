@@ -1,5 +1,4 @@
-@page "/camerasConfig"
-@using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
+@page "/allDevicesConfig"
 @using CamPortal.Contracts.Constants
 @using CamPortal.Contracts.Enums
 @using Microsoft.AspNetCore.Authorization
@@ -236,7 +235,7 @@
                                                            Color="Color.Secondary"
                                                            Size="Size.Small"
                                                            Variant="Variant.Text"
-                                                           OnClick="() => ConfigureCamera(camera.Id)">
+                                                           OnClick="() => ConfigureDevice(camera.Id)">
                                                     Configure
                                                 </MudButton>
                                             }
@@ -392,7 +391,7 @@
                                                         Color="Color.Secondary"
                                                         Size="Size.Small"
                                                         Variant="Variant.Text"
-                                                        OnClick="() => ConfigureSmokeAlarm(device.Id)">
+                                                        OnClick="() => ConfigureDevice(device.Id)">
                                                 Configure
                                             </MudButton>
                                             <MudButton StartIcon="@Icons.Material.Filled.Delete"
@@ -487,36 +486,13 @@
         };
     }
 
-    private async Task ConfigureCamera(Guid cameraId)
+    private async Task ConfigureDevice(Guid deviceId)
     {
-        var parameters = new DialogParameters
-		{
-			["CameraId"] = cameraId
-		};
-
-        var options = new DialogOptions
-		{
-			CloseOnEscapeKey = true,
-			MaxWidth = MaxWidth.Large,
-			FullWidth = true,
-			Position = DialogPosition.TopCenter,
-			BackdropClick = false,
-			BackgroundClass = "blurry-background"
-		};
-
-        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
-
-        await dialog.Result;
-
-        _deviceDisplayModels = await _deviceService.GetAllDevicesByTypeAsync(_deviceFilterModel);
-    }
-
-    private async Task ConfigureSmokeAlarm(Guid deviceId)
-    {
-        var parameters = new DialogParameters
+        var parameters = new DialogParameters<ConfigureDeviceStandaloneDialog>
         {
-            ["DeviceId"] = deviceId
+            { configureDialog => configureDialog.DeviceId, deviceId }
         };
+
         var options = new DialogOptions
         {
             CloseOnEscapeKey = true,
@@ -526,8 +502,11 @@
             BackdropClick = false,
             BackgroundClass = "blurry-background"
         };
-        var dialog = await _dialogService.ShowAsync<ConfigureSmokeAlarmDialog>(null, parameters, options);
+
+        var dialog = await _dialogService.ShowAsync<ConfigureDeviceStandaloneDialog>(null, parameters, options);
+
         await dialog.Result;
+
         _deviceDisplayModels = await _deviceService.GetAllDevicesByTypeAsync(_deviceFilterModel);
     }
 

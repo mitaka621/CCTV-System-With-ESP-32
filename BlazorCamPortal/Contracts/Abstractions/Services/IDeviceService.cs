@@ -25,5 +25,7 @@ namespace CamPortal.Contracts.Abstractions.Services
         Task<string?> GetDeviceNameAsync(Guid deviceId);
 
         Task<bool> DeleteDeviceAsync(Guid deviceId);
+
+        Task<DeviceTypeCategories> GetDeviceCategoryAsync(Guid deviceId);
     }
 }

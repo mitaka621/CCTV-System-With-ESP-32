@@ -191,9 +191,9 @@
             return;
         }
 
-        var parameters = new DialogParameters
+        var parameters = new DialogParameters<ConfigureDeviceStandaloneDialog>
         {
-            ["CameraId"] = CameraInfo.Id
+            { configureDialog => configureDialog.DeviceId, CameraInfo.Id }
         };
 
         var options = new DialogOptions
@@ -206,7 +206,7 @@
             BackgroundClass = "blurry-background"
         };
 
-        var dialog = await _dialogService.ShowAsync<ConfigureCameraDialog>(null, parameters, options);
+        var dialog = await _dialogService.ShowAsync<ConfigureDeviceStandaloneDialog>(null, parameters, options);
 
         await dialog.Result;
 

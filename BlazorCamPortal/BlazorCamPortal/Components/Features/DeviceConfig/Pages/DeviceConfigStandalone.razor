@@ -1,0 +1,37 @@
+﻿@page "/deviceConfig/{DeviceId:guid}"
+@inject IDialogService _dialogService
+@inject NavigationManager _navigationManager
+
+@code{
+    [Parameter]
+    public Guid DeviceId { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || DeviceId == Guid.Empty)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["DeviceId"] = DeviceId
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            Position = DialogPosition.TopCenter,
+            BackdropClick = false,
+            BackgroundClass = "blurry-background"
+        };
+
+        var dialog = await _dialogService.ShowAsync<ConfigureDeviceStandaloneDialog>(null, parameters, options);
+
+        await dialog.Result;
+
+        _navigationManager.NavigateTo("/", true);
+    }
+}

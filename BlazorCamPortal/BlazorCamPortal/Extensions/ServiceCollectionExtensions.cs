@@ -184,12 +184,13 @@ namespace CamPortal.Extensions
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                   RateLimitPartition.GetFixedWindowLimiter(
+                   RateLimitPartition.GetTokenBucketLimiter(
                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                       factory: _ => new FixedWindowRateLimiterOptions
+                       factory: _ => new TokenBucketRateLimiterOptions
                        {
-                           PermitLimit = 50,
-                           Window = TimeSpan.FromMinutes(1),
+                           TokenLimit = 200,
+                           TokensPerPeriod = 5,
+                           ReplenishmentPeriod = TimeSpan.FromSeconds(1),
                            QueueLimit = 0,
                            AutoReplenishment = true
                        }));
