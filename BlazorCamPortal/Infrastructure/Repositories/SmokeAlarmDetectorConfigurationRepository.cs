@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
@@ -55,7 +55,7 @@ namespace CamPortal.Infrastructure.Repositories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.DeviceId == deviceId);
 
-            return _mapper.Map<SmokeAlarmConfigurationDto>(configuration);
+            return _mapper.Map<SmokeAlarmConfigurationDto>(configuration!);
         }
 
         public async Task<int> CountDeviceConfigurationsAsync()

@@ -1,4 +1,4 @@
-using AutoMapper;
+using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Dtos.RemoteStorageDtos;
 using CamPortal.Contracts.Dtos.VideoChunkDtos;

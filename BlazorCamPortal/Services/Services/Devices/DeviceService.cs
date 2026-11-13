@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
@@ -100,13 +100,13 @@ namespace CamPortal.Core.Services.Devices
                         var cameras = await _cameraRepository.GetAllCamerasWithTypeAndConfigurationAsync(filterModel);
 
                         result.Cameras = cameras.GroupBy(x => x.DeviceType)
-                            .ToDictionary(g => _mapper.Map<DeviceTypeDisplayModel>(g.Key), g => g.Select(x => _mapper.Map<CameraDisplayModel>(x)).ToList());
+                            .ToDictionary(g => _mapper.Map<DeviceTypeDisplayModel>(g.Key!), g => g.Select(x => _mapper.Map<CameraDisplayModel>(x)).ToList());
                         break;
                     case DeviceTypeCategories.SmokeAlarm:
                         var smokeAlarms = await _smokeAlarmRepository.GetAllSmokeAlarmsWithTypeAndLatestTelemetryAsync(filterModel);
 
                         result.SmokeAlarms = smokeAlarms.GroupBy(x => x.DeviceType)
-                            .ToDictionary(g => _mapper.Map<DeviceTypeDisplayModel>(g.Key), g => g.Select(x => new SmokeAlarmDisplayModel()
+                            .ToDictionary(g => _mapper.Map<DeviceTypeDisplayModel>(g.Key!), g => g.Select(x => new SmokeAlarmDisplayModel()
                             {
                                 BatterySOCPercent = x.LatestTelemetry.BatterySOCPercent,
                                 BatteryVoltage = x.LatestTelemetry.BatteryVoltage,

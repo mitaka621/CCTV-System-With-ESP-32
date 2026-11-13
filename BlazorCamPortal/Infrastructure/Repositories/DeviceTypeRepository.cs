@@ -1,4 +1,4 @@
-using AutoMapper;
+using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Dtos.DeviceTypeDtos;
 using CamPortal.Contracts.Enums;

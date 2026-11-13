@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
 using CamPortal.Contracts.Dtos.DeviceDtos;
@@ -68,7 +68,7 @@ namespace CamPortal.Infrastructure.Repositories.PerDeviceRepository
                    PublicKey = x.PublicKey,
                    UpdatedAt = x.UpdatedAt,
                    DeviceType = Mapper.Map<DeviceTypeDto>(x.DeviceType),
-                   CameraConfiguration = Mapper.Map<CameraStreamingConfigurationDto>(x.CameraConfiguration)
+                   CameraConfiguration = Mapper.Map<CameraStreamingConfigurationDto>(x.CameraConfiguration!)
                })
                .ToListAsync();
 

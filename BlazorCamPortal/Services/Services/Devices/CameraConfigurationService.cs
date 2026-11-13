@@ -1,4 +1,4 @@
-using AutoMapper;
+using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.Services;
 using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
@@ -61,7 +61,7 @@ namespace CamPortal.Core.Services.Devices
 
         public async Task<CameraConfigurationModel?> GetCameraConfigurationAsync(Guid cameraId)
         {
-            return _mapper.Map<CameraConfigurationModel>(await _cameraConfigurationRepository.GetCameraConfigurationAsync(cameraId));
+            return _mapper.Map<CameraConfigurationModel>((await _cameraConfigurationRepository.GetCameraConfigurationAsync(cameraId))!);
         }
 
     }

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using MapsterMapper;
 using CamPortal.Contracts.Abstractions.Repositories;
 using CamPortal.Contracts.Abstractions.UnitOfWork;
 using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
@@ -96,7 +96,7 @@ namespace CamPortal.Infrastructure.Repositories
                 .OrderByDescending(x => x.CreatedAt)
                 .FirstOrDefaultAsync();
 
-            return _mapper.Map<PreprovisionAttemptDto?>(entity);
+            return _mapper.Map<PreprovisionAttemptDto?>(entity!);
         }
 
         public async Task<PreprovisionAttemptDto?> GetLatestPreprovisionAttemptAsync(Guid deviceId)
