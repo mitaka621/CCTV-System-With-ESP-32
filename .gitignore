@@ -108,16 +108,16 @@ obj/**/staticwebassets.runtime.json
 /BlazorCamPortal/.vs/BlazorCamPortal/DesignTimeBuild
 /BlazorCamPortal/.vs/BlazorCamPortal/FileContentIndex
 /BlazorCamPortal/.vs/BlazorCamPortal/v17
-/BlazorCamPortal/BlazorCamPortal/ca.crt
-/BlazorCamPortal/BlazorCamPortal/ca.key
-/BlazorCamPortal/BlazorCamPortal/ca.srl
-/BlazorCamPortal/BlazorCamPortal/client.crt
-/BlazorCamPortal/BlazorCamPortal/client.csr
-/BlazorCamPortal/BlazorCamPortal/client.key
-/BlazorCamPortal/BlazorCamPortal/server.crt
-/BlazorCamPortal/BlazorCamPortal/server.csr
-/BlazorCamPortal/BlazorCamPortal/server.key
-/BlazorCamPortal/BlazorCamPortal/server.pfx
+/BlazorCamPortal/Homewatch/ca.crt
+/BlazorCamPortal/Homewatch/ca.key
+/BlazorCamPortal/Homewatch/ca.srl
+/BlazorCamPortal/Homewatch/client.crt
+/BlazorCamPortal/Homewatch/client.csr
+/BlazorCamPortal/Homewatch/client.key
+/BlazorCamPortal/Homewatch/server.crt
+/BlazorCamPortal/Homewatch/server.csr
+/BlazorCamPortal/Homewatch/server.key
+/BlazorCamPortal/Homewatch/server.pfx
 /BlazorCamPortal/.vs/ProjectEvaluation/blazorcamportal.metadata.v9.bin
 /BlazorCamPortal/.vs/ProjectEvaluation/blazorcamportal.projects.v9.bin
 /BlazorCamPortal/.vs/ProjectEvaluation/blazorcamportal.strings.v9.bin
@@ -127,7 +127,7 @@ obj/**/staticwebassets.runtime.json
 /CertGenerator/.vs/CertGenerator
 /CertGenerator/.vs/ProjectEvaluation
 /BlazorCamPortal/.vs/BlazorCamPortal
-/BlazorCamPortal/BlazorCamPortal/footage
+/BlazorCamPortal/Homewatch/footage
 /BlazorCamPortal/.vs/Homewatch/CopilotIndices/17.14.1368.60722
 /BlazorCamPortal/.vs/Homewatch/FileContentIndex
 /BlazorCamPortal/.vs/Homewatch/v17
@@ -135,8 +135,8 @@ obj/**/staticwebassets.runtime.json
 /ESP32MockClient/.vs
 
 /ESP32MockClient/ESP32MockClient/footage/*.mp4
-/BlazorCamPortal/BlazorCamPortal/data
-/BlazorCamPortal/BlazorCamPortal/device-type-icons/*
-/BlazorCamPortal/BlazorCamPortal/exports
+/BlazorCamPortal/Homewatch/data
+/BlazorCamPortal/Homewatch/device-type-icons/*
+/BlazorCamPortal/Homewatch/exports
 ## Regenerate with: pio run -t compiledb
 /firmware/*/compile_commands.json

@@ -2,7 +2,7 @@
 setlocal
 
 set "SOLUTION_DIR=%~dp0"
-set "PROJECT_DIR=%SOLUTION_DIR%BlazorCamPortal"
+set "PROJECT_DIR=%SOLUTION_DIR%Homewatch"
 set "PUBLISH_DIR=%PROJECT_DIR%\publish"
 set "APP_EXE=%PUBLISH_DIR%\Homewatch.exe"
 set "LOG_DIR=%PROJECT_DIR%\logs"
