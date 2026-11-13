@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.SystemSettingsDtos;
+using Homewatch.Contracts.Dtos.SystemSettingsDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ISystemSettingsService
     {

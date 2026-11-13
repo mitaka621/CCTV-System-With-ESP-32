@@ -1,24 +1,24 @@
-using CamPortal.Auth;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Constants;
-using CamPortal.Core.BackgroundServices;
-using CamPortal.Core.LoggerProviders.DatabaseLogger;
-using CamPortal.Core.Services.Devices;
-using CamPortal.Core.Services.DeviceSessionHandlers;
-using CamPortal.Core.Services.Provisioning;
-using CamPortal.Core.Services.RemoteStorage;
-using CamPortal.Core.Services.SecureStreaming;
-using CamPortal.Core.Services.Security;
-using CamPortal.Core.Services.SystemSettings;
-using CamPortal.Core.Services.Telemetry;
-using CamPortal.Core.Services.Users;
-using CamPortal.Core.Services.Video;
-using CamPortal.Core.Utilities;
-using CamPortal.Infrastructure.Repositories;
-using CamPortal.Infrastructure.Repositories.PerDeviceRepository;
-using CamPortal.Infrastructure.UnitOfWork;
+using Homewatch.Auth;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Constants;
+using Homewatch.Core.BackgroundServices;
+using Homewatch.Core.LoggerProviders.DatabaseLogger;
+using Homewatch.Core.Services.Devices;
+using Homewatch.Core.Services.DeviceSessionHandlers;
+using Homewatch.Core.Services.Provisioning;
+using Homewatch.Core.Services.RemoteStorage;
+using Homewatch.Core.Services.SecureStreaming;
+using Homewatch.Core.Services.Security;
+using Homewatch.Core.Services.SystemSettings;
+using Homewatch.Core.Services.Telemetry;
+using Homewatch.Core.Services.Users;
+using Homewatch.Core.Services.Video;
+using Homewatch.Core.Utilities;
+using Homewatch.Infrastructure.Repositories;
+using Homewatch.Infrastructure.Repositories.PerDeviceRepository;
+using Homewatch.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -30,7 +30,7 @@ using MudExtensions.Services;
 using System.Net;
 using System.Threading.RateLimiting;
 
-namespace CamPortal.Extensions
+namespace Homewatch.Extensions
 {
     public static class ServiceCollectionExtensions
     {
@@ -140,7 +140,7 @@ namespace CamPortal.Extensions
                 : Path.GetFullPath(configuredRoot, Directory.GetCurrentDirectory());
 
             var dataProtectionBuilder = services.AddDataProtection()
-                .SetApplicationName("CamPortal")
+                .SetApplicationName("Homewatch")
                 .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(storageRoot, keysFolder)));
 
             if (OperatingSystem.IsWindows())
@@ -226,7 +226,7 @@ namespace CamPortal.Extensions
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
-                    options.Cookie.Name = "CamPortal.Auth";
+                    options.Cookie.Name = "Homewatch.Auth";
                     options.Cookie.HttpOnly = true;
                     options.Cookie.IsEssential = true;
                     options.Cookie.SameSite = SameSiteMode.Strict;
@@ -263,7 +263,7 @@ namespace CamPortal.Extensions
                 })
                 .AddCookie(AuthSchemes.PasswordChangePending, options =>
                 {
-                    options.Cookie.Name = "CamPortal.PwdChangePending";
+                    options.Cookie.Name = "Homewatch.PwdChangePending";
                     options.Cookie.HttpOnly = true;
                     options.Cookie.IsEssential = true;
                     options.Cookie.SameSite = SameSiteMode.Strict;

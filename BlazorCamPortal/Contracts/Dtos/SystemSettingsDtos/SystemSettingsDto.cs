@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.SystemSettingsDtos
+namespace Homewatch.Contracts.Dtos.SystemSettingsDtos
 {
     public class SystemSettingsDto
     {

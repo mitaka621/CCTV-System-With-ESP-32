@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.UserDtos
+namespace Homewatch.Contracts.Dtos.UserDtos
 {
     public class CreateUserDto
     {

@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.RemoteStorageDtos
+namespace Homewatch.Contracts.Dtos.RemoteStorageDtos
 {
     public class RemoteStorageOperationResultDto
     {

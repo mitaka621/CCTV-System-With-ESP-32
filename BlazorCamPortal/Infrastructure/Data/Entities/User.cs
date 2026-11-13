@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Infrastructure.Data.Entities
+namespace Homewatch.Infrastructure.Data.Entities
 {
     [Index(nameof(UserName), IsUnique = true)]
     [Index(nameof(Email), IsUnique = true)]

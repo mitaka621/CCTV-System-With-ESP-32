@@ -1,6 +1,6 @@
-﻿using CamPortal.Core.Services.RemoteStorage;
+﻿using Homewatch.Core.Services.RemoteStorage;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class SmbSharePathUtilities
     {

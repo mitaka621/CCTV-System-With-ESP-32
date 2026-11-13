@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.ESPSessionTokenDtos
+namespace Homewatch.Contracts.Dtos.ESPSessionTokenDtos
 {
     public class SetESPSessionTokenDto
     {

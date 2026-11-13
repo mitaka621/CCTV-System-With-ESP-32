@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.UserCameraLayoutDtos
+namespace Homewatch.Contracts.Dtos.UserCameraLayoutDtos
 {
     public class UserCameraLayoutItemDto
     {

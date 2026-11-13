@@ -1,14 +1,14 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 
-namespace CamPortal.Core.Services.RemoteStorage
+namespace Homewatch.Core.Services.RemoteStorage
 {
     public class RemoteStorageTargetService : IRemoteStorageService
     {

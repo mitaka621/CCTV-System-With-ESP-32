@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 
-namespace CamPortal.Core.Services.Video
+namespace Homewatch.Core.Services.Video
 {
     public class StorageLocationService : IStorageLocationService
     {

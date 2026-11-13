@@ -1,7 +1,7 @@
-﻿using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Contracts.Dtos.VideoChunkDtos;
+﻿using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Dtos.VideoChunkDtos;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface IVideoChunkReplicationRepository
     {

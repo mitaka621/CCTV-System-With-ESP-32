@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.DeviceTypeDtos
+namespace Homewatch.Contracts.Dtos.DeviceTypeDtos
 {
     public record DeviceTypePageDto
     {

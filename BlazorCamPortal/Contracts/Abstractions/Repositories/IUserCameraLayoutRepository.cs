@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
+using Homewatch.Contracts.Dtos.UserCameraLayoutDtos;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface IUserCameraLayoutRepository
     {

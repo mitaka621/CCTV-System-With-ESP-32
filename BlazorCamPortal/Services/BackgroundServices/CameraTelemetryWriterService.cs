@@ -1,24 +1,24 @@
-using CamPortal.Contracts.Dtos.TelemetryDtos;
-using CamPortal.Core.Services.Telemetry;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Core.Services.Telemetry;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.BackgroundServices
+namespace Homewatch.Core.BackgroundServices
 {
     public class CameraTelemetryWriterService : BackgroundService
     {
         private const int _flushIntervalInSeconds = 60;
 
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly CameraTelemetryQueue _queue;
         private readonly ILogger<CameraTelemetryWriterService> _logger;
 
         public CameraTelemetryWriterService(
             CameraTelemetryQueue queue,
-            IDbContextFactory<CamPortalDBContext> dbContextFactory,
+            IDbContextFactory<HomewatchDBContext> dbContextFactory,
             ILogger<CameraTelemetryWriterService> logger)
         {
             _queue = queue;

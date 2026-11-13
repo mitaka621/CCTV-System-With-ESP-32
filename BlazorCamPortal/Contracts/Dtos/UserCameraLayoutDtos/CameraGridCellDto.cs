@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Dtos.UserCameraLayoutDtos
+﻿namespace Homewatch.Contracts.Dtos.UserCameraLayoutDtos
 {
     public class CameraGridCellDto
     {

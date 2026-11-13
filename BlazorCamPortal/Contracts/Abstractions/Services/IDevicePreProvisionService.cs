@@ -1,9 +1,9 @@
-﻿using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
-using CamPortal.Contracts.Models;
+﻿using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
+using Homewatch.Contracts.Models;
 using System.Net;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IDevicePreProvisionService
     {

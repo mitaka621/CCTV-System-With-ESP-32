@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CamPortal.Contracts.Dtos.PreprovisionAttemptDtos
+namespace Homewatch.Contracts.Dtos.PreprovisionAttemptDtos
 {
     public class PreprovisionDetailsDto
     {

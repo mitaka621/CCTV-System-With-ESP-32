@@ -1,10 +1,10 @@
-﻿using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.CameraDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
+﻿using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.CameraDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IDeviceService
     {

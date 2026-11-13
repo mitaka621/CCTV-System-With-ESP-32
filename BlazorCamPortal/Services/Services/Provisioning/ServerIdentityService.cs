@@ -1,9 +1,9 @@
-using CamPortal.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
-namespace CamPortal.Core.Services.Provisioning
+namespace Homewatch.Core.Services.Provisioning
 {
     public class ServerIdentityService : IServerIdentityService, IDisposable
     {

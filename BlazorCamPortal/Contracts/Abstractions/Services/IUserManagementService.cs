@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.UserDtos;
+using Homewatch.Contracts.Dtos.UserDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IUserManagementService
     {

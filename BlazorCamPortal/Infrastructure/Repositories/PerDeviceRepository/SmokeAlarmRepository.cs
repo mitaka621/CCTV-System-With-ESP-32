@@ -1,18 +1,18 @@
 ﻿using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories.PerDeviceRepository
+namespace Homewatch.Infrastructure.Repositories.PerDeviceRepository
 {
     public class SmokeAlarmRepository : DeviceRepository, ISmokeAlarmRepository
     {
 
-        public SmokeAlarmRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper) : base(dbContextFactory, mapper) { }
+        public SmokeAlarmRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper) : base(dbContextFactory, mapper) { }
 
         public async Task<List<SmokeAlarmDto>> GetAllSmokeAlarmsWithTypeAndLatestTelemetryAsync(DeviceFilterModel filterModel)
         {

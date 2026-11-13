@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Enums
+namespace Homewatch.Contracts.Enums
 {
     public enum VideoHardwareEncoder
     {

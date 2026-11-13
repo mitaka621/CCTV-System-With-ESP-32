@@ -1,7 +1,7 @@
-using CamPortal.Components;
-using CamPortal.Extensions;
-using CamPortal.Infrastructure.Data;
-using CamPortal.MapperConfiguration;
+using Homewatch.Components;
+using Homewatch.Extensions;
+using Homewatch.Infrastructure.Data;
+using Homewatch.MapperConfiguration;
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddUserSecrets<Program>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContextFactory<CamPortalDBContext>(options =>
+builder.Services.AddDbContextFactory<HomewatchDBContext>(options =>
 options.UseSqlServer(connectionString));
 
 builder.Services.AddRazorComponents()

@@ -1,20 +1,20 @@
 ﻿using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class PreprovisionAttemptRepository : IPreprovisionAttemptRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public PreprovisionAttemptRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public PreprovisionAttemptRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;
@@ -31,7 +31,7 @@ namespace CamPortal.Infrastructure.Repositories
 
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
                 ownedDb.PreprovisionAttempts.Add(entity);
 
                 return entity.Id;
@@ -50,7 +50,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
 
                 return await ownedDb.PreprovisionAttempts
                     .Where(a => a.Id == dto.PreprovisionAttemptId && a.PreprovisionStatus == PreprovisionStatus.Pending)
@@ -72,7 +72,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
 
                 return await ownedDb.PreprovisionAttempts
                     .Where(a => a.DeviceId == deviceId && a.PreprovisionStatus == PreprovisionStatus.Pending)

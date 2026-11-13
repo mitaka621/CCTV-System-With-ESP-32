@@ -1,6 +1,6 @@
 ﻿using System.Threading.Channels;
 
-namespace CamPortal.Contracts.Dtos.CameraFrameDtos
+namespace Homewatch.Contracts.Dtos.CameraFrameDtos
 {
     public class CameraFramesForViewerDto
     {

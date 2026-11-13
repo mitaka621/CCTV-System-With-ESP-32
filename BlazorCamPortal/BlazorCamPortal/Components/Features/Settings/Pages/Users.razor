@@ -1,9 +1,9 @@
 @page "/system/settings/users"
 @rendermode InteractiveServer
 
-@using CamPortal.Components.Features.Settings.Dialogs
-@using CamPortal.Contracts.Constants
-@using CamPortal.Contracts.Dtos.UserDtos
+@using Homewatch.Components.Features.Settings.Dialogs
+@using Homewatch.Contracts.Constants
+@using Homewatch.Contracts.Dtos.UserDtos
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize(Roles = Roles.Admin)]
@@ -14,7 +14,7 @@
 @inject AuthenticationStateProvider _authenticationStateProvider
 @inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
-<PageTitle>Users - BlazorCam Portal</PageTitle>
+<PageTitle>Users - Homewatch</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <PageLoader IsLoading="_isLoading" Message="Loading users...">

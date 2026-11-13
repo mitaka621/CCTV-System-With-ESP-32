@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.TelemetryDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Core.Services.Security
+namespace Homewatch.Core.Services.Security
 {
     internal sealed class CameraState
     {

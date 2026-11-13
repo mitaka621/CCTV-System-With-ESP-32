@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IVideoExportCanceller
     {

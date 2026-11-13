@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CamPortal.Infrastructure.Data.Entities
+namespace Homewatch.Infrastructure.Data.Entities
 {
     [Index(nameof(DeviceId), nameof(ChunkStartTime))]
     public class VideoChunk

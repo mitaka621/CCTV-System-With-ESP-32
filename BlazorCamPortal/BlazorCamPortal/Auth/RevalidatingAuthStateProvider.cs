@@ -1,9 +1,9 @@
-﻿using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Core.Utilities;
+﻿using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Core.Utilities;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 
-namespace CamPortal.Auth
+namespace Homewatch.Auth
 {
     public class RevalidatingAuthStateProvider : RevalidatingServerAuthenticationStateProvider
     {

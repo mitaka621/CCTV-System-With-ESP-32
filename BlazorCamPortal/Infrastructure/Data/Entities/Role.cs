@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Infrastructure.Data.Entities
+namespace Homewatch.Infrastructure.Data.Entities
 {
     public class Role
     {

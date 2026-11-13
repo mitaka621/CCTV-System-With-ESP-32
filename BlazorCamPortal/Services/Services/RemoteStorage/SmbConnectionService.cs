@@ -1,11 +1,11 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Core.Utilities;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 
-namespace CamPortal.Core.Services.RemoteStorage
+namespace Homewatch.Core.Services.RemoteStorage
 {
     public class SmbConnectionService : ISmbConnectionService
     {
@@ -14,7 +14,7 @@ namespace CamPortal.Core.Services.RemoteStorage
 
         public SmbConnectionService(IDataProtectionProvider dataProtectionProvider, IConfiguration configuration)
         {
-            _passwordProtector = dataProtectionProvider.CreateProtector("CamPortal.RemoteStorageTarget.Password");
+            _passwordProtector = dataProtectionProvider.CreateProtector("Homewatch.RemoteStorageTarget.Password");
 
             _responseTimeoutInMilliseconds = (int)TimeSpan.FromSeconds(int.Parse(
                 configuration.GetSection("RemoteStorageConfig")["ResponseTimeoutInSeconds"]
@@ -45,7 +45,7 @@ namespace CamPortal.Core.Services.RemoteStorage
         {
             using var session = OpenSession(sharePath, username, password);
 
-            var testFileName = $".camportal-verify-{Guid.NewGuid():N}.tmp";
+            var testFileName = $".homewatch-verify-{Guid.NewGuid():N}.tmp";
 
             session.CreateDirectory(string.Empty);
 

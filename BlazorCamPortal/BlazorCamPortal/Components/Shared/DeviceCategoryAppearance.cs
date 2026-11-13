@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 using MudBlazor;
 
-namespace CamPortal.Components.Shared
+namespace Homewatch.Components.Shared
 {
     public static class DeviceCategoryAppearance
     {

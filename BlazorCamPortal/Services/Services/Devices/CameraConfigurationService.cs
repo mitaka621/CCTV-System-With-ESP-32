@@ -1,11 +1,11 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 
-namespace CamPortal.Core.Services.Devices
+namespace Homewatch.Core.Services.Devices
 {
     public class CameraConfigurationService : ICameraConfigurationService
     {

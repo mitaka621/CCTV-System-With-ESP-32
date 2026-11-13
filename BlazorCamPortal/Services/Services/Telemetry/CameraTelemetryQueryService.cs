@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
 
-namespace CamPortal.Core.Services.Telemetry
+namespace Homewatch.Core.Services.Telemetry
 {
     public class CameraTelemetryQueryService : ICameraTelemetryQueryService
     {

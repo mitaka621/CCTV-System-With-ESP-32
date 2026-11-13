@@ -1,4 +1,4 @@
-namespace CamPortal.Auth
+namespace Homewatch.Auth
 {
     public interface IAdminAuthorizationGuard
     {

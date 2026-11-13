@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.TelemetryDtos
+namespace Homewatch.Contracts.Dtos.TelemetryDtos
 {
     public class CameraTelemetrySampleDto
     {

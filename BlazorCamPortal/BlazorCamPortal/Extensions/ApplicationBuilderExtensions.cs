@@ -1,11 +1,11 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Constants;
-using CamPortal.Contracts.Models;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Constants;
+using Homewatch.Contracts.Models;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Extensions
+namespace Homewatch.Extensions
 {
     public static class ApplicationBuilderExtensions
     {
@@ -13,7 +13,7 @@ namespace CamPortal.Extensions
         {
             var dbFactory = serviceProvider.CreateScope()
                 .ServiceProvider
-                .GetRequiredService<IDbContextFactory<CamPortalDBContext>>();
+                .GetRequiredService<IDbContextFactory<HomewatchDBContext>>();
 
             using var db = dbFactory.CreateDbContext();
 
@@ -60,7 +60,7 @@ namespace CamPortal.Extensions
         {
             using var scope = app.Services.CreateScope();
 
-            var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<CamPortalDBContext>>();
+            var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<HomewatchDBContext>>();
 
             await using var db = await dbFactory.CreateDbContextAsync();
 

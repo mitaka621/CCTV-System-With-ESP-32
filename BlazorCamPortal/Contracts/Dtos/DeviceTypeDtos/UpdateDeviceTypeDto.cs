@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.DeviceTypeDtos
+namespace Homewatch.Contracts.Dtos.DeviceTypeDtos
 {
     public class UpdateDeviceTypeDto
     {

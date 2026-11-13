@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.SecurityDtos
+namespace Homewatch.Contracts.Dtos.SecurityDtos
 {
     public class DeviceSecurityConfigDto
     {

@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Dtos.UserDtos;
-using CamPortal.Contracts.Models;
+using Homewatch.Contracts.Dtos.UserDtos;
+using Homewatch.Contracts.Models;
 using System.Security.Claims;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IUserAuthService
     {

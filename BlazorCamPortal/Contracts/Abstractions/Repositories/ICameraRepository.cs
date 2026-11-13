@@ -1,8 +1,8 @@
-﻿using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Models;
+﻿using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Models;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface ICameraRepository
     {

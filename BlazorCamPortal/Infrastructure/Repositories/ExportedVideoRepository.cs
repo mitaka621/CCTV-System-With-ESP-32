@@ -1,19 +1,19 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.ExportedVideoDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.ExportedVideoDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class ExportedVideoRepository : IExportedVideoRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public ExportedVideoRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public ExportedVideoRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;

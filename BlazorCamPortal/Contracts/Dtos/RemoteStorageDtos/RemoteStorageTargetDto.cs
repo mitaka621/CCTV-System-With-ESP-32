@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.RemoteStorageDtos
+namespace Homewatch.Contracts.Dtos.RemoteStorageDtos
 {
     public class RemoteStorageTargetDto
     {

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public class MultipartJpegStreamReader
     {

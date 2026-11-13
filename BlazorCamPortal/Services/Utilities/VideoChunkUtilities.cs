@@ -1,11 +1,11 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class VideoChunkUtilities
     {

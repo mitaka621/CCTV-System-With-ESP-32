@@ -1,6 +1,6 @@
 @page "/allDevicesConfig"
-@using CamPortal.Contracts.Constants
-@using CamPortal.Contracts.Enums
+@using Homewatch.Contracts.Constants
+@using Homewatch.Contracts.Enums
 @using Microsoft.AspNetCore.Authorization
 @using static MudBlazor.CategoryTypes
 @rendermode InteractiveServer
@@ -14,7 +14,7 @@
 @inject IDeviceTypeIconStorageService _deviceTypeIconStorageService;
 @inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
-<PageTitle>Device Configuration - BlazorCam Portal</PageTitle>
+<PageTitle>Device Configuration - Homewatch</PageTitle>
 
 <MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
     Camera Configuration

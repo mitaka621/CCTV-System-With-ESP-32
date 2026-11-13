@@ -1,14 +1,14 @@
 @page "/"
 @rendermode InteractiveServer
-@using CamPortal.Components.Features.CameraStreamsLiveGrid.Components
-@using CamPortal.Components.Features.CameraStreamsLiveGrid.Dialogs
-@using CamPortal.Contracts.Constants
-@using CamPortal.Contracts.Dtos.UserCameraLayoutDtos
-@using CamPortal.Contracts.Enums
-@using CamPortal.Core.Utilities
+@using Homewatch.Components.Features.CameraStreamsLiveGrid.Components
+@using Homewatch.Components.Features.CameraStreamsLiveGrid.Dialogs
+@using Homewatch.Contracts.Constants
+@using Homewatch.Contracts.Dtos.UserCameraLayoutDtos
+@using Homewatch.Contracts.Enums
+@using Homewatch.Core.Utilities
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
-@using CamPortal.Contracts.Dtos.CameraConfigurationDtos
+@using Homewatch.Contracts.Dtos.CameraConfigurationDtos
 
 @attribute [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
 
@@ -19,7 +19,7 @@
 @inject IDialogService _dialogService
 @inject IJSRuntime _js
 
-<PageTitle>Dashboard - BlazorCam Portal</PageTitle>
+<PageTitle>Dashboard - Homewatch</PageTitle>
 
 <PageLoader IsLoading="_isLoading" Message="Loading dashboard...">
 

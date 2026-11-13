@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Dtos.ESPSessionTokenDtos
+﻿namespace Homewatch.Contracts.Dtos.ESPSessionTokenDtos
 {
     public class ESPSessionTokenDto
     {

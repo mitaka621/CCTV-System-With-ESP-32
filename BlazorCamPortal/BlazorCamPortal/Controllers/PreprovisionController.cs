@@ -1,12 +1,12 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
-using CamPortal.Contracts.Models;
-using CamPortal.Filters;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
+using Homewatch.Contracts.Models;
+using Homewatch.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace CamPortal.Controllers
+namespace Homewatch.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

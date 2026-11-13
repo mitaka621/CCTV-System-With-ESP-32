@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 using Microsoft.AspNetCore.Components.Forms;
 using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Contracts.Models
+namespace Homewatch.Contracts.Models
 {
     public class CreateDeviceTypeModel
     {

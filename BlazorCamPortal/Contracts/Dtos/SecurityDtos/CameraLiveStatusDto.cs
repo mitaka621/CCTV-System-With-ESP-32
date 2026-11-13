@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.SecurityDtos
+namespace Homewatch.Contracts.Dtos.SecurityDtos
 {
     public class CameraLiveStatusDto
     {

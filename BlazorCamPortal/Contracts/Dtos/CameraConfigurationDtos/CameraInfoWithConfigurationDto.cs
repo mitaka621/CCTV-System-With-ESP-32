@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Dtos.CameraDtos;
+﻿using Homewatch.Contracts.Dtos.CameraDtos;
 
-namespace CamPortal.Contracts.Dtos.CameraConfigurationDtos
+namespace Homewatch.Contracts.Dtos.CameraConfigurationDtos
 {
     public class CameraInfoWithConfigurationDto : DeviceWithPreprovisionAttemptsDto
     {

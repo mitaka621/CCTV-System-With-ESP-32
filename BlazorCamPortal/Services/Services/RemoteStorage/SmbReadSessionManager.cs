@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
 using System.Collections.Concurrent;
 
-namespace CamPortal.Core.Services.RemoteStorage
+namespace Homewatch.Core.Services.RemoteStorage
 {
     public class SmbReadSessionManager : ISmbReadSessionManager, IDisposable
     {

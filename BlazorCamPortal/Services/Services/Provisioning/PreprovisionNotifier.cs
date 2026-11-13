@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.Services;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services.Provisioning
+namespace Homewatch.Core.Services.Provisioning
 {
     public class PreprovisionNotifier : IPreprovisionNotifier
     {

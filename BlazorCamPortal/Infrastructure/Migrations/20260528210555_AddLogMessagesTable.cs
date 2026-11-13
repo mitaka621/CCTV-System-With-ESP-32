@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace CamPortal.Infrastructure.Migrations
+namespace Homewatch.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class AddLogMessagesTable : Migration

@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
 using System.Net;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ISecureHandshake
     {

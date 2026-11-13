@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ICameraTelemetryQueryService
     {

@@ -1,14 +1,14 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.UserDtos;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.UserDtos;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
-namespace CamPortal.Core.Services.Users
+namespace Homewatch.Core.Services.Users
 {
     public class UserAuthService : IUserAuthService
     {

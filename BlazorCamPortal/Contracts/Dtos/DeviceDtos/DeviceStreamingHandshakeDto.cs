@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.DeviceDtos
+namespace Homewatch.Contracts.Dtos.DeviceDtos
 {
     public class DeviceStreamingHandshakeDto
     {

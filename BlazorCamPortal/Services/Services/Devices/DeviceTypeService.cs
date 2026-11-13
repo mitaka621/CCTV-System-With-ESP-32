@@ -1,14 +1,14 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Core.Services.Devices
+namespace Homewatch.Core.Services.Devices
 {
     public class DeviceTypeService : IDeviceTypeService
     {

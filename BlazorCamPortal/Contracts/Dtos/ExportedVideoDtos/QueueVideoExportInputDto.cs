@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.ExportedVideoDtos
+namespace Homewatch.Contracts.Dtos.ExportedVideoDtos
 {
     public class QueueVideoExportInputDto
     {

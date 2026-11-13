@@ -1,12 +1,12 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Sockets;
 
-namespace CamPortal.Core.BackgroundServices
+namespace Homewatch.Core.BackgroundServices
 {
     public class SecureTcpServer : BackgroundService
     {

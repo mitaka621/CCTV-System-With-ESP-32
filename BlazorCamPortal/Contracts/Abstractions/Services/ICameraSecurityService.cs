@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.SecurityDtos;
+using Homewatch.Contracts.Dtos.SecurityDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ICameraSecurityService
     {

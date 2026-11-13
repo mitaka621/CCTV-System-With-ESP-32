@@ -1,9 +1,9 @@
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.SecurityDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.SecurityDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface ICameraConfigurationRepository
     {

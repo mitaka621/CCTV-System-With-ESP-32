@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Constants
+namespace Homewatch.Contracts.Constants
 {
     public static class AuthSchemes
     {

@@ -1,19 +1,19 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Contracts.Dtos.VideoChunkDtos;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Dtos.VideoChunkDtos;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class VideoChunkRepository : IVideoChunkRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public VideoChunkRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public VideoChunkRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using System.Net;
 using System.Net.Sockets;
 
-namespace CamPortal.Filters
+namespace Homewatch.Filters
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
     public sealed class LocalNetworkOnlyAttribute : Attribute, IAuthorizationFilter

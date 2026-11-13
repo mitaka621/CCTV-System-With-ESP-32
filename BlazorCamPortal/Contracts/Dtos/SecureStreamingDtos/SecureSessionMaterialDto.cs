@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.SecureStreamingDtos
+namespace Homewatch.Contracts.Dtos.SecureStreamingDtos
 {
     public class SecureSessionMaterialDto
     {

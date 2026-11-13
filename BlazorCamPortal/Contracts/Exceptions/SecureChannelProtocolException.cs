@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Exceptions
+namespace Homewatch.Contracts.Exceptions
 {
     public class SecureChannelProtocolException : Exception
     {

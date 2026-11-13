@@ -1,7 +1,7 @@
-﻿using CamPortal.Contracts.Dtos.VideoChunkDtos;
-using CamPortal.Contracts.Models;
+﻿using Homewatch.Contracts.Dtos.VideoChunkDtos;
+using Homewatch.Contracts.Models;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IVideoReplayService
     {

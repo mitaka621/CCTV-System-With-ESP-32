@@ -1,13 +1,13 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraFrameDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.CameraFrameDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services.Devices
+namespace Homewatch.Core.Services.Devices
 {
     public class CameraFramesManagerService : ICameraFramesManagerService
     {

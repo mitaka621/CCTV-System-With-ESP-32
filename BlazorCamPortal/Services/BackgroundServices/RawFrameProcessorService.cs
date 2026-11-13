@@ -1,13 +1,13 @@
-﻿using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraFrameDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Core.Services.Devices;
-using CamPortal.Core.Utilities;
+﻿using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.CameraFrameDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Core.Services.Devices;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
-namespace CamPortal.Core.BackgroundServices
+namespace Homewatch.Core.BackgroundServices
 {
     public class RawFrameProcessorService : BackgroundService
     {

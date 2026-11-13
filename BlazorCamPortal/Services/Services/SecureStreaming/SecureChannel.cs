@@ -1,11 +1,11 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.SecureStreamingDtos;
-using CamPortal.Contracts.Exceptions;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.SecureStreamingDtos;
+using Homewatch.Contracts.Exceptions;
 using Microsoft.Extensions.Configuration;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 
-namespace CamPortal.Core.Services.SecureStreaming
+namespace Homewatch.Core.Services.SecureStreaming
 {
     public sealed class SecureChannel : ISecureChannel
     {

@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.LocalNetworkDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.LocalNetworkDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.DeviceDtos
+namespace Homewatch.Contracts.Dtos.DeviceDtos
 {
     public class ResumeDeviceSetupDto
     {

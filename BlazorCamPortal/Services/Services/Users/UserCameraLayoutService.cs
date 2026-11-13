@@ -1,12 +1,12 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.UserCameraLayoutDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services.Users
+namespace Homewatch.Core.Services.Users
 {
     public class UserCameraLayoutService : IUserCameraLayoutService
     {

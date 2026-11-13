@@ -1,8 +1,8 @@
-﻿using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Enums;
 using System.Text.Json;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public class DeviceSessionHelper
     {

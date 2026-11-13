@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Models
+namespace Homewatch.Contracts.Models
 {
     public class DeviceDisplayModel
     {

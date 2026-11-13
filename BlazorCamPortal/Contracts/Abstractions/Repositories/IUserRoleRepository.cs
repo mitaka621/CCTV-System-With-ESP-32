@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.UserDtos;
+using Homewatch.Contracts.Dtos.UserDtos;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface IUserRoleRepository
     {

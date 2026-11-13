@@ -1,8 +1,8 @@
 @page "/system/settings/deviceTypes"
 @rendermode InteractiveServer
 
-@using CamPortal.Components.Features.Settings.Dialogs
-@using CamPortal.Contracts.Constants
+@using Homewatch.Components.Features.Settings.Dialogs
+@using Homewatch.Contracts.Constants
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize(Roles = Roles.Admin)]
@@ -13,7 +13,7 @@
 @inject ISnackbar _snackbar
 @inject IAdminAuthorizationGuard _adminAuthorizationGuard
 
-<PageTitle>Device Types - BlazorCam Portal</PageTitle>
+<PageTitle>Device Types - Homewatch</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">

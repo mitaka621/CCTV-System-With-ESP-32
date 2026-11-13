@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class RetentionPeriodExtensions
     {

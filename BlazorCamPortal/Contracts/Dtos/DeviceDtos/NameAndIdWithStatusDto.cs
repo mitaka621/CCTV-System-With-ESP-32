@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.CameraDtos
+namespace Homewatch.Contracts.Dtos.CameraDtos
 {
     public class NameAndIdWithStatusDto
     {

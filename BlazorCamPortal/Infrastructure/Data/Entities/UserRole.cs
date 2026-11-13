@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CamPortal.Infrastructure.Data.Entities
+namespace Homewatch.Infrastructure.Data.Entities
 {
     [PrimaryKey(nameof(UserId), nameof(RoleId))]
     public class UserRole

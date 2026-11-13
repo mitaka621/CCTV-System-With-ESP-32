@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Contracts.Models
+namespace Homewatch.Contracts.Models
 {
     public class UpdateUserRolesModel
     {

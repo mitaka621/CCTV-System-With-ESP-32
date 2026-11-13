@@ -1,23 +1,23 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.UserCameraLayoutDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class UserCameraLayoutRepository : IUserCameraLayoutRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
         private readonly ILogger<UserCameraLayoutRepository> _logger;
 
-        public UserCameraLayoutRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper, ILogger<UserCameraLayoutRepository> logger)
+        public UserCameraLayoutRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper, ILogger<UserCameraLayoutRepository> logger)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;

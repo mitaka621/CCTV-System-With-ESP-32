@@ -1,13 +1,13 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraFrameDtos;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.CameraFrameDtos;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services.Devices
+namespace Homewatch.Core.Services.Devices
 {
     public class CameraFrameStamper : IAsyncDisposable
     {
@@ -49,8 +49,8 @@ namespace CamPortal.Core.Services.Devices
 
             // on Linux .NET named pipes are Unix domain sockets, and a rooted name is used as the socket path
             _reducedResolutionPipeName = OperatingSystem.IsWindows()
-                ? $"camportal-preview-{settings.CameraId:N}-{Guid.NewGuid():N}"
-                : Path.Combine(Path.GetTempPath(), $"camportal-preview-{Guid.NewGuid():N}.sock");
+                ? $"homewatch-preview-{settings.CameraId:N}-{Guid.NewGuid():N}"
+                : Path.Combine(Path.GetTempPath(), $"homewatch-preview-{Guid.NewGuid():N}.sock");
 
             var reducedResolutionOutput = OperatingSystem.IsWindows()
                 ? $@"\\.\pipe\{_reducedResolutionPipeName}"

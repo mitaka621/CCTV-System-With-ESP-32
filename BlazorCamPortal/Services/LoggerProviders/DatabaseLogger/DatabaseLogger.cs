@@ -1,8 +1,8 @@
-﻿using CamPortal.Infrastructure.Data.Entities;
+﻿using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.LoggerProviders.DatabaseLogger
+namespace Homewatch.Core.LoggerProviders.DatabaseLogger
 {
     public sealed class DatabaseLogger : ILogger
     {

@@ -1,15 +1,15 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.SecurityDtos;
-using CamPortal.Contracts.Dtos.TelemetryDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.SecurityDtos;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
-namespace CamPortal.Core.Services.Security
+namespace Homewatch.Core.Services.Security
 {
     public class CameraSecurityCoordinator :
         ICameraSecurityCoordinator,

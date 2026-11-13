@@ -1,17 +1,17 @@
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.CameraDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
-using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
-using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
-using CamPortal.Contracts.Dtos.VideoChunkDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.CameraDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
+using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
+using Homewatch.Contracts.Dtos.UserCameraLayoutDtos;
+using Homewatch.Contracts.Dtos.VideoChunkDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
+using Homewatch.Infrastructure.Data.Entities;
 using Mapster;
 
-namespace CamPortal.MapperConfiguration
+namespace Homewatch.MapperConfiguration
 {
     public class MapperRegister : IRegister
     {

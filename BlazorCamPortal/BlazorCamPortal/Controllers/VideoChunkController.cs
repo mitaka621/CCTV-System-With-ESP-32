@@ -1,10 +1,10 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Constants;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace CamPortal.Controllers
+namespace Homewatch.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

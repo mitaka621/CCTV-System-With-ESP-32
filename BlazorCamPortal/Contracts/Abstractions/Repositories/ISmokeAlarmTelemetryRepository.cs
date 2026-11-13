@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
+﻿using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface ISmokeAlarmTelemetryRepository
     {

@@ -1,16 +1,16 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.UserDtos;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.UserDtos;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class UserRepository : IUserRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
 
-        public UserRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory)
+        public UserRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory)
         {
             _dbContextFactory = dbContextFactory;
         }

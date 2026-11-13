@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Constants;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Constants;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
-namespace CamPortal.Controllers
+namespace Homewatch.Controllers
 {
     [Route("api/auth")]
     [EnableRateLimiting("auth-per-ip")]

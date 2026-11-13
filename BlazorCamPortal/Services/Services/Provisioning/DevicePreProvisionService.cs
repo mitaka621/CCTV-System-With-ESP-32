@@ -1,13 +1,13 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.CameraDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.LocalNetworkDtos;
-using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.CameraDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.LocalNetworkDtos;
+using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Buffers.Text;
@@ -15,7 +15,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-namespace CamPortal.Core.Services.Provisioning
+namespace Homewatch.Core.Services.Provisioning
 {
     public class DevicePreProvisionService : IDevicePreProvisionService
     {

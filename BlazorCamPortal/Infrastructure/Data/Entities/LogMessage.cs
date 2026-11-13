@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Infrastructure.Data.Entities
+namespace Homewatch.Infrastructure.Data.Entities
 {
     [Index(nameof(TimestampUTC))]
     public class LogMessage

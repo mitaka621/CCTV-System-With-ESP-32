@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Contracts.Models
+namespace Homewatch.Contracts.Models
 {
     public class RemoteStorageTargetModel
     {

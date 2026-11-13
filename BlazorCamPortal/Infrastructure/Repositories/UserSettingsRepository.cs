@@ -1,16 +1,16 @@
 ﻿using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class UserSettingsRepository : IUserSettingsRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public UserSettingsRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public UserSettingsRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;

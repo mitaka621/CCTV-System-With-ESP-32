@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Models
+﻿namespace Homewatch.Contracts.Models
 {
     public class SmokeAlarmDisplayModel : DeviceDisplayModel
     {

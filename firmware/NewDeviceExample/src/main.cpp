@@ -339,7 +339,7 @@ void setup()
   }
 
   DEBUG_PRINT("=================================");
-  DEBUG_PRINT("CamPortal device firmware " FIRMWARE_VERSION);
+  DEBUG_PRINT("Homewatch device firmware " FIRMWARE_VERSION);
   DEBUG_PRINT("=================================");
 
   led_indicator::begin();

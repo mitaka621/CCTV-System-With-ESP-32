@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IChunkReplicationQueue
     {

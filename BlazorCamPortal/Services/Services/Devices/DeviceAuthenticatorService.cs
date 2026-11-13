@@ -1,10 +1,10 @@
-﻿using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.DeviceDtos;
+﻿using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.DeviceDtos;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CamPortal.Core.Services.Devices
+namespace Homewatch.Core.Services.Devices
 {
     public class DeviceAuthenticatorService : IDeviceAuthenticatorService
     {

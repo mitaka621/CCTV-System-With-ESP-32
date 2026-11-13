@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IServerIdentityService
     {

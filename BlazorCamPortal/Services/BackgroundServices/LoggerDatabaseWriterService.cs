@@ -1,20 +1,20 @@
-﻿using CamPortal.Core.LoggerProviders.DatabaseLogger;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+﻿using Homewatch.Core.LoggerProviders.DatabaseLogger;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
-namespace CamPortal.Core.BackgroundServices
+namespace Homewatch.Core.BackgroundServices
 {
     public class LoggerDatabaseWriterService : BackgroundService
     {
         private const int _batchSize = 50;
         private const int _waitTimeInSeconds = 5;
 
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly DatabaseLogQueue _queue;
 
-        public LoggerDatabaseWriterService(DatabaseLogQueue queue, IDbContextFactory<CamPortalDBContext> dbContextFactory)
+        public LoggerDatabaseWriterService(DatabaseLogQueue queue, IDbContextFactory<HomewatchDBContext> dbContextFactory)
         {
             _queue = queue;
             _dbContextFactory = dbContextFactory;

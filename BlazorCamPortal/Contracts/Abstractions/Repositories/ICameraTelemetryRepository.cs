@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface ICameraTelemetryRepository
     {

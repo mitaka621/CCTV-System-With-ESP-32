@@ -1,16 +1,16 @@
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace CamPortal.Infrastructure.UnitOfWork
+namespace Homewatch.Infrastructure.UnitOfWork
 {
     public sealed class UnitOfWork : IUnitOfWork
     {
-        private readonly CamPortalDBContext _dbContext;
+        private readonly HomewatchDBContext _dbContext;
         private readonly IDbContextTransaction? _transaction;
 
-        public UnitOfWork(CamPortalDBContext dbContext, IDbContextTransaction? transaction)
+        public UnitOfWork(HomewatchDBContext dbContext, IDbContextTransaction? transaction)
         {
             _dbContext = dbContext;
             _transaction = transaction;

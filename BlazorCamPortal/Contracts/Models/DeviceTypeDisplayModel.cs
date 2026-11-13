@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Models
+namespace Homewatch.Contracts.Models
 {
     public class DeviceTypeDisplayModel
     {

@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Dtos.DeviceDtos
+﻿namespace Homewatch.Contracts.Dtos.DeviceDtos
 {
     public class DeviceKeyPairDto
     {

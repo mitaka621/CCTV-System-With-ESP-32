@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services.Telemetry
+namespace Homewatch.Core.Services.Telemetry
 {
     public sealed class CameraTelemetryQueue
     {

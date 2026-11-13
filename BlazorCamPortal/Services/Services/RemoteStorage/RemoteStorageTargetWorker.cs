@@ -1,11 +1,11 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services.RemoteStorage
+namespace Homewatch.Core.Services.RemoteStorage
 {
     public class RemoteStorageTargetWorker
     {

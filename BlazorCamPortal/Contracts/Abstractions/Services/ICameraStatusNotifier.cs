@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ICameraStatusNotifier
     {

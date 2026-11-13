@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class JpegHeaderReader
     {

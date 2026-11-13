@@ -1,9 +1,9 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.ExportedVideoDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.ExportedVideoDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Core.Services.Video
+namespace Homewatch.Core.Services.Video
 {
     public class VideoExportService : IVideoExportService
     {

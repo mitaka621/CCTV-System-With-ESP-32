@@ -1,9 +1,9 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 using SixLabors.ImageSharp.Processing;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CamPortal.Infrastructure.Data.Entities
+namespace Homewatch.Infrastructure.Data.Entities
 {
     public class CameraConfiguration
     {

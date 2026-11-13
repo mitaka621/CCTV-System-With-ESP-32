@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.SecurityDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.SecurityDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ICameraCommandDispatcher
     {

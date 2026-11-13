@@ -1,4 +1,4 @@
-namespace CamPortal.Core.Services.RemoteStorage
+namespace Homewatch.Core.Services.RemoteStorage
 {
     public class SmbSharePathDto
     {

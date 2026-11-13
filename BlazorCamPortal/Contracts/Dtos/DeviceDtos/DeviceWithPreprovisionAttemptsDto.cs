@@ -1,7 +1,7 @@
-﻿using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.PreprovisionAttemptDtos;
+﻿using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
 
-namespace CamPortal.Contracts.Dtos.CameraDtos
+namespace Homewatch.Contracts.Dtos.CameraDtos
 {
     public class DeviceWithPreprovisionAttemptsDto : DeviceDto
     {

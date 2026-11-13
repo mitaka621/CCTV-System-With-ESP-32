@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace CamPortal.Contracts.Dtos.UserDtos
+namespace Homewatch.Contracts.Dtos.UserDtos
 {
     public class LoginResultDto
     {

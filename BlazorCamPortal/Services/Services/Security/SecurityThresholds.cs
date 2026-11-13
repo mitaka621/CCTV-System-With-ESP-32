@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Core.Services.Security
+﻿namespace Homewatch.Core.Services.Security
 {
     internal sealed record SecurityThresholds(int MinFps, double MaxTemperatureC, double MaxHumidityPercent);
 }

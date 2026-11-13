@@ -1,14 +1,14 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.VideoChunkDtos;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.VideoChunkDtos;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
 
-namespace CamPortal.Core.Services.Video
+namespace Homewatch.Core.Services.Video
 {
     public class VideoReplayService : IVideoReplayService
     {

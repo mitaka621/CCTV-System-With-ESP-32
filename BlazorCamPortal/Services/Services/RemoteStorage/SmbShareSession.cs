@@ -1,9 +1,9 @@
-using CamPortal.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.Services;
 using SMBLibrary;
 using SMBLibrary.Client;
 using FileAttributes = SMBLibrary.FileAttributes;
 
-namespace CamPortal.Core.Services.RemoteStorage
+namespace Homewatch.Core.Services.RemoteStorage
 {
     public class SmbShareSession : ISmbShareSession
     {

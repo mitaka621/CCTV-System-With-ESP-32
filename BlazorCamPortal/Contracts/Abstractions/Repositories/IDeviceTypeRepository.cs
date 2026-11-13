@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface IDeviceTypeRepository
     {

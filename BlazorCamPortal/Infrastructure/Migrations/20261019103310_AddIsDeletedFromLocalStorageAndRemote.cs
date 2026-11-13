@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace CamPortal.Infrastructure.Migrations
+namespace Homewatch.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class AddIsDeletedFromLocalStorageAndRemote : Migration

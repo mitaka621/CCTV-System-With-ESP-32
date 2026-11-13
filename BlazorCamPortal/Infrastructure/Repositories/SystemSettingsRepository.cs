@@ -1,16 +1,16 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.SystemSettingsDtos;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.SystemSettingsDtos;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class SystemSettingsRepository : ISystemSettingsRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
 
-        public SystemSettingsRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory)
+        public SystemSettingsRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory)
         {
             _dbContextFactory = dbContextFactory;
         }
@@ -21,7 +21,7 @@ namespace CamPortal.Infrastructure.Repositories
 
             var settings = await db.SystemSettings
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == CamPortalDBContext.SystemSettingsId);
+                .FirstOrDefaultAsync(x => x.Id == HomewatchDBContext.SystemSettingsId);
 
             if (settings == null)
             {
@@ -43,7 +43,7 @@ namespace CamPortal.Infrastructure.Repositories
             await using var db = await _dbContextFactory.CreateDbContextAsync();
 
             var updated = await db.SystemSettings
-                .Where(x => x.Id == CamPortalDBContext.SystemSettingsId)
+                .Where(x => x.Id == HomewatchDBContext.SystemSettingsId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.EncodedVideoRetention, systemSettingsDto.EncodedVideoRetention)
                     .SetProperty(x => x.CameraChunkRetention, systemSettingsDto.CameraChunkRetention)
@@ -58,7 +58,7 @@ namespace CamPortal.Infrastructure.Repositories
 
             db.SystemSettings.Add(new SystemSettings
             {
-                Id = CamPortalDBContext.SystemSettingsId,
+                Id = HomewatchDBContext.SystemSettingsId,
                 EncodedVideoRetention = systemSettingsDto.EncodedVideoRetention,
                 CameraChunkRetention = systemSettingsDto.CameraChunkRetention,
                 SecurityMinFps = systemSettingsDto.SecurityMinFps,

@@ -1,7 +1,7 @@
-﻿using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.DeviceDtos
+namespace Homewatch.Contracts.Dtos.DeviceDtos
 {
     public class DeviceDto
     {

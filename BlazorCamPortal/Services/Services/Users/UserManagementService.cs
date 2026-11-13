@@ -1,10 +1,10 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Constants;
-using CamPortal.Contracts.Dtos.UserDtos;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Constants;
+using Homewatch.Contracts.Dtos.UserDtos;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services.Users
+namespace Homewatch.Core.Services.Users
 {
     public class UserManagementService : IUserManagementService
     {

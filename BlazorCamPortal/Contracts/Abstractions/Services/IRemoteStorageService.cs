@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Contracts.Models;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Models;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IRemoteStorageService
     {

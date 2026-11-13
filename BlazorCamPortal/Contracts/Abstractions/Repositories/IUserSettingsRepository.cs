@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Abstractions.Repositories
+﻿namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface IUserSettingsRepository
     {

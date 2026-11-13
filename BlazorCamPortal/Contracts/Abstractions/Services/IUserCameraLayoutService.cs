@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.UserCameraLayoutDtos;
+using Homewatch.Contracts.Dtos.UserCameraLayoutDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface IUserCameraLayoutService
     {

@@ -1,20 +1,20 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.SecurityDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.SecurityDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class CameraConfigurationRepository : ICameraConfigurationRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public CameraConfigurationRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public CameraConfigurationRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;
@@ -34,7 +34,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
 
                 ownedDb.CameraConfigurations.Add(new() { DeviceId = deviceId });
 

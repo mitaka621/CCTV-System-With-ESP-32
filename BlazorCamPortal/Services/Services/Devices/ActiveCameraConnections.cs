@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.Services;
 using System.Collections.Concurrent;
 
-namespace CamPortal.Core.Services.Devices
+namespace Homewatch.Core.Services.Devices
 {
     public class ActiveCameraConnections : IActiveCameraConnections
     {

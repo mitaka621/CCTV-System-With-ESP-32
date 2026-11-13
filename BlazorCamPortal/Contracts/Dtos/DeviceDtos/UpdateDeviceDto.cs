@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Dtos.CameraDtos;
+﻿using Homewatch.Contracts.Dtos.CameraDtos;
 
-namespace CamPortal.Contracts.Dtos.DeviceDtos
+namespace Homewatch.Contracts.Dtos.DeviceDtos
 {
     public class UpdateDeviceDto : CreateDeviceDto
     {

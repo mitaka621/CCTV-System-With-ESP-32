@@ -1,9 +1,9 @@
 @page "/replay"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
-@using CamPortal.Contracts.Constants
-@using CamPortal.Contracts.Dtos.VideoChunkDtos
-@using CamPortal.Contracts.Dtos.ExportedVideoDtos
+@using Homewatch.Contracts.Constants
+@using Homewatch.Contracts.Dtos.VideoChunkDtos
+@using Homewatch.Contracts.Dtos.ExportedVideoDtos
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
@@ -18,7 +18,7 @@
 @inject ISnackbar _snackbar
 @inject IRemoteStorageService _remoteStorageService
 
-<PageTitle>Replay - BlazorCam Portal</PageTitle>
+<PageTitle>Replay - Homewatch</PageTitle>
 
 <MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">
     <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Class="mr-3 icon-to-hide-on-mobile" />

@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
+﻿namespace Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos
 {
     public class SmokeAlarmShortPayloadDto
     {

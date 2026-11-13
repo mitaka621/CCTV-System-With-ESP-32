@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Abstractions.Services;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services.Video
+namespace Homewatch.Core.Services.Video
 {
     public class VideoExportJobQueue : IVideoExportJobQueue
     {

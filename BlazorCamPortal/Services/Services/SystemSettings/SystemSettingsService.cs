@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.SystemSettingsDtos;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.SystemSettingsDtos;
 
-namespace CamPortal.Core.Services.SystemSettings
+namespace Homewatch.Core.Services.SystemSettings
 {
     public class SystemSettingsService : ISystemSettingsService
     {

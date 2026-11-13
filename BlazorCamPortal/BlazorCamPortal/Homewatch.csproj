@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Services\CamPortal.Core.csproj" />
+    <ProjectReference Include="..\Services\Homewatch.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

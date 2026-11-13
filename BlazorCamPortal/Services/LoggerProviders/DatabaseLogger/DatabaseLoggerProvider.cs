@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.LoggerProviders.DatabaseLogger
+namespace Homewatch.Core.LoggerProviders.DatabaseLogger
 {
     public sealed class DatabaseLoggerProvider : ILoggerProvider
     {

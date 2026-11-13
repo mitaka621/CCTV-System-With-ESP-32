@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.TelemetryDtos
+namespace Homewatch.Contracts.Dtos.TelemetryDtos
 {
     public class CameraTelemetryAveragesDto
     {

@@ -1,11 +1,11 @@
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Data
+namespace Homewatch.Infrastructure.Data
 {
-    public class CamPortalDBContext : DbContext
+    public class HomewatchDBContext : DbContext
     {
-        public CamPortalDBContext(DbContextOptions<CamPortalDBContext> options) : base(options) { }
+        public HomewatchDBContext(DbContextOptions<HomewatchDBContext> options) : base(options) { }
 
         public DbSet<Device> Devices { get; set; }
 

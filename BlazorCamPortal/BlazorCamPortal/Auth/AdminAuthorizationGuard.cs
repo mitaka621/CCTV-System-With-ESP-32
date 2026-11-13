@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Constants;
+using Homewatch.Contracts.Constants;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 
-namespace CamPortal.Auth
+namespace Homewatch.Auth
 {
     public class AdminAuthorizationGuard : IAdminAuthorizationGuard
     {

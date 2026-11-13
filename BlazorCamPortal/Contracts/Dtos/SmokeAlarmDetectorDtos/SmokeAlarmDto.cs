@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Dtos.DeviceDtos;
+﻿using Homewatch.Contracts.Dtos.DeviceDtos;
 
-namespace CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
+namespace Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos
 {
     public class SmokeAlarmDto : DeviceDto
     {

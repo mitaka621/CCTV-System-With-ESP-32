@@ -1,6 +1,6 @@
 ﻿using QRCoder;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class QrCodeHelper
     {

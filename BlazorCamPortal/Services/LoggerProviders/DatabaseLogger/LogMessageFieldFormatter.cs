@@ -1,6 +1,6 @@
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Infrastructure.Data.Entities;
 
-namespace CamPortal.Core.LoggerProviders.DatabaseLogger
+namespace Homewatch.Core.LoggerProviders.DatabaseLogger
 {
     internal static class LogMessageFieldFormatter
     {

@@ -1,13 +1,13 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Core.Services.RemoteStorage;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Core.Services.RemoteStorage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.BackgroundServices
+namespace Homewatch.Core.BackgroundServices
 {
     public class RemoteStorageReplicationService : BackgroundService, IChunkReplicationQueue
     {

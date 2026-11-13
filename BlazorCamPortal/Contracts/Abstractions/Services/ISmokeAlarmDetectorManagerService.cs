@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
+﻿using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ISmokeAlarmDetectorManagerService
     {

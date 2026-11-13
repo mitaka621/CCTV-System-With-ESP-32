@@ -1,23 +1,23 @@
 using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.CameraDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.ESPSessionTokenDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
-using CamPortal.Infrastructure.Data;
-using CamPortal.Infrastructure.Data.Entities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.CameraDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.ESPSessionTokenDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
+using Homewatch.Infrastructure.Data;
+using Homewatch.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class DeviceRepository : IDeviceRepository
     {
-        protected readonly IDbContextFactory<CamPortalDBContext> DbContextFactory;
+        protected readonly IDbContextFactory<HomewatchDBContext> DbContextFactory;
         protected readonly IMapper Mapper;
 
-        public DeviceRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public DeviceRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             DbContextFactory = dbContextFactory;
             Mapper = mapper;
@@ -29,7 +29,7 @@ namespace CamPortal.Infrastructure.Repositories
 
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
                 ownedDb.Devices.Add(deviceEntity);
 
                 return deviceEntity.Id;
@@ -91,7 +91,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
                 var updatedCount = await ownedDb.Devices
                     .Where(x => x.Id == deviceId)
                     .ExecuteUpdateAsync(x => x.SetProperty(c => c.Name, name).SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
@@ -122,7 +122,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
                 var rowsAffected = await ownedDb.Devices
                     .Where(x => x.Id == deviceId)
                     .ExecuteUpdateAsync(x => x.SetProperty(c => c.PairStatus, newStatus).SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
@@ -142,7 +142,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
                 var rowsAffected = await ownedDb.Devices
                     .Where(x => x.Id == deviceId)
                     .ExecuteUpdateAsync(x => x.SetProperty(c => c.Ipv4Address, newIpv4).SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
@@ -253,7 +253,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
                 var rowsAffected = await ownedDb.Devices
                     .Where(x => x.Id == dto.Id)
                     .ExecuteUpdateAsync(x => x
@@ -340,7 +340,7 @@ namespace CamPortal.Infrastructure.Repositories
                 .FirstAsync();
         }
 
-        protected IQueryable<Device> GetDeviceBaseFilterQuery(CamPortalDBContext db, DeviceFilterModel filterModel)
+        protected IQueryable<Device> GetDeviceBaseFilterQuery(HomewatchDBContext db, DeviceFilterModel filterModel)
         {
             var query = db.Devices
                 .AsNoTracking();

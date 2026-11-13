@@ -1,15 +1,15 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.TelemetryDtos;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class CameraTelemetryRepository : ICameraTelemetryRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
 
-        public CameraTelemetryRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory)
+        public CameraTelemetryRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory)
         {
             _dbContextFactory = dbContextFactory;
         }

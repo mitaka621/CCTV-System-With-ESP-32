@@ -1,6 +1,6 @@
-using CamPortal.Contracts.Dtos.ExportedVideoDtos;
+using Homewatch.Contracts.Dtos.ExportedVideoDtos;
 
-namespace CamPortal.Contracts.Abstractions.Repositories
+namespace Homewatch.Contracts.Abstractions.Repositories
 {
     public interface IExportedVideoRepository
     {

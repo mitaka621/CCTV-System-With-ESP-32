@@ -1,18 +1,18 @@
-﻿using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.SecurityDtos;
-using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Exceptions;
-using CamPortal.Core.Utilities;
+﻿using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.SecurityDtos;
+using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Exceptions;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Threading.Channels;
 
-namespace CamPortal.Core.Services.DeviceSessionHandlers
+namespace Homewatch.Core.Services.DeviceSessionHandlers
 {
     public class SmokeAlarmSessionHandler : IDeviceSessionHandler, ISmokeAlarmCommandDispatcher
     {

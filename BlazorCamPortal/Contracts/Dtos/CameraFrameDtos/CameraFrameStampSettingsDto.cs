@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Enums;
 using SixLabors.ImageSharp.Processing;
 
-namespace CamPortal.Contracts.Dtos.CameraFrameDtos
+namespace Homewatch.Contracts.Dtos.CameraFrameDtos
 {
     public record CameraFrameStampSettingsDto
     {

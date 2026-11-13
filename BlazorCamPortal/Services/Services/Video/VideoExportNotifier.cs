@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.ExportedVideoDtos;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.ExportedVideoDtos;
 using Microsoft.Extensions.Logging;
 
-namespace CamPortal.Core.Services.Video
+namespace Homewatch.Core.Services.Video
 {
     public class VideoExportNotifier : IVideoExportNotifier
     {

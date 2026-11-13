@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Abstractions.UnitOfWork
+namespace Homewatch.Contracts.Abstractions.UnitOfWork
 {
     public interface IUnitOfWorkFactory
     {

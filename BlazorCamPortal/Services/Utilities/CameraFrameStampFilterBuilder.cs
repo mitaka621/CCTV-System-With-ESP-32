@@ -1,10 +1,10 @@
-using CamPortal.Contracts.Dtos.CameraFrameDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.CameraFrameDtos;
+using Homewatch.Contracts.Enums;
 using SixLabors.ImageSharp.Processing;
 using System.Globalization;
 using System.Text;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class CameraFrameStampFilterBuilder
     {

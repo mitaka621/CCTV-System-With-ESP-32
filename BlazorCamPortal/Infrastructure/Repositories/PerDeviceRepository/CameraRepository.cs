@@ -1,18 +1,18 @@
 ﻿using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Dtos.CameraConfigurationDtos;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.DeviceTypeDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Contracts.Models;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Contracts.Models;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories.PerDeviceRepository
+namespace Homewatch.Infrastructure.Repositories.PerDeviceRepository
 {
     public class CameraRepository : DeviceRepository, ICameraRepository
     {
-        public CameraRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper) : base(dbContextFactory, mapper) { }
+        public CameraRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper) : base(dbContextFactory, mapper) { }
 
         public async Task<Dictionary<Guid, CameraInfoWithConfigurationDto>> GetAllCamerasWithConfigurationAsync()
         {

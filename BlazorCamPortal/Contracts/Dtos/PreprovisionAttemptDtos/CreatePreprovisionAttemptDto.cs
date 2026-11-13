@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.PreprovisionAttemptDtos
+namespace Homewatch.Contracts.Dtos.PreprovisionAttemptDtos
 {
     public class CreatePreprovisionAttemptDto
     {

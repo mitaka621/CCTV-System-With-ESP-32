@@ -1,4 +1,4 @@
-﻿namespace CamPortal.Contracts.Dtos.LocalNetworkDtos
+﻿namespace Homewatch.Contracts.Dtos.LocalNetworkDtos
 {
     public sealed record LocalNetworkInfoDto
     {

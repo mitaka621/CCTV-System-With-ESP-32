@@ -1,10 +1,10 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Models;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Models;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Configuration;
 
-namespace CamPortal.Core.Services.Users
+namespace Homewatch.Core.Services.Users
 {
     public class UserSettingsService : IUserSettingsService
     {

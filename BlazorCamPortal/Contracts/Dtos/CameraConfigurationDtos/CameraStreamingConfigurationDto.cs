@@ -1,7 +1,7 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 using SixLabors.ImageSharp.Processing;
 
-namespace CamPortal.Contracts.Dtos.CameraConfigurationDtos
+namespace Homewatch.Contracts.Dtos.CameraConfigurationDtos
 {
     public class CameraStreamingConfigurationDto
     {

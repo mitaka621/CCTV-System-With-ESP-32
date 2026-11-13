@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CamPortal.Contracts.Enums
+namespace Homewatch.Contracts.Enums
 {
     public enum CameraEvents
     {

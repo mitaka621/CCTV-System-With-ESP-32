@@ -1,16 +1,16 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.ExportedVideoDtos;
-using CamPortal.Contracts.Dtos.RemoteStorageDtos;
-using CamPortal.Contracts.Dtos.VideoChunkDtos;
-using CamPortal.Contracts.Enums;
-using CamPortal.Core.Utilities;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.ExportedVideoDtos;
+using Homewatch.Contracts.Dtos.RemoteStorageDtos;
+using Homewatch.Contracts.Dtos.VideoChunkDtos;
+using Homewatch.Contracts.Enums;
+using Homewatch.Core.Utilities;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace CamPortal.Core.BackgroundServices
+namespace Homewatch.Core.BackgroundServices
 {
     public class VideoExportEncoderService : BackgroundService, IVideoExportCanceller
     {

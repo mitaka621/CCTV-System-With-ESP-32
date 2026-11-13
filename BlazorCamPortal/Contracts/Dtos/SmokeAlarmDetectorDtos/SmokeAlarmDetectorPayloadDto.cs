@@ -1,6 +1,6 @@
-﻿using CamPortal.Contracts.Enums;
+﻿using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos
+namespace Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos
 {
     public class SmokeAlarmDetectorPayloadDto
     {

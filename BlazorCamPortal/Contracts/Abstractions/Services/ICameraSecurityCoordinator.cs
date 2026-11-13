@@ -1,7 +1,7 @@
-using CamPortal.Contracts.Dtos.TelemetryDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Dtos.TelemetryDtos;
+using Homewatch.Contracts.Enums;
 
-namespace CamPortal.Contracts.Abstractions.Services
+namespace Homewatch.Contracts.Abstractions.Services
 {
     public interface ICameraSecurityCoordinator
     {

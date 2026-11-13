@@ -1,8 +1,8 @@
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.Services;
-using CamPortal.Contracts.Dtos.DeviceDtos;
-using CamPortal.Contracts.Dtos.SecureStreamingDtos;
-using CamPortal.Contracts.Enums;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.Services;
+using Homewatch.Contracts.Dtos.DeviceDtos;
+using Homewatch.Contracts.Dtos.SecureStreamingDtos;
+using Homewatch.Contracts.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,7 +10,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CamPortal.Core.Services.SecureStreaming
+namespace Homewatch.Core.Services.SecureStreaming
 {
     public class SecureHandshake : ISecureHandshake
     {

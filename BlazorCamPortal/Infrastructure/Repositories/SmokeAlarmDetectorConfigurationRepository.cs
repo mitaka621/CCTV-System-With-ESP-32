@@ -1,18 +1,18 @@
 ﻿using MapsterMapper;
-using CamPortal.Contracts.Abstractions.Repositories;
-using CamPortal.Contracts.Abstractions.UnitOfWork;
-using CamPortal.Contracts.Dtos.SmokeAlarmDetectorDtos;
-using CamPortal.Infrastructure.Data;
+using Homewatch.Contracts.Abstractions.Repositories;
+using Homewatch.Contracts.Abstractions.UnitOfWork;
+using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
+using Homewatch.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CamPortal.Infrastructure.Repositories
+namespace Homewatch.Infrastructure.Repositories
 {
     public class SmokeAlarmDetectorConfigurationRepository : ISmokeAlarmDetectorConfigurationRepository
     {
-        private readonly IDbContextFactory<CamPortalDBContext> _dbContextFactory;
+        private readonly IDbContextFactory<HomewatchDBContext> _dbContextFactory;
         private readonly IMapper _mapper;
 
-        public SmokeAlarmDetectorConfigurationRepository(IDbContextFactory<CamPortalDBContext> dbContextFactory, IMapper mapper)
+        public SmokeAlarmDetectorConfigurationRepository(IDbContextFactory<HomewatchDBContext> dbContextFactory, IMapper mapper)
         {
             _dbContextFactory = dbContextFactory;
             _mapper = mapper;
@@ -22,7 +22,7 @@ namespace CamPortal.Infrastructure.Repositories
         {
             if (uow != null)
             {
-                var ownedDb = (CamPortalDBContext)uow.Db;
+                var ownedDb = (HomewatchDBContext)uow.Db;
 
                 ownedDb.SmokeAlarmDetectorConfigurations.Add(new() { DeviceId = deviceId });
 

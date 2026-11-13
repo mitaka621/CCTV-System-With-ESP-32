@@ -1,4 +1,4 @@
-namespace CamPortal.Contracts.Dtos.VideoChunkDtos
+namespace Homewatch.Contracts.Dtos.VideoChunkDtos
 {
     public class CreateVideoChunkDto
     {

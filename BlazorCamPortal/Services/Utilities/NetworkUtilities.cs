@@ -1,8 +1,8 @@
-﻿using CamPortal.Contracts.Dtos.LocalNetworkDtos;
+﻿using Homewatch.Contracts.Dtos.LocalNetworkDtos;
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace CamPortal.Core.Utilities
+namespace Homewatch.Core.Utilities
 {
     public static class NetworkUtilities
     {
