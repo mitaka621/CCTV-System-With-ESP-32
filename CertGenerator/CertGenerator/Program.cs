@@ -4,8 +4,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-const string blazorAppCertificatePath = @"..\..\..\..\..\BlazorCamPortal\Homewatch\server.pfx";
-const string blazorAppSettingsRelativePath = @"..\..\..\..\..\BlazorCamPortal\Homewatch\appsettings.json";
+const string blazorAppCertificatePath = @"..\..\..\..\..\Homewatch\Homewatch\server.pfx";
+const string blazorAppSettingsRelativePath = @"..\..\..\..\..\Homewatch\Homewatch\appsettings.json";
 const string repositoryRootRelativePath = @"..\..\..\..\..";
 
 string opensslPath = GetOpenSslPath();
