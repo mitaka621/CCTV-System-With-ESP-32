@@ -17,12 +17,12 @@
             var auth = await AuthStateTask;
             if (auth.User.Identity?.IsAuthenticated == true)
             {
-                _navigationManager.NavigateTo("/access-denied", forceLoad: true);
+                _navigationManager.NavigateTo(AppRoutes.AccessDenied, forceLoad: true);
                 return;
             }
         }
 
-        var returnUrl = Uri.EscapeDataString(_navigationManager.ToBaseRelativePath(_navigationManager.Uri));
-        _navigationManager.NavigateTo($"/login?returnUrl=/{returnUrl}", forceLoad: true);
+        var returnUrl = _navigationManager.ToBaseRelativePath(_navigationManager.Uri);
+        _navigationManager.NavigateTo(AppRoutes.LoginWithReturnUrl(returnUrl), forceLoad: true);
     }
 }

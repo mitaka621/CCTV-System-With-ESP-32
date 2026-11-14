@@ -231,9 +231,9 @@ namespace Homewatch.Extensions
                     options.Cookie.IsEssential = true;
                     options.Cookie.SameSite = SameSiteMode.Strict;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                    options.LoginPath = "/login";
+                    options.LoginPath = AppRoutes.Login;
                     options.LogoutPath = "/logout";
-                    options.AccessDeniedPath = "/access-denied";
+                    options.AccessDeniedPath = AppRoutes.AccessDenied;
                     options.ExpireTimeSpan = TimeSpan.FromDays(7);
                     options.SlidingExpiration = true;
                     options.Events.OnValidatePrincipal = async ctx =>
@@ -270,8 +270,8 @@ namespace Homewatch.Extensions
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
                     options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
                     options.SlidingExpiration = false;
-                    options.LoginPath = "/login";
-                    options.AccessDeniedPath = "/access-denied";
+                    options.LoginPath = AppRoutes.Login;
+                    options.AccessDeniedPath = AppRoutes.AccessDenied;
                 });
 
             services.AddAuthorization();

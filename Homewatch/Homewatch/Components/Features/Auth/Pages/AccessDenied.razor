@@ -1,4 +1,4 @@
-@page "/access-denied"
+@attribute [Route(AppRoutes.AccessDenied)]
 @rendermode InteractiveServer
 @layout AuthLayout
 @using Homewatch.Components.Layout
@@ -14,7 +14,7 @@
         <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
             Your account does not have permission to view this page.
         </MudText>
-        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Home">
+        <MudButton Href="@AppRoutes.Dashboard" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Home">
             Back to dashboard
         </MudButton>
     </MudStack>

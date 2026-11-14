@@ -1,4 +1,4 @@
-﻿@page "/deviceConfig/{DeviceId:guid}"
+﻿@attribute [Route(AppRoutes.DeviceConfigTemplate)]
 @inject IDialogService _dialogService
 @inject NavigationManager _navigationManager
 
@@ -32,6 +32,6 @@
 
         await dialog.Result;
 
-        _navigationManager.NavigateTo("/", true);
+        _navigationManager.NavigateTo(AppRoutes.Dashboard, true);
     }
 }

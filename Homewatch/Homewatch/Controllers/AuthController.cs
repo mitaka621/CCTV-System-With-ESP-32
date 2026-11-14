@@ -31,14 +31,14 @@ namespace Homewatch.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return LocalRedirect("/login?error=invalid");
+                return LocalRedirect(AppRoutes.LoginWithError("invalid"));
             }
 
             var result = await _userAuthService.LogInAsync(model.UserName, model.Password);
 
             if (!result.Succeeded)
             {
-                return LocalRedirect("/login?error=credentials");
+                return LocalRedirect(AppRoutes.LoginWithError("credentials"));
             }
 
             if (result.IsFirstTimeSetup)
@@ -57,7 +57,7 @@ namespace Homewatch.Controllers
                         IsPersistent = false,
                     });
 
-                return LocalRedirect("/change-password");
+                return LocalRedirect(AppRoutes.ChangePassword);
             }
 
             await HttpContext.SignInAsync(
@@ -75,7 +75,7 @@ namespace Homewatch.Controllers
         {
             await Signout();
 
-            return LocalRedirect("/login");
+            return LocalRedirect(AppRoutes.Login);
         }
 
         [HttpPost("change-password")]
@@ -100,31 +100,31 @@ namespace Homewatch.Controllers
             }
             else
             {
-                return LocalRedirect("/login?error=expired");
+                return LocalRedirect(AppRoutes.LoginWithError("expired"));
             }
 
             if (!Guid.TryParse(idStr, out var userId))
             {
                 await Signout();
 
-                return LocalRedirect("/login?error=expired");
+                return LocalRedirect(AppRoutes.LoginWithError("expired"));
             }
 
             if (!ModelState.IsValid)
             {
-                return LocalRedirect("/change-password?error=invalid");
+                return LocalRedirect(AppRoutes.ChangePasswordWithError("invalid"));
             }
 
             if (regularAuth.Succeeded && !await _userAuthService.VerifyPasswordAsync(userId, model.OldPassword))
             {
-                return LocalRedirect("/change-password?error=invalid-old");
+                return LocalRedirect(AppRoutes.ChangePasswordWithError("invalid-old"));
             }
 
             var changed = await _userAuthService.ChangePasswordAsync(userId, model.NewPassword);
 
             if (!changed)
             {
-                return LocalRedirect("/change-password?error=failed");
+                return LocalRedirect(AppRoutes.ChangePasswordWithError("failed"));
             }
 
             await HttpContext.SignOutAsync(AuthSchemes.PasswordChangePending);
@@ -133,7 +133,7 @@ namespace Homewatch.Controllers
 
             if (principal == null)
             {
-                return LocalRedirect("/login?error=failed");
+                return LocalRedirect(AppRoutes.LoginWithError("failed"));
             }
 
             await HttpContext.SignInAsync(
@@ -153,15 +153,15 @@ namespace Homewatch.Controllers
 
             if (principal.IsInRole(Roles.Admin) || principal.IsInRole(Roles.User))
             {
-                return "/";
+                return AppRoutes.Dashboard;
             }
 
             if (principal.IsInRole(Roles.InfoDashboard))
             {
-                return "/info-dashboard";
+                return AppRoutes.InfoDashboard;
             }
 
-            return "/access-denied";
+            return AppRoutes.AccessDenied;
         }
 
         private bool IsSafeLocalUrl(string? url)

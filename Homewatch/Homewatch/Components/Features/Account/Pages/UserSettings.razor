@@ -1,4 +1,4 @@
-@page "/account/settings"
+@attribute [Route(AppRoutes.UserSettings)]
 @rendermode InteractiveServer
 
 @using Microsoft.AspNetCore.Authorization
@@ -52,7 +52,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.LockReset"
-                               Href="/change-password"
+                               Href="@AppRoutes.ChangePassword"
                                Style="align-self: flex-start;">
                         Change password
                     </MudButton>

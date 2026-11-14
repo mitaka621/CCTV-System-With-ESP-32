@@ -11,28 +11,28 @@
 <MudNavMenu Class="navigation-menu" id="navigation-menu" Style="flex: 1 1 auto; display: flex; flex-direction: column; padding: 8px; min-height: 0;">
     <AuthorizeView Roles="@($"{Roles.Admin},{Roles.User}")">
         <div class="nav-item-wrapper" id="nav-dashboard">
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+            <MudNavLink Href="@AppRoutes.Dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
                 <span class="nav-text" id="text-dashboard">Dashboard</span>
             </MudNavLink>
         </div>
     </AuthorizeView>
     <AuthorizeView Roles="@Roles.InfoDashboard">
         <div class="nav-item-wrapper" id="nav-info-dashboard">
-            <MudNavLink Href="/info-dashboard" Icon="@Icons.Material.Filled.MonitorHeart">
+            <MudNavLink Href="@AppRoutes.InfoDashboard" Icon="@Icons.Material.Filled.MonitorHeart">
                 <span class="nav-text" id="text-info-dashboard">Info Dashboard</span>
             </MudNavLink>
         </div>
     </AuthorizeView>
     <AuthorizeView Roles="@Roles.Admin">
         <div class="nav-item-wrapper" id="nav-cameras">
-            <MudNavLink Href="/allDevicesConfig" Icon="@Icons.Material.Filled.Settings">
+            <MudNavLink Href="@AppRoutes.AllDevicesConfig" Icon="@Icons.Material.Filled.Settings">
                 <span class="nav-text" id="text-cameras">Configure Devices</span>
             </MudNavLink>
         </div>
     </AuthorizeView>
     <AuthorizeView Roles="@($"{Roles.Admin},{Roles.User}")">
         <div class="nav-item-wrapper" id="nav-recordings">
-            <MudNavLink Href="/replay" Icon="@Icons.Material.Filled.VideoLibrary">
+            <MudNavLink Href="@AppRoutes.Replay" Icon="@Icons.Material.Filled.VideoLibrary">
                 <span class="nav-text" id="text-recordings">Replay</span>
             </MudNavLink>
         </div>
@@ -40,7 +40,7 @@
     <div class="nav-menu-footer">
         <AuthorizeView Roles="@Roles.Admin">
             <div class="nav-item-wrapper" id="nav-settings">
-                <MudNavLink Href="/system/settings" Icon="@Icons.Material.Filled.Tune">
+                <MudNavLink Href="@AppRoutes.Settings" Icon="@Icons.Material.Filled.Tune">
                     <span class="nav-text" id="text-settings">Settings</span>
                 </MudNavLink>
             </div>

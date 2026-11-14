@@ -1,4 +1,4 @@
-@page "/login"
+@attribute [Route(AppRoutes.Login)]
 @layout AuthLayout
 @using Homewatch.Components.Layout
 @using Microsoft.AspNetCore.Authentication
@@ -81,7 +81,7 @@
 
         if (mainAuth.Succeeded)
         {
-            HttpContext.Response.Redirect("/");
+            HttpContext.Response.Redirect(AppRoutes.Dashboard);
             return;
         }
 
@@ -90,7 +90,7 @@
 
         if (pendingAuth.Succeeded)
         {
-            HttpContext.Response.Redirect("/change-password");
+            HttpContext.Response.Redirect(AppRoutes.ChangePassword);
             return;
         }
     }

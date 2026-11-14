@@ -1,4 +1,4 @@
-@page "/system/settings"
+@attribute [Route(AppRoutes.Settings)]
 @rendermode InteractiveServer
 
 @using Homewatch.Contracts.Constants
@@ -29,7 +29,7 @@
                             </MudStack>
                         </MudCardContent>
                         <MudCardActions>
-                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/deviceTypes">
+                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="@AppRoutes.DeviceTypesSettings">
                                 Open
                             </MudButton>
                         </MudCardActions>
@@ -48,7 +48,7 @@
                             </MudStack>
                         </MudCardContent>
                         <MudCardActions>
-                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/users">
+                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="@AppRoutes.UsersSettings">
                                 Open
                             </MudButton>
                         </MudCardActions>
@@ -67,7 +67,7 @@
                             </MudStack>
                         </MudCardContent>
                         <MudCardActions>
-                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/retention">
+                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="@AppRoutes.RetentionSettings">
                                 Open
                             </MudButton>
                         </MudCardActions>
@@ -86,7 +86,7 @@
                             </MudStack>
                         </MudCardContent>
                         <MudCardActions>
-                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="/system/settings/security">
+                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Href="@AppRoutes.SecuritySettings">
                                 Open
                             </MudButton>
                         </MudCardActions>
