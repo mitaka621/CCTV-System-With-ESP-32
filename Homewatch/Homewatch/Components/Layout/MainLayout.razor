@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@using Homewatch.Components.Features.Notifications.Components
 @inject IUserTimeZoneService _userTimeZoneService
 
 <MudThemeProvider Theme="_customTheme" IsDarkMode="true" />
@@ -13,6 +14,7 @@
                        Class="mobile-menu-btn"
                        OnClick="@ToggleMobileDrawer" />
         <MudText Typo="Typo.h5" Class="brand-text">Homewatch</MudText>
+        <NotificationIsland />
         <MudSpacer />
         <VideoExportManager/>
         <UserMenu />

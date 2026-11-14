@@ -1,0 +1,469 @@
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using Homewatch.Contracts.Dtos.NotificationDtos
+
+@inject INotificationsService _notificationsService
+@inject INotificationsNotifier _notificationsNotifier
+@inject AuthenticationStateProvider _authenticationStateProvider
+@inject NavigationManager _navigationManager
+@inject IJSRuntime _jsRuntime
+@inject ISnackbar _snackbar
+@inject ILogger<NotificationIsland> _logger
+
+<AuthorizeView>
+    <Authorized>
+        <div class="notification-island" @ref="_islandElement">
+            <canvas class="notification-island-canvas" aria-hidden="true"></canvas>
+            <button type="button" class="notification-island-hit" aria-label="Show notification categories"></button>
+
+            @foreach (var notificationType in _categoryOrder)
+            {
+                var count = GetCount(notificationType);
+
+                <div class="notification-island-item" data-category="@GetCategoryKey(notificationType)">
+                    @if (count > 0)
+                    {
+                        <span class="notification-island-count">@FormatCount(count)</span>
+                    }
+                    <MudMenu @ref="_menus[notificationType]"
+                             AnchorOrigin="Origin.BottomCenter"
+                             TransformOrigin="Origin.TopCenter"
+                             PopoverClass="header-menu-popover"
+                             ListClass="header-menu-popover-list"
+                             OpenChanged="(bool isOpen) => OnCategoryOpenChangedAsync(notificationType, isOpen)">
+                        <ActivatorContent>
+                            <button type="button"
+                                    class="notification-island-button"
+                                    tabindex="-1"
+                                    aria-label="@($"{GetCategoryLabel(notificationType)} notifications")">
+                                <span class="notification-island-button-icon">
+                                    <MudIcon Icon="@GetCategoryIcon(notificationType)" Size="Size.Small" />
+                                    @if (count > 0)
+                                    {
+                                        <span class="notification-island-badge">@FormatCount(count)</span>
+                                    }
+                                </span>
+                                <span class="notification-island-button-label">@GetCategoryLabel(notificationType)</span>
+                            </button>
+                        </ActivatorContent>
+                        <ChildContent>
+                            @if (_openCategory == notificationType)
+                            {
+                                <div class="header-menu notification-panel" data-category="@GetCategoryKey(notificationType)">
+                                    <div class="header-menu-header">
+                                        <span class="header-menu-title">
+                                            @(_isShowingHistory ? $"Dismissed {GetCategoryLabel(notificationType)}" : GetCategoryLabel(notificationType))
+                                        </span>
+                                        @if (!_isShowingHistory && GetVisibleActiveCount() > 0)
+                                        {
+                                            <MudTooltip Text="Dismiss all">
+                                                <button type="button"
+                                                        class="header-menu-icon-button"
+                                                        aria-label="Dismiss all"
+                                                        @onclick="DismissAllAsync">
+                                                    <MudIcon Icon="@Icons.Material.Filled.DoneAll" Size="Size.Small" />
+                                                </button>
+                                            </MudTooltip>
+                                        }
+                                    </div>
+
+                                    <div class="header-menu-list">
+                                        @if (_isShowingHistory)
+                                        {
+                                            <Virtualize TItem="NotificationDto"
+                                                        ItemsProvider="LoadDismissedNotificationsAsync"
+                                                        ItemSize="118"
+                                                        OverscanCount="4"
+                                                        Context="notification">
+                                                <ItemContent>
+                                                    <NotificationListItem @key="notification.Id"
+                                                                          Notification="notification"
+                                                                          IsDismissed="true"
+                                                                          OnOpen="OpenNotificationAsync" />
+                                                </ItemContent>
+                                                <Placeholder>
+                                                    <div class="header-menu-placeholder">
+                                                        <MudSkeleton Width="55%" />
+                                                        <MudSkeleton Width="85%" />
+                                                    </div>
+                                                </Placeholder>
+                                                <EmptyContent>
+                                                    <div class="header-menu-empty">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Inbox" />
+                                                        <span>No dismissed notifications</span>
+                                                    </div>
+                                                </EmptyContent>
+                                            </Virtualize>
+                                        }
+                                        else if (_isLoadingActive)
+                                        {
+                                            <div class="header-menu-empty">
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                            </div>
+                                        }
+                                        else if (_activeNotifications.Count == 0)
+                                        {
+                                            <div class="header-menu-empty">
+                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                                                <span>You are all caught up</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var notification in _activeNotifications)
+                                            {
+                                                <NotificationListItem @key="notification.Id"
+                                                                      Notification="notification"
+                                                                      IsDismissing="_dismissingIds.Contains(notification.Id)"
+                                                                      AnimationDelayMilliseconds="_dismissDelays.GetValueOrDefault(notification.Id)"
+                                                                      OnDismiss="DismissAsync"
+                                                                      OnOpen="OpenNotificationAsync" />
+                                            }
+                                        }
+                                    </div>
+
+                                    <button type="button" class="header-menu-footer" @onclick="ToggleHistory">
+                                        <MudIcon Icon="@(_isShowingHistory ? Icons.Material.Filled.ArrowBack : Icons.Material.Filled.History)" Size="Size.Small" />
+                                        <span>@(_isShowingHistory ? "Back to active notifications" : "Show dismissed notifications")</span>
+                                    </button>
+                                </div>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </div>
+            }
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private const int _dismissAnimationMilliseconds = 420;
+    private const int _dismissStaggerMilliseconds = 45;
+    private const int _maximumStaggeredItems = 8;
+
+    private static readonly NotificationType[] _categoryOrder =
+    [
+        NotificationType.Security,
+        NotificationType.EnvironmentalAlert,
+        NotificationType.System
+    ];
+
+    private readonly Dictionary<NotificationType, MudMenu> _menus = new();
+    private readonly HashSet<Guid> _dismissingIds = new();
+    private readonly Dictionary<Guid, int> _dismissDelays = new();
+
+    private ElementReference _islandElement;
+    private Dictionary<NotificationType, int> _counts = new();
+    private List<NotificationDto> _activeNotifications = new();
+    private NotificationType? _openCategory;
+    private Guid _currentUserId;
+    private bool _isShowingHistory;
+    private bool _isLoadingActive;
+    private bool _isIslandCreated;
+    private bool _isDisposed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        Guid.TryParse(authState.User.FindFirst(CustomClaimTypes.Id)?.Value, out _currentUserId);
+
+        if (_currentUserId == Guid.Empty)
+        {
+            return;
+        }
+
+        _counts = await _notificationsService.GetActiveNotificationCountsAsync(_currentUserId);
+
+        _notificationsNotifier.NotificationsChanged += OnNotificationsChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isIslandCreated || _isDisposed || string.IsNullOrEmpty(_islandElement.Id))
+        {
+            return;
+        }
+
+        _isIslandCreated = true;
+
+        await _jsRuntime.InvokeVoidAsync("notificationIsland.create", _islandElement, CreateIslandState([]));
+    }
+
+    private void OnNotificationsChanged(NotificationsChangedDto notificationsChanged)
+    {
+        if (!notificationsChanged.UserIds.Contains(_currentUserId))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                _counts = await _notificationsService.GetActiveNotificationCountsAsync(_currentUserId);
+
+                if (_openCategory == notificationsChanged.NotificationType && !_isShowingHistory)
+                {
+                    await ReloadActiveNotificationsAsync(notificationsChanged.NotificationType);
+                }
+
+                StateHasChanged();
+
+                if (notificationsChanged.IsNewNotification && notificationsChanged.Notification != null)
+                {
+                    _snackbar.Add(CreateSnackbarMessage(notificationsChanged.Notification), Severity.Info);
+                }
+
+                await UpdateIslandAsync(notificationsChanged.IsNewNotification
+                    ? [GetCategoryIndex(notificationsChanged.NotificationType)]
+                    : []);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to refresh notifications for user {UserId}.", _currentUserId);
+            }
+        });
+    }
+
+    private async Task ReloadActiveNotificationsAsync(NotificationType notificationType)
+    {
+        var refreshedNotifications = await _notificationsService.GetActiveNotificationsAsync(_currentUserId, notificationType);
+
+        var animatingNotifications = _activeNotifications
+            .Where(x => _dismissingIds.Contains(x.Id) && refreshedNotifications.All(y => y.Id != x.Id))
+            .ToList();
+
+        _activeNotifications = refreshedNotifications
+            .Concat(animatingNotifications)
+            .OrderByDescending(x => x.DateCreatedUTC)
+            .ToList();
+    }
+
+    private async Task OnCategoryOpenChangedAsync(NotificationType notificationType, bool isOpen)
+    {
+        if (isOpen)
+        {
+            _openCategory = notificationType;
+            _isShowingHistory = false;
+            _isLoadingActive = true;
+
+            await SetSectionOpenAsync(true);
+
+            _activeNotifications = await _notificationsService.GetActiveNotificationsAsync(_currentUserId, notificationType);
+            _isLoadingActive = false;
+
+            return;
+        }
+
+        if (_openCategory == notificationType)
+        {
+            _openCategory = null;
+            _isShowingHistory = false;
+            _activeNotifications = new();
+        }
+
+        await SetSectionOpenAsync(_openCategory != null);
+    }
+
+    private async Task DismissAsync(NotificationDto notification)
+    {
+        if (!_dismissingIds.Add(notification.Id))
+        {
+            return;
+        }
+
+        _counts[notification.NotificationType] = Math.Max(0, GetCount(notification.NotificationType) - 1);
+
+        await UpdateIslandAsync([]);
+
+        await Task.WhenAll(
+            _notificationsService.DismissNotificationAsync(_currentUserId, notification.Id),
+            Task.Delay(_dismissAnimationMilliseconds));
+
+        _activeNotifications.RemoveAll(x => x.Id == notification.Id);
+        _dismissingIds.Remove(notification.Id);
+    }
+
+    private async Task DismissAllAsync()
+    {
+        if (_openCategory == null)
+        {
+            return;
+        }
+
+        var notificationType = _openCategory.Value;
+        var notificationsToDismiss = _activeNotifications.Where(x => !_dismissingIds.Contains(x.Id)).ToList();
+
+        for (var index = 0; index < notificationsToDismiss.Count; index++)
+        {
+            _dismissingIds.Add(notificationsToDismiss[index].Id);
+            _dismissDelays[notificationsToDismiss[index].Id] = Math.Min(index, _maximumStaggeredItems) * _dismissStaggerMilliseconds;
+        }
+
+        _counts[notificationType] = 0;
+
+        await UpdateIslandAsync([]);
+
+        await Task.WhenAll(
+            _notificationsService.DismissAllNotificationsAsync(_currentUserId, notificationType),
+            Task.Delay(_dismissAnimationMilliseconds + _maximumStaggeredItems * _dismissStaggerMilliseconds));
+
+        foreach (var notification in notificationsToDismiss)
+        {
+            _activeNotifications.RemoveAll(x => x.Id == notification.Id);
+            _dismissingIds.Remove(notification.Id);
+            _dismissDelays.Remove(notification.Id);
+        }
+    }
+
+    private async Task OpenNotificationAsync(NotificationDto notification)
+    {
+        if (!RelativeRedirectUrlValidator.IsValid(notification.RelativeRedirectUrl))
+        {
+            return;
+        }
+
+        if (_openCategory != null && _menus.TryGetValue(_openCategory.Value, out var menu))
+        {
+            await menu.CloseMenuAsync();
+        }
+
+        _navigationManager.NavigateTo(notification.RelativeRedirectUrl!.TrimStart('/'));
+    }
+
+    private void ToggleHistory()
+    {
+        _isShowingHistory = !_isShowingHistory;
+    }
+
+    private async ValueTask<ItemsProviderResult<NotificationDto>> LoadDismissedNotificationsAsync(ItemsProviderRequest request)
+    {
+        if (_openCategory == null)
+        {
+            return new ItemsProviderResult<NotificationDto>([], 0);
+        }
+
+        var page = await _notificationsService.GetDismissedNotificationsAsync(_currentUserId, _openCategory.Value, request.StartIndex, request.Count);
+
+        return new ItemsProviderResult<NotificationDto>(page.Notifications, page.TotalCount);
+    }
+
+    private int GetVisibleActiveCount()
+    {
+        return _activeNotifications.Count(x => !_dismissingIds.Contains(x.Id));
+    }
+
+    private object CreateIslandState(int[] pulseIndices)
+    {
+        return new
+        {
+            counts = _categoryOrder.Select(GetCount).ToArray(),
+            pulseIndices
+        };
+    }
+
+    private async Task UpdateIslandAsync(int[] pulseIndices)
+    {
+        if (!_isIslandCreated || _isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("notificationIsland.update", _islandElement, CreateIslandState(pulseIndices));
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task SetSectionOpenAsync(bool isOpen)
+    {
+        if (!_isIslandCreated || _isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("notificationIsland.setSectionOpen", _islandElement, isOpen);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private static RenderFragment CreateSnackbarMessage(NotificationDto notification)
+    {
+        return @<div>
+            <div><strong>@notification.Name</strong></div>
+            <div>@notification.Description</div>
+        </div>;
+    }
+
+    private int GetCount(NotificationType notificationType)
+    {
+        return _counts.GetValueOrDefault(notificationType);
+    }
+
+    private static int GetCategoryIndex(NotificationType notificationType)
+    {
+        return Array.IndexOf(_categoryOrder, notificationType);
+    }
+
+    private static string FormatCount(int count)
+    {
+        return count > 99 ? "99+" : count.ToString();
+    }
+
+    private static string GetCategoryKey(NotificationType notificationType)
+    {
+        return notificationType switch
+        {
+            NotificationType.Security => "security",
+            NotificationType.EnvironmentalAlert => "environment",
+            _ => "system"
+        };
+    }
+
+    private static string GetCategoryLabel(NotificationType notificationType)
+    {
+        return notificationType switch
+        {
+            NotificationType.Security => "Security",
+            NotificationType.EnvironmentalAlert => "Environment",
+            _ => "System"
+        };
+    }
+
+    private static string GetCategoryIcon(NotificationType notificationType)
+    {
+        return notificationType switch
+        {
+            NotificationType.Security => Icons.Material.Filled.Lock,
+            NotificationType.EnvironmentalAlert => Icons.Material.Filled.LocalFireDepartment,
+            _ => Icons.Material.Filled.Dns
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _isDisposed = true;
+        _notificationsNotifier.NotificationsChanged -= OnNotificationsChanged;
+
+        if (!_isIslandCreated)
+        {
+            return;
+        }
+
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("notificationIsland.dispose", _islandElement);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}

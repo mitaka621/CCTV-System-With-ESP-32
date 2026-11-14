@@ -1,0 +1,156 @@
+.notification-island {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 540px;
+    height: 64px;
+    margin-left: -270px;
+    margin-top: -32px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.notification-island-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 540px;
+    height: 64px;
+    pointer-events: none;
+}
+
+.notification-island-hit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+    pointer-events: auto;
+}
+
+.notification-island-hit:focus-visible {
+    box-shadow: 0 0 0 2px rgba(119, 107, 231, 0.6);
+}
+
+.notification-island-expanded .notification-island-hit {
+    cursor: default;
+}
+
+[data-category="security"] {
+    --island-item-color: #f64e62;
+    --island-item-text: #ffffff;
+}
+
+[data-category="environment"] {
+    --island-item-color: #ffa800;
+    --island-item-text: #1a1a24;
+}
+
+[data-category="system"] {
+    --island-item-color: #3299ff;
+    --island-item-text: #ffffff;
+}
+
+.notification-island-item {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+
+.notification-island-item ::deep .mud-menu,
+.notification-island-item ::deep .mud-menu-activator {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.notification-island-count {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--island-item-text);
+    font: 700 11px/1 Roboto, sans-serif;
+    pointer-events: none;
+}
+
+.notification-island-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    padding: 0 12px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--island-item-color);
+    font: 500 14px/1 Roboto, sans-serif;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: background-color 0.2s ease;
+}
+
+.notification-island-button:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.notification-island-button:focus-visible {
+    outline: 2px solid var(--island-item-color);
+    outline-offset: 2px;
+}
+
+.notification-island-button-icon {
+    position: relative;
+    display: inline-flex;
+}
+
+.notification-island-badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background-color: var(--island-item-color);
+    color: var(--island-item-text);
+    font: 700 10px/16px Roboto, sans-serif;
+    text-align: center;
+}
+
+.notification-island-compact .notification-island-button {
+    padding: 0;
+}
+
+.notification-island-compact .notification-island-button-label {
+    display: none;
+}
+
+.notification-island-fallback .notification-island-hit {
+    background-color: #1e1e2e;
+    box-shadow: 0 0 14px rgba(119, 107, 231, 0.35), inset 0 0 0 1px rgba(119, 107, 231, 0.35);
+}
+
+.notification-island-fallback .notification-island-item {
+    border-radius: 999px;
+    background-color: var(--island-item-color);
+}
+
+.notification-island-fallback.notification-island-expanded .notification-island-item {
+    background-color: rgba(30, 30, 46, 0.9);
+    box-shadow: inset 0 0 0 1px var(--island-item-color);
+}
+
+.notification-panel {
+    --header-menu-accent: var(--island-item-color);
+}

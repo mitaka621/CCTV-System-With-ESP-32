@@ -1,0 +1,95 @@
+@using Homewatch.Contracts.Dtos.NotificationDtos
+
+@inject IUserTimeZoneService _userTimeZoneService
+
+<div class="header-menu-card @(IsDismissed ? "header-menu-card-muted" : string.Empty) @(IsDismissing ? "header-menu-dismissing" : string.Empty)"
+     style="@(IsDismissing && AnimationDelayMilliseconds > 0 ? $"animation-delay:{AnimationDelayMilliseconds}ms;" : null)">
+    <div class="header-menu-card-icon">
+        <MudIcon Icon="@Notification.Icon" Color="@Notification.IconColor" Size="Size.Small" />
+    </div>
+    <div class="header-menu-card-body">
+        <div class="header-menu-card-heading">
+            <span class="header-menu-card-title">@Notification.Name</span>
+            <MudTooltip Text="@GetFullDate()">
+                <span class="header-menu-card-meta">@GetRelativeTime()</span>
+            </MudTooltip>
+        </div>
+        <div class="header-menu-card-text">@Notification.Description</div>
+        @if (CanOpen || OnDismiss.HasDelegate)
+        {
+            <div class="header-menu-card-actions">
+                @if (CanOpen)
+                {
+                    <button type="button"
+                            class="header-menu-action header-menu-action-accent"
+                            @onclick="() => OnOpen.InvokeAsync(Notification)">
+                        <span>Open</span>
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" />
+                    </button>
+                }
+                @if (OnDismiss.HasDelegate)
+                {
+                    <MudTooltip Text="Dismiss" RootClass="header-menu-card-actions-end">
+                        <button type="button"
+                                class="header-menu-icon-button"
+                                aria-label="Dismiss"
+                                @onclick="() => OnDismiss.InvokeAsync(Notification)">
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                        </button>
+                    </MudTooltip>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public NotificationDto Notification { get; set; } = null!;
+
+    [Parameter]
+    public bool IsDismissed { get; set; }
+
+    [Parameter]
+    public bool IsDismissing { get; set; }
+
+    [Parameter]
+    public int AnimationDelayMilliseconds { get; set; }
+
+    [Parameter]
+    public EventCallback<NotificationDto> OnDismiss { get; set; }
+
+    [Parameter]
+    public EventCallback<NotificationDto> OnOpen { get; set; }
+
+    private bool CanOpen => OnOpen.HasDelegate && RelativeRedirectUrlValidator.IsValid(Notification.RelativeRedirectUrl);
+
+    private string GetRelativeTime()
+    {
+        var elapsed = DateTime.UtcNow - DateTime.SpecifyKind(Notification.DateCreatedUTC, DateTimeKind.Utc);
+
+        if (elapsed < TimeSpan.FromMinutes(1))
+        {
+            return "Just now";
+        }
+
+        if (elapsed < TimeSpan.FromHours(1))
+        {
+            return $"{(int)elapsed.TotalMinutes} min ago";
+        }
+
+        if (elapsed < TimeSpan.FromDays(1))
+        {
+            var hours = (int)elapsed.TotalHours;
+
+            return hours == 1 ? "1 hour ago" : $"{hours} hours ago";
+        }
+
+        return _userTimeZoneService.ToLocal(Notification.DateCreatedUTC).ToString("MMM dd, HH:mm");
+    }
+
+    private string GetFullDate()
+    {
+        return _userTimeZoneService.ToLocal(Notification.DateCreatedUTC).ToString("dddd, MMM dd yyyy, HH:mm:ss");
+    }
+}

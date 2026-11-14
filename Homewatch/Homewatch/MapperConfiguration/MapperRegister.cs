@@ -2,6 +2,7 @@ using Homewatch.Contracts.Dtos.CameraConfigurationDtos;
 using Homewatch.Contracts.Dtos.CameraDtos;
 using Homewatch.Contracts.Dtos.DeviceDtos;
 using Homewatch.Contracts.Dtos.DeviceTypeDtos;
+using Homewatch.Contracts.Dtos.NotificationDtos;
 using Homewatch.Contracts.Dtos.PreprovisionAttemptDtos;
 using Homewatch.Contracts.Dtos.SmokeAlarmDetectorDtos;
 using Homewatch.Contracts.Dtos.UserCameraLayoutDtos;
@@ -73,6 +74,7 @@ namespace Homewatch.MapperConfiguration
 
             RegisterTwoWayMap<DeviceStreamingHandshakeDto, DeviceStreamingHandshakeWithCameraConfigDto>(config);
 
+            RegisterTwoWayMap<Notification, NotificationDto>(config);
         }
 
         private static void RegisterTwoWayMap<TFirst, TSecond>(TypeAdapterConfig config)

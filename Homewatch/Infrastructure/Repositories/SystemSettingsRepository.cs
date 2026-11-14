@@ -34,7 +34,8 @@ namespace Homewatch.Infrastructure.Repositories
                 CameraChunkRetention = settings.CameraChunkRetention,
                 SecurityMinFps = settings.SecurityMinFps,
                 SecurityMaxTemperatureC = settings.SecurityMaxTemperatureC,
-                SecurityMaxHumidityPercent = settings.SecurityMaxHumidityPercent
+                SecurityMaxHumidityPercent = settings.SecurityMaxHumidityPercent,
+                DismissedNotificationRetention = settings.DismissedNotificationRetention
             };
         }
 
@@ -49,7 +50,8 @@ namespace Homewatch.Infrastructure.Repositories
                     .SetProperty(x => x.CameraChunkRetention, systemSettingsDto.CameraChunkRetention)
                     .SetProperty(x => x.SecurityMinFps, systemSettingsDto.SecurityMinFps)
                     .SetProperty(x => x.SecurityMaxTemperatureC, systemSettingsDto.SecurityMaxTemperatureC)
-                    .SetProperty(x => x.SecurityMaxHumidityPercent, systemSettingsDto.SecurityMaxHumidityPercent));
+                    .SetProperty(x => x.SecurityMaxHumidityPercent, systemSettingsDto.SecurityMaxHumidityPercent)
+                    .SetProperty(x => x.DismissedNotificationRetention, systemSettingsDto.DismissedNotificationRetention));
 
             if (updated > 0)
             {
@@ -63,7 +65,8 @@ namespace Homewatch.Infrastructure.Repositories
                 CameraChunkRetention = systemSettingsDto.CameraChunkRetention,
                 SecurityMinFps = systemSettingsDto.SecurityMinFps,
                 SecurityMaxTemperatureC = systemSettingsDto.SecurityMaxTemperatureC,
-                SecurityMaxHumidityPercent = systemSettingsDto.SecurityMaxHumidityPercent
+                SecurityMaxHumidityPercent = systemSettingsDto.SecurityMaxHumidityPercent,
+                DismissedNotificationRetention = systemSettingsDto.DismissedNotificationRetention
             });
 
             return await db.SaveChangesAsync() > 0;

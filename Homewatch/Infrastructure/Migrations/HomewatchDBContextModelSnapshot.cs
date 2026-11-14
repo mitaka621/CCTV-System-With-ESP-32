@@ -255,6 +255,40 @@ namespace Homewatch.Infrastructure.Migrations
                     b.ToTable("DeviceTypes");
                 });
 
+            modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.EmailNotificationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PortalBaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ProtectedAppPassword")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("SenderAddress")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("SenderDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailNotificationSettings");
+                });
+
             modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.ExportedVideo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -340,6 +374,51 @@ namespace Homewatch.Infrastructure.Migrations
                     b.HasIndex("TimestampUTC");
 
                     b.ToTable("LogMessages");
+                });
+
+            modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateCreatedUTC")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(10000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("IconColor")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("NotificationType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelativeRedirectUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("TopicIdentifier")
+                        .IsRequired()
+                        .HasColumnType("binary(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TopicIdentifier");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.PreprovisionAttempt", b =>
@@ -523,6 +602,9 @@ namespace Homewatch.Infrastructure.Migrations
                     b.Property<int>("CameraChunkRetention")
                         .HasColumnType("int");
 
+                    b.Property<int>("DismissedNotificationRetention")
+                        .HasColumnType("int");
+
                     b.Property<int>("EncodedVideoRetention")
                         .HasColumnType("int");
 
@@ -544,6 +626,7 @@ namespace Homewatch.Infrastructure.Migrations
                         {
                             Id = new Guid("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d"),
                             CameraChunkRetention = 3,
+                            DismissedNotificationRetention = 8,
                             EncodedVideoRetention = 5,
                             SecurityMaxHumidityPercent = 70.0,
                             SecurityMaxTemperatureC = 90.0,
@@ -622,6 +705,24 @@ namespace Homewatch.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserCameraLayouts");
+                });
+
+            modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDismissed")
+                        .HasColumnType("bit");
+
+                    b.HasKey("UserId", "NotificationId");
+
+                    b.HasIndex("NotificationId", "IsDismissed");
+
+                    b.ToTable("NotificationsUsers");
                 });
 
             modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.UserRole", b =>
@@ -823,6 +924,25 @@ namespace Homewatch.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.UserNotification", b =>
+                {
+                    b.HasOne("Homewatch.Infrastructure.Data.Entities.Notification", "Notication")
+                        .WithMany("NotificationUsers")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Homewatch.Infrastructure.Data.Entities.User", "User")
+                        .WithMany("UserNotifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notication");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.UserRole", b =>
                 {
                     b.HasOne("Homewatch.Infrastructure.Data.Entities.Role", "Role")
@@ -892,6 +1012,11 @@ namespace Homewatch.Infrastructure.Migrations
                     b.Navigation("SmokeAlarmTelemetries");
                 });
 
+            modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.Notification", b =>
+                {
+                    b.Navigation("NotificationUsers");
+                });
+
             modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.RemoteStorageTarget", b =>
                 {
                     b.Navigation("VideoChunkReplications");
@@ -905,6 +1030,8 @@ namespace Homewatch.Infrastructure.Migrations
             modelBuilder.Entity("Homewatch.Infrastructure.Data.Entities.User", b =>
                 {
                     b.Navigation("ExportedVideos");
+
+                    b.Navigation("UserNotifications");
 
                     b.Navigation("UserRoles");
 

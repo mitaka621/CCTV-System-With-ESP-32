@@ -2,7 +2,7 @@ using Homewatch.Contracts.Abstractions.Repositories;
 using Homewatch.Contracts.Abstractions.Services;
 using Homewatch.Contracts.Dtos.SystemSettingsDtos;
 
-namespace Homewatch.Core.Services.SystemSettings
+namespace Homewatch.Core.Services.SystemServices
 {
     public class SystemSettingsService : ISystemSettingsService
     {

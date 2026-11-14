@@ -33,5 +33,7 @@ namespace Homewatch.Infrastructure.Data.Entities
         public UserSettings UserSettings { get; set; } = null!;
 
         public List<ExportedVideo> ExportedVideos { get; set; } = new();
+
+        public List<UserNotification> UserNotifications { get; set; } = new();
     }
 }

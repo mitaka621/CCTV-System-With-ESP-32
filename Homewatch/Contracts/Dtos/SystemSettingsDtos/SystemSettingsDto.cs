@@ -13,5 +13,7 @@ namespace Homewatch.Contracts.Dtos.SystemSettingsDtos
         public double SecurityMaxTemperatureC { get; set; } = 60;
 
         public double SecurityMaxHumidityPercent { get; set; } = 80;
+
+        public RetentionPeriod DismissedNotificationRetention { get; set; } = RetentionPeriod.OneYear;
     }
 }

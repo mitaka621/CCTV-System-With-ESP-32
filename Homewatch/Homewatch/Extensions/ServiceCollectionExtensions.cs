@@ -11,7 +11,7 @@ using Homewatch.Core.Services.Provisioning;
 using Homewatch.Core.Services.RemoteStorage;
 using Homewatch.Core.Services.SecureStreaming;
 using Homewatch.Core.Services.Security;
-using Homewatch.Core.Services.SystemSettings;
+using Homewatch.Core.Services.SystemServices;
 using Homewatch.Core.Services.Telemetry;
 using Homewatch.Core.Services.Users;
 using Homewatch.Core.Services.Video;
@@ -91,6 +91,13 @@ namespace Homewatch.Extensions
             services.AddSingleton<ISmbReadSessionManager, SmbReadSessionManager>();
             services.AddSingleton<IRemoteStorageService, RemoteStorageTargetService>();
             services.AddSingleton<IVideoChunkReplicationRepository, VideoChunkReplicationRepository>();
+            services.AddSingleton<IUserNotificationRepository, NotificationUserRepository>();
+            services.AddSingleton<NotificationsService>();
+            services.AddSingleton<INotificationsService>(sp => sp.GetRequiredService<NotificationsService>());
+            services.AddSingleton<INotificationsNotifier>(sp => sp.GetRequiredService<NotificationsService>());
+            services.AddSingleton<INotificationRepository, NotificationRepository>();
+            services.AddSingleton<IEmailNotificationSettingsRepository, EmailNotificationSettingsRepository>();
+            services.AddSingleton<IEmailNotificationService, GmailNotificationService>();
 
             services.AddSingleton<VideoExportEncoderService>();
             services.AddSingleton<IVideoExportCanceller>(sp => sp.GetRequiredService<VideoExportEncoderService>());
@@ -118,7 +125,7 @@ namespace Homewatch.Extensions
             services.AddHostedService<VideoEncoderService>();
             services.AddHostedService<RawFrameProcessorService>();
 
-            services.AddHostedService<VideoRetentionCleanupService>();
+            services.AddHostedService<BackgroundCleanupService>();
             services.AddHostedService<CameraTelemetryWriterService>();
 
             services.AddSingleton<RemoteStorageReplicationService>();

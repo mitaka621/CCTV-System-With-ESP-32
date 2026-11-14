@@ -43,7 +43,16 @@ namespace Homewatch.Infrastructure.Data
 
         public DbSet<VideoChunkReplication> VideoChunkReplications { get; set; }
 
+        public DbSet<Notification> Notifications { get; set; }
+
+        public DbSet<UserNotification> NotificationsUsers { get; set; }
+
+        public DbSet<EmailNotificationSettings> EmailNotificationSettings { get; set; }
+
+
         public static readonly Guid SystemSettingsId = Guid.Parse("8f4d2a1c-0b6e-4c3a-9d57-1f2e3a4b5c6d");
+
+        public static readonly Guid EmailNotificationSettingsId = Guid.Parse("3c9e7b2a-5d41-4f86-a0e3-6b8d2f1c4a97");
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -53,6 +62,7 @@ namespace Homewatch.Infrastructure.Data
                     Id = SystemSettingsId,
                     EncodedVideoRetention = Contracts.Enums.RetentionPeriod.OneMonth,
                     CameraChunkRetention = Contracts.Enums.RetentionPeriod.OneWeek,
+                    DismissedNotificationRetention = Contracts.Enums.RetentionPeriod.OneYear
                 });
 
             modelBuilder.Entity<Role>().HasData(

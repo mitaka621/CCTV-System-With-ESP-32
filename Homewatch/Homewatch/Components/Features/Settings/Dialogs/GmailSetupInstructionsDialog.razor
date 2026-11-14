@@ -1,0 +1,75 @@
+<MudDialog>
+    <TitleContent>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Set up Gmail</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4" Class="pb-2">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Emails are sent from your Gmail account with an app password, a 16-character key Google creates for this portal.
+            </MudText>
+
+            <MudStack Row Spacing="3" AlignItems="AlignItems.Start">
+                <MudAvatar Color="Color.Primary" Size="Size.Small">1</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle1">Turn on 2-Step Verification</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Enable it in <MudLink Href="https://myaccount.google.com/security" Target="_blank" Typo="Typo.body2">myaccount.google.com/security</MudLink>.
+                    </MudText>
+                </div>
+            </MudStack>
+
+            <MudStack Row Spacing="3" AlignItems="AlignItems.Start">
+                <MudAvatar Color="Color.Primary" Size="Size.Small">2</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle1">Create an app password</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Open <MudLink Href="https://myaccount.google.com/apppasswords" Target="_blank" Typo="Typo.body2">myaccount.google.com/apppasswords</MudLink>,
+                        name it Homewatch and copy the key.
+                    </MudText>
+                </div>
+            </MudStack>
+
+            <MudStack Row Spacing="3" AlignItems="AlignItems.Start">
+                <MudAvatar Color="Color.Primary" Size="Size.Small">3</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle1">Fill in the form and save</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Saving checks the Gmail sign-in and turns email notifications on.
+                    </MudText>
+                </div>
+            </MudStack>
+
+            <MudStack Row Spacing="3" AlignItems="AlignItems.Start">
+                <MudAvatar Color="Color.Primary" Size="Size.Small">4</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle1">Send a test email</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        If it lands in spam, mark it as not spam.
+                    </MudText>
+                </div>
+            </MudStack>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                Changing the Google account password revokes the app password. Create a new one and save it here.
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Check" OnClick="Close"><MudText>Got It</MudText></MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}

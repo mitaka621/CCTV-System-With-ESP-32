@@ -1,0 +1,432 @@
+@attribute [Route(AppRoutes.NotificationSettings)]
+@rendermode InteractiveServer
+
+@using Homewatch.Components.Features.Settings.Dialogs
+@using Homewatch.Contracts.Dtos.EmailNotificationDtos
+@using Homewatch.Contracts.Dtos.NotificationDtos
+@using Homewatch.Contracts.Dtos.SystemSettingsDtos
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize(Roles = Roles.Admin)]
+
+@inject IEmailNotificationService _emailNotificationService
+@inject ISystemSettingsService _systemSettingsService
+@inject INotificationsService _notificationsService
+@inject IDialogService _dialogService
+@inject ISnackbar _snackbar
+@inject IAdminAuthorizationGuard _adminAuthorizationGuard
+@inject AuthenticationStateProvider _authenticationStateProvider
+
+<PageTitle>Notifications - Homewatch</PageTitle>
+
+<MudStack Spacing="4">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.Notifications" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">Notifications</MudText>
+    </MudStack>
+
+    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Start" Spacing="4">
+        <MudCard Elevation="4" Style="width:680px; max-width:100%;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Custom.Brands.Google" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Gmail Account</MudText>
+                        <MudTooltip Text="How to set up Gmail">
+                            <MudIconButton Icon="@Icons.Material.Filled.QuestionMark"
+                                           Color="Color.Primary"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Small"
+                                           OnClick="OpenInstructionsAsync" />
+                        </MudTooltip>
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="4">
+                    <MudPaper Outlined="true" Class="px-4 py-3">
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <div>
+                                <MudText Typo="Typo.subtitle1">Send notifications by email</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                    @(_settings.IsEnabled ? "On" : "Off")
+                                </MudText>
+                            </div>
+                            <MudSwitch T="bool"
+                                       Value="_settings.IsEnabled"
+                                       ValueChanged="OnEnabledChangedAsync"
+                                       Color="Color.Success"
+                                       Disabled="IsBusy" />
+                        </MudStack>
+                    </MudPaper>
+
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string"
+                                          @bind-Value="_settings.SenderAddress"
+                                          Label="Gmail address"
+                                          Placeholder="your.account@gmail.com"
+                                          InputType="InputType.Email" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string"
+                                          @bind-Value="_settings.AppPassword"
+                                          Label="App password"
+                                          Placeholder="@(_settings.HasStoredAppPassword ? "Saved, leave empty to keep" : "xxxx xxxx xxxx xxxx")"
+                                          InputType="InputType.Password" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          @bind-Value="_settings.AppBaseUrl"
+                                          Label="App Domain"
+                                          Placeholder="https://app.com" />
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudAlert Dense="true"
+                                  Severity="Severity.Error"
+                                  ShowCloseIcon="true"
+                                  CloseIconClicked="() => _errorMessage = null">
+                            @_errorMessage
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudCardContent>
+            <MudCardActions Class="gap-2 px-4 pb-4">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@(_isSaving ? null : Icons.Material.Filled.Save)"
+                           OnClick="SaveAsync"
+                           Disabled="IsBusy">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Saving</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Save</MudText>
+                    }
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@(_isSendingTestEmail ? null : Icons.Material.Filled.Send)"
+                           OnClick="SendTestEmailAsync"
+                           Disabled="IsBusy">
+                    @if (_isSendingTestEmail)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Sending</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Send Test Email</MudText>
+                    }
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+
+        <MudCard Elevation="4" Style="width:380px; max-width:100%;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoDelete" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Notification Cleanup</MudText>
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudSelect T="RetentionPeriod"
+                           Label="Delete dismissed notifications after"
+                           @bind-Value="_systemSettings.DismissedNotificationRetention">
+                    @foreach (var period in Enum.GetValues<RetentionPeriod>())
+                    {
+                        <MudSelectItem Value="@period">@MiscUtilities.GetDisplayNameAttributeValue(period)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudCardContent>
+            <MudCardActions Class="px-4 pb-4">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@(_isSavingCleanupSettings ? null : Icons.Material.Filled.Save)"
+                           OnClick="SaveCleanupSettingsAsync"
+                           Disabled="_isSavingCleanupSettings">
+                    @if (_isSavingCleanupSettings)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Saving</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Save</MudText>
+                    }
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+
+        <MudCard Elevation="4" Style="width:380px; max-width:100%;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Science" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Test Notifications</MudText>
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Sends a sample notification to all users.
+                </MudText>
+            </MudCardContent>
+            <MudCardActions Class="gap-2 px-4 pb-4" Style="flex-wrap:wrap;">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Lock"
+                           OnClick="() => PushTestNotificationAsync(NotificationType.Security)"
+                           Disabled="_isPushingTestNotification">
+                    <MudText>Security</MudText>
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.LocalFireDepartment"
+                           OnClick="() => PushTestNotificationAsync(NotificationType.EnvironmentalAlert)"
+                           Disabled="_isPushingTestNotification">
+                    <MudText>Environment</MudText>
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Info"
+                           StartIcon="@Icons.Material.Filled.Dns"
+                           OnClick="() => PushTestNotificationAsync(NotificationType.System)"
+                           Disabled="_isPushingTestNotification">
+                    <MudText>System</MudText>
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudStack>
+</MudStack>
+
+@code {
+    private EmailNotificationSettingsModel _settings = new();
+    private SystemSettingsDto _systemSettings = new();
+    private string? _errorMessage;
+    private bool _isSaving;
+    private bool _isSendingTestEmail;
+    private bool _isTogglingNotifications;
+    private bool _isSavingCleanupSettings;
+    private bool _isPushingTestNotification;
+
+    private bool IsBusy => _isSaving || _isSendingTestEmail || _isTogglingNotifications;
+
+    private async Task PushTestNotificationAsync(NotificationType notificationType)
+    {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
+        _isPushingTestNotification = true;
+
+        try
+        {
+            var time = DateTime.Now.ToString("HH:mm:ss");
+
+            var notification = notificationType switch
+            {
+                NotificationType.Security => new CreateNotificationDto
+                {
+                    Name = "Test security alert",
+                    Description = $"Camera Front Door stopped streaming at {time} and did not reconnect.",
+                    Icon = Icons.Material.Filled.VideocamOff,
+                    IconColor = Color.Error,
+                    NotificationType = NotificationType.Security,
+                    RelativeRedirectUrl = AppRoutes.NotificationSettings
+                },
+                NotificationType.EnvironmentalAlert => new CreateNotificationDto
+                {
+                    Name = "Test environmental alert",
+                    Description = $"Garage housing temperature reached 63.4 C at {time}, above the 60 C limit.",
+                    Icon = Icons.Material.Filled.Thermostat,
+                    IconColor = Color.Warning,
+                    NotificationType = NotificationType.EnvironmentalAlert,
+                    RelativeRedirectUrl = AppRoutes.SecuritySettings
+                },
+                _ => new CreateNotificationDto
+                {
+                    Name = "Test system notification",
+                    Description = $"Remote storage check finished at {time}.",
+                    Icon = Icons.Material.Filled.Dns,
+                    IconColor = Color.Info,
+                    NotificationType = NotificationType.System
+                }
+            };
+
+            await _notificationsService.PushNotificationToAllUsersAsync(notification);
+
+            _snackbar.Add("Test notification sent.", Severity.Success);
+        }
+        catch (Exception exception)
+        {
+            _snackbar.Add($"Failed to send test notification: {exception.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isPushingTestNotification = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await _emailNotificationService.GetSettingsAsync();
+        _systemSettings = await _systemSettingsService.GetSystemSettingsAsync();
+    }
+
+    private async Task OpenInstructionsAsync()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        await _dialogService.ShowAsync<GmailSetupInstructionsDialog>("Gmail setup", options);
+    }
+
+    private async Task SaveAsync()
+    {
+        await RunOperationAsync(isRunning => _isSaving = isRunning, SaveAndEnableAsync);
+    }
+
+    private async Task SendTestEmailAsync()
+    {
+        await RunOperationAsync(isRunning => _isSendingTestEmail = isRunning, async () =>
+        {
+            var authenticationState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+            Guid.TryParse(authenticationState.User.FindFirst(CustomClaimTypes.Id)?.Value, out var userId);
+
+            ApplyResult(await _emailNotificationService.SendTestEmailAsync(_settings, userId));
+        });
+    }
+
+    private async Task OnEnabledChangedAsync(bool isEnabled)
+    {
+        await RunOperationAsync(isRunning => _isTogglingNotifications = isRunning, async () =>
+        {
+            if (isEnabled)
+            {
+                await SaveAndEnableAsync();
+
+                return;
+            }
+
+            var disableResult = await _emailNotificationService.SetEnabledAsync(false);
+
+            if (disableResult.Succeeded)
+            {
+                _settings.IsEnabled = false;
+            }
+
+            ApplyResult(disableResult);
+        });
+    }
+
+    private async Task SaveAndEnableAsync()
+    {
+        var verificationResult = await _emailNotificationService.VerifyConnectionAsync(_settings);
+
+        if (!verificationResult.Succeeded)
+        {
+            ApplyResult(verificationResult);
+
+            return;
+        }
+
+        _settings.IsEnabled = true;
+
+        var saveResult = await _emailNotificationService.SaveSettingsAsync(_settings);
+
+        if (!saveResult.Succeeded)
+        {
+            _settings.IsEnabled = false;
+            ApplyResult(saveResult);
+
+            return;
+        }
+
+        _settings = await _emailNotificationService.GetSettingsAsync();
+
+        ApplyResult(new EmailOperationResultDto
+        {
+            Succeeded = true,
+            Message = "Settings saved. Email notifications are on."
+        });
+    }
+
+    private async Task SaveCleanupSettingsAsync()
+    {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
+        _isSavingCleanupSettings = true;
+
+        try
+        {
+            var latestSystemSettings = await _systemSettingsService.GetSystemSettingsAsync();
+            latestSystemSettings.DismissedNotificationRetention = _systemSettings.DismissedNotificationRetention;
+
+            if (await _systemSettingsService.UpdateSystemSettingsAsync(latestSystemSettings))
+            {
+                _systemSettings = latestSystemSettings;
+                _snackbar.Add("Notification cleanup settings saved.", Severity.Success);
+            }
+            else
+            {
+                _snackbar.Add("Failed to save notification cleanup settings.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSavingCleanupSettings = false;
+        }
+    }
+
+    private async Task RunOperationAsync(Action<bool> setRunning, Func<Task> action)
+    {
+        if (!await _adminAuthorizationGuard.TryAuthorizeAdminAsync())
+        {
+            return;
+        }
+
+        setRunning(true);
+        _errorMessage = null;
+
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            setRunning(false);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ApplyResult(EmailOperationResultDto result)
+    {
+        if (!result.Succeeded)
+        {
+            _errorMessage = result.Message;
+
+            return;
+        }
+
+        _snackbar.Add(result.Message, Severity.Success);
+    }
+}

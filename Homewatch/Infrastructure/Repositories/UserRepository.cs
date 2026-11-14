@@ -140,6 +140,28 @@ namespace Homewatch.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<Guid>> GetAllActiveUserIdsAsync()
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            return await context.Users
+                .AsNoTracking()
+                .Where(x => !x.IsFirstTimeSetup)
+                .Select(x => x.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetEmailsByUserIdsAsync(List<Guid> userIds)
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            return await context.Users
+                .AsNoTracking()
+                .Where(x => userIds.Contains(x.Id))
+                .Select(x => x.Email)
+                .ToListAsync();
+        }
+
         public async Task<int> GetTotalUsersAsync()
         {
             await using var context = await _dbContextFactory.CreateDbContextAsync();

@@ -17,5 +17,7 @@ namespace Homewatch.Infrastructure.Data.Entities
         public double SecurityMaxTemperatureC { get; set; } = 90;
 
         public double SecurityMaxHumidityPercent { get; set; } = 70;
+
+        public RetentionPeriod DismissedNotificationRetention { get; set; } = RetentionPeriod.OneYear;
     }
 }

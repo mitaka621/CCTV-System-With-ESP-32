@@ -16,6 +16,10 @@ namespace Homewatch.Contracts.Abstractions.Repositories
 
         Task<List<UserListItemDto>> GetAllUsersAsync();
 
+        Task<List<Guid>> GetAllActiveUserIdsAsync();
+
+        Task<List<string>> GetEmailsByUserIdsAsync(List<Guid> userIds);
+
         Task<int> GetTotalUsersAsync();
 
         Task<bool> UpdatePasswordAsync(Guid userId, string newPasswordHash, bool clearFirstTimeSetup);
